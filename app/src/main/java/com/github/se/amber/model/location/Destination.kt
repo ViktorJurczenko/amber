@@ -72,5 +72,6 @@ private fun GeoLocation.toDestination(
     name: String,
 ): Destination? = pointOrNull()?.let { (lat, lng) -> Destination(id, kind, name, lat, lng) }
 
+/** Whether [other] is within [SAME_PLACE_RADIUS_METERS], so counts as the same place. */
 private fun Destination.isNear(other: Destination): Boolean =
     distanceMeters(lat, lng, other.lat, other.lng) <= SAME_PLACE_RADIUS_METERS

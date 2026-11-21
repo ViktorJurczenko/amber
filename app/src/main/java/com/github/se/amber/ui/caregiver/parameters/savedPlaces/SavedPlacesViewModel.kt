@@ -245,6 +245,10 @@ class SavedPlacesViewModel(
         placesRepository.deletePlace(circleId, placeId)
       }
 
+  /**
+   * Runs [save] (an add, rename or delete) on the loaded circle, and shows [failureMsgRes] if it
+   * fails. Does nothing while the places aren't loaded: there is no circle to write to yet.
+   */
   private fun write(@StringRes failureMsgRes: Int, save: suspend (String) -> Result<*>) {
     val circleId = (loaded.value as? Loaded.Places)?.circleId ?: return
     viewModelScope.launch {
