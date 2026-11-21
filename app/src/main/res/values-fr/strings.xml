@@ -431,4 +431,13 @@
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
+
+    <!-- AddAppointment -->
+    <string name="addAppointmentTitle">Ajouter un événement</string>
+    <string name="addAppointmentTitleLabel">Titre</string>
+    <string name="addAppointmentTitlePlaceholder">Saisissez un titre</string>
+    <string name="addAppointmentNoteLabel">Note</string>
+    <string name="addAppointmentNotePlaceholder">Saisissez une note</string>
+    <string name="addAppointmentAddButton">Ajouter l\'événement</string>
+    <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
 </resources>
