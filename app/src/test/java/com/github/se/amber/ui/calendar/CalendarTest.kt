@@ -22,6 +22,7 @@ import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_BUTTON
 import com.github.se.amber.ui.theme.AmberAppTheme
 import java.time.LocalDate
 import java.time.YearMonth
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
@@ -193,8 +194,10 @@ class CalendarTest {
    * them.
    *
    * How: [tick] is read by the [Text] only. Incrementing it recomposes the [Column] but none of the
-   * parameters given to the calendar parts, so Compose skips them. The parts without arguments also
-   * use their default parameters.
+   * parameters given to the calendar parts, so Compose skips them. [CalendarHeader] and
+   * [CalendarDays] get explicit arguments: their default month is [YearMonth.now], a new object at
+   * each recomposition, so Compose could never consider the parameters unchanged and skip them.
+   * [CalendarWeekdays] and [CalendarDay] keep their default parameters.
    *
    * Limit: this test only checks that the calendar is still displayed. It depends on the Compose
    * compiler skipping the functions: if that changes, it keeps passing but covers less.
@@ -208,9 +211,9 @@ class CalendarTest {
         Column {
           Text(tick.toString())
           Calendar(viewModel = viewModel)
-          CalendarHeader()
+          CalendarHeader(month = november, locale = Locale.US)
           CalendarWeekdays()
-          CalendarDays()
+          CalendarDays(month = november, locale = Locale.US)
           CalendarDay()
         }
       }
