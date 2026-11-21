@@ -52,6 +52,7 @@ class FirebaseRouteRepository(
     return kept?.let { Result.success(it) } ?: fetched
   }
 
+  /** Asks the cloud function for the route. Never reads nor writes the route kept on the phone. */
   private suspend fun fetch(from: RoutePoint, to: RoutePoint): Result<Route> =
       try {
         val callable = functions.getHttpsCallable(FUNCTION)
@@ -102,9 +103,14 @@ class FirebaseRouteRepository(
 
   private fun RoutePoint.toMap() = mapOf(LAT to lat, LNG to lng)
 
+  /** Whether [other] is within [SAME_PLACE_RADIUS_METERS], so counts as the same place. */
   private fun RoutePoint.isNear(other: RoutePoint) =
       distanceMeters(lat, lng, other.lat, other.lng) <= SAME_PLACE_RADIUS_METERS
 
+  /**
+   * The [RouteError] for a failed call. Only [RouteError.Network] lets [walkingRoute] fall back to
+   * the route kept on the phone.
+   */
   private fun FirebaseFunctionsException.toRouteError(): RouteError =
       when (code) {
         FirebaseFunctionsException.Code.UNAVAILABLE,
