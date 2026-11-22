@@ -644,6 +644,19 @@ class PatientUtilsTest {
   }
 
   @Test
+  fun textField_displaysOptionalLabelAndCustomTag() {
+    val label = context.getString(R.string.patientMapYourPosition)
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(value = "Ada", label = label, testTag = "labelled_text_field")
+      }
+    }
+
+    composeTestRule.onNodeWithTag("labelled_text_field").assertIsDisplayed()
+    composeTestRule.onNodeWithText(label).assertIsDisplayed()
+  }
+
+  @Test
   fun textField_emptyErrorAppearsAfterFocusAndClearsWhenFilled() {
     val value = mutableStateOf("")
     val emptyMessage = context.getString(R.string.patientMapPermissionNeeded)

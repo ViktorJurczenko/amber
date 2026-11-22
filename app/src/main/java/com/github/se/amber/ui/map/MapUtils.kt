@@ -118,12 +118,12 @@ internal fun MapPositionCard(
 
 @Preview(showBackground = true)
 @Composable
-private fun MapSearchFieldPreview() {
+internal fun MapSearchFieldPreview() {
   AmberAppTheme { MapSearchField() }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun MapPositionCardPreview() {
+internal fun MapPositionCardPreview() {
   AmberAppTheme { MapPositionCard() }
 }

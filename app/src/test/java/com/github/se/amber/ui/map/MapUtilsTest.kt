@@ -146,4 +146,20 @@ class MapUtilsTest {
         .onNodeWithText(context.getString(R.string.patientMapRecenter))
         .assertIsDisplayed()
   }
+
+  @Test
+  fun previews_renderDefaultSearchFieldAndSearchingPositionCard() {
+    composeTestRule.setContent {
+      Column {
+        MapSearchFieldPreview()
+        MapPositionCardPreview()
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapTestTags.POSITION_CARD).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearching))
+        .assertIsDisplayed()
+  }
 }
