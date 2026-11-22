@@ -236,7 +236,7 @@ fun ChangeCareCircleScreen(
             }
             DisplayInformation(
                 modifier = Modifier.testTag(ChangeCareCircleTestTags.INFORMATION),
-                contentDescription = stringResource(R.string.changeCareCircleInfoIcon),
+                contentDescription = stringResource(R.string.displayInformationIconDefaultDescription),
                 sentences = listOf(stringResource(R.string.changeCareCircleInfo)),
             )
           }
