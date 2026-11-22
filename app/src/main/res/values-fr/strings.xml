@@ -30,7 +30,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
-    <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec ???</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
     <!-- EmailSignIn -->
@@ -406,6 +406,17 @@
     <string name="seeAudiosErrorNoCircle">Vous ne faites pas encore partie d\'un cercle de soins.</string>
     <string name="seeAudiosErrorLoadCircle">Impossible de charger le cercle de soins.</string>
     <string name="seeAudiosErrorLoadMedia">Impossible de charger les médias.</string>
+
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">Voir les médias avec %1$s </string>
+    <string name="seeMediasSpecificPersonEmpty">Il n\'y a pas encore de médias avec %1$s.</string>
+    <string name="seeMediasSpecificPersonUnknownName">cette personne</string>
+    <string name="seeMediasSpecificPersonRetry">Réessayer</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">Aucun profil trouvé.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Échec du chargement du profil.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">Vous ne faites pas encore partie d\'un cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Échec du chargement du cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Échec du chargement des médias.</string>
 
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">voir les infos</string>

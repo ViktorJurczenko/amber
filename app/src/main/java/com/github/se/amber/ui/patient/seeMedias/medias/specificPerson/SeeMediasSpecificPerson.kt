@@ -6,6 +6,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -69,6 +70,8 @@ fun SeeMediasSpecificPersonScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val playbackStates by viewModel.playbackStates.collectAsStateWithLifecycle()
+  val name by viewModel.personName.collectAsStateWithLifecycle()
+  val personName = name ?: stringResource(R.string.seeMediasSpecificPersonUnknownName)
 
   SeeGeneralMedias(
       uiState = uiState,
@@ -78,6 +81,7 @@ fun SeeMediasSpecificPersonScreen(
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
       onPersonClick = onPersonClick,
+      titleArgs = listOf(personName),
   ) { item, circle, modifier ->
     when (item) {
       is MediaItem.Audio ->
@@ -100,6 +104,7 @@ fun SeeMediasSpecificPersonScreen(
                       .testTag(SeeMediasSpecificPersonTestTags.media(item.id)),
               loading = { CircularProgressIndicator() },
           )
+      // TODO: display the text medias once their screen exists
       else -> Unit
     }
   }

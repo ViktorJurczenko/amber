@@ -34,7 +34,7 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
-    <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with ???</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
     <!-- EmailSignIn -->
@@ -403,6 +403,18 @@
     <string name="seeAudiosErrorNoCircle">You\'re not in a care circle yet..</string>
     <string name="seeAudiosErrorLoadCircle">Failed to load the care circle.</string>
     <string name="seeAudiosErrorLoadMedia">Failed to load the media.</string>
+
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">See Medias with %1$s</string>
+    <string name="seeMediasSpecificPersonEmpty">There are no medias with %1$s yet.</string>
+    <string name="seeMediasSpecificPersonUnknownName">this person</string>
+    <string name="seeMediasSpecificPersonRetry">Retry</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">No profile found.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Failed to load the profile.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">You\'re not in a care circle yet.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Failed to load the care circle.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Failed to load the media.</string>
+
 
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">show infos</string>
