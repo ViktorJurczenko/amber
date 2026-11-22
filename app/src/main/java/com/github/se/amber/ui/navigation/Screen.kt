@@ -192,6 +192,17 @@ sealed class PatientScreen(
           title = R.string.screenTitlePatientSeeAudios,
       )
 
+  data object SeeMediasSpecificPerson :
+      PatientScreen(
+          route = "patient_see_medias_specific_person/{${NavArgs.PERSON_ID}}",
+          title = R.string.screenTitlePatientSeeMediasSpecificPerson,
+      ) {
+    const val ARG_PERSON_ID = "personId"
+
+    /** Builds the concrete route for the given person. */
+    fun routeFor(personId: String) = "patient_see_medias_specific_person/$personId"
+  }
+
   data object Parameters :
       PatientScreen(
           route = "patient_parameters",
@@ -218,4 +229,9 @@ object NavGraphs {
   const val PATIENT = "patient_graph"
   const val AUTH = "auth_graph"
   const val ONBOARDING = "onboarding_graph"
+}
+
+/** Names of the arguments passed in navigation routes. */
+object NavArgs {
+  const val PERSON_ID = "personId"
 }

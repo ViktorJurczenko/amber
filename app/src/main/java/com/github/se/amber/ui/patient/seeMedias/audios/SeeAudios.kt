@@ -48,12 +48,15 @@ private val audiosScreenConfig =
  * @param audioViewModel provides list and per-card playback states.
  * @param onBackClick called when the top navigation action is selected.
  * @param onTabSelected called when a bottom navigation tab is selected.
+ * @param onPersonClick navigation function called with the id of a related person when its button
+ *   is clicked.
  */
 @Composable
 fun SeeAudiosScreen(
     audioViewModel: SeeAudiosViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onTabSelected: (Tab) -> Unit = {},
+    onPersonClick: (String) -> Unit = {},
 ) {
   val uiState by audioViewModel.uiState.collectAsStateWithLifecycle()
   val playbackStates by audioViewModel.playbackStates.collectAsStateWithLifecycle()

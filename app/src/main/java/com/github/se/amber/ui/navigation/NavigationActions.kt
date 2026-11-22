@@ -75,4 +75,13 @@ open class NavigationActions(private val navController: NavHostController) {
    * @param tab The bottom navigation tab selected by the user
    */
   open fun navigateToTab(tab: Tab) = navigateTo(tab.destination)
+
+  /**
+   * Navigate to the screen showing the medias related to a given person.
+   *
+   * @param personId The id of the person whose medias are displayed
+   */
+  open fun navigateToSeeMediasSpecificPerson(personId: String) {
+    navController.navigate(PatientScreen.SeeMediasSpecificPerson.routeFor(personId))
+  }
 }

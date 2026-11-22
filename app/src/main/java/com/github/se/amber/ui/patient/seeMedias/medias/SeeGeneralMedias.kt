@@ -87,6 +87,8 @@ data class SeeGeneralMediasConfig(
  * @param onErrorShown called once the non-blocking error was shown in a Toast.
  * @param onBackClick called when the top navigation action is selected.
  * @param onTabSelected called when a bottom navigation tab is selected.
+ * @param onPersonClick navigation function called with the id of a related person when its button
+ *   is clicked.
  * @param titleArgs format arguments of the title string ([SeeGeneralMediasConfig.titleRes]), for a
  *   title that contains a value such as a name. Empty when the title is a plain text.
  * @param itemContent draws one media; use the given modifier (it carries the common width).
@@ -100,6 +102,7 @@ fun <T : MediaItem> SeeGeneralMedias(
     onErrorShown: () -> Unit = {},
     onBackClick: () -> Unit = {},
     onTabSelected: (Tab) -> Unit = {},
+    onPersonClick: (String) -> Unit = {},
     titleArgs: List<Any> = emptyList(),
     itemContent: @Composable (item: T, circle: CareCircle, modifier: Modifier) -> Unit,
 ) {
@@ -216,6 +219,7 @@ fun <T : MediaItem> SeeGeneralMedias(
                       modifier = Modifier.fillMaxWidth(PATIENT_BUTTON_WIDTH_BIG),
                       media = item,
                       testTag = config.cardTag(item.id),
+                      onPersonClick = onPersonClick,
                   )
                 }
               }

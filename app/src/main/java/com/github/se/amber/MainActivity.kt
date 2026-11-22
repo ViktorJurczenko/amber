@@ -24,9 +24,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.credentials.CredentialManager
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.github.se.amber.data.connectivity.ConnectivityMonitorProvider
 import com.github.se.amber.model.user.Role
@@ -61,6 +63,7 @@ import com.github.se.amber.ui.patient.PatientHomeScreen
 import com.github.se.amber.ui.patient.parameters.PatientParameterScreen
 import com.github.se.amber.ui.patient.seeMedias.SeeMediasScreen
 import com.github.se.amber.ui.patient.seeMedias.audios.SeeAudiosScreen
+import com.github.se.amber.ui.patient.seeMedias.medias.specificPerson.SeeMediasSpecificPersonScreen
 import com.github.se.amber.ui.patient.seeMedias.pictures.SeePicturesScreen
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -274,12 +277,37 @@ fun AmberApp(
         SeePicturesScreen(
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
         )
       }
       composable(route = PatientScreen.SeeAudios.route) {
         SeeAudiosScreen(
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
+        )
+      }
+      composable(
+          route = PatientScreen.SeeMediasSpecificPerson.route,
+          arguments =
+              listOf(
+                  navArgument(PatientScreen.SeeMediasSpecificPerson.ARG_PERSON_ID) {
+                    type = NavType.StringType
+                  }
+              ),
+      ) { backStackEntry ->
+        val personId =
+            backStackEntry.arguments
+                ?.getString(PatientScreen.SeeMediasSpecificPerson.ARG_PERSON_ID)
+                .orEmpty()
+        SeeMediasSpecificPersonScreen(
+            personId = personId,
+            onBackClick = { navigationActions.goBack() },
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab)},
+            onPersonClick = { id ->
+              // Clicking the person we are already looking at would just stack a duplicate screen
+              if (id != personId) navigationActions.navigateToSeeMediasSpecificPerson(id)
+            },
         )
       }
       composable(route = PatientScreen.Parameters.route) {

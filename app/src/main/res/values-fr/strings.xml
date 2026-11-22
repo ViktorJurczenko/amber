@@ -30,6 +30,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec ???</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
     <!-- EmailSignIn -->

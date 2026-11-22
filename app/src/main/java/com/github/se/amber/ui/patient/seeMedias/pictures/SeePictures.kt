@@ -48,6 +48,7 @@ fun SeePicturesScreen(
     pictureViewModel: SeePicturesViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onTabSelected: (Tab) -> Unit = {},
+    onPersonClick: (String) -> Unit = {},
 ) {
   val uiState by pictureViewModel.uiState.collectAsStateWithLifecycle()
 
