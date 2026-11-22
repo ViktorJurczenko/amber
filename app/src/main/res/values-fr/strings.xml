@@ -436,8 +436,8 @@
     <string name="addAppointmentTitle">Ajouter un événement</string>
     <string name="addAppointmentTitleLabel">Titre</string>
     <string name="addAppointmentTitlePlaceholder">Saisissez un titre</string>
-    <string name="addAppointmentNoteLabel">Note</string>
-    <string name="addAppointmentNotePlaceholder">Saisissez une note</string>
-    <string name="addAppointmentAddButton">Ajouter l\'événement</string>
+    <string name="addAppointmentNoteLabel">Note - Optionnel</string>
+    <string name="addAppointmentNotePlaceholder">Saisissez une note pour vous ou le patient</string>
+    <string name="addAppointmentAddButton">Ajouter un nouvel événement</string>
     <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
 </resources>

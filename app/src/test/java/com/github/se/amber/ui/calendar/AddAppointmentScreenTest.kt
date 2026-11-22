@@ -95,7 +95,7 @@ class AddAppointmentScreenTest {
     val viewModel = viewModel()
     showScreen(viewModel)
     field(AddAppointmentTestTags.TITLE_FIELD).performTextInput("Dr. Martin")
-    verify { viewModel.setTitle(any()) }
+    verify { viewModel.setTitle("Dr. Martin") }
   }
 
   @Test
@@ -103,11 +103,11 @@ class AddAppointmentScreenTest {
     val viewModel = viewModel()
     showScreen(viewModel)
     field(AddAppointmentTestTags.NOTE_FIELD).performTextInput("Bring the results")
-    verify { viewModel.setNote(any()) }
+    verify { viewModel.setNote("Bring the results") }
   }
 
   @Test
-  fun addButtonAddsTheAppointmentOnTheGivenDay() {
+  fun addButtonCallsViewModelWithGivenDate() {
     val viewModel = viewModel(AddAppointmentUIState(title = "Dr. Martin"))
     showScreen(viewModel)
     composeTestRule.onNodeWithTag(AddAppointmentTestTags.ADD_BUTTON).performClick()

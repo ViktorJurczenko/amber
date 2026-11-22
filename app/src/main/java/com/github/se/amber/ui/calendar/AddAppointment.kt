@@ -162,7 +162,7 @@ fun AddAppointmentScreen(
 
 /** Preview of [AddAppointmentScreen] in light mode. */
 // Not restartable: the restart code that Compose generates adds branches the tests can't reach,
-// which lowers the coverage. For the preview, this aspect don't matter.
+// which lowers the coverage. For the preview, this aspect doesn't matter.
 @NonRestartableComposable
 @Preview(showBackground = true, showSystemUi = true, name = "Add appointment light")
 @Composable

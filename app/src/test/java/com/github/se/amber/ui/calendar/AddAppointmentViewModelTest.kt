@@ -42,7 +42,7 @@ class AddAppointmentViewModelTest {
   }
 
   // FIXME: replace the two tests below by the real ones once the functions are implemented.
-  //  Their are needed for coverage reason and, sadly, can't be avoid.
+  //  They are needed for coverage reasons and, sadly, can't be avoided.
 
   @Test
   fun functionsNotImplementedYetKeepTheInitialState() {
