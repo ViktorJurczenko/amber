@@ -432,7 +432,7 @@
     <string name="patientMapYourPosition">Your position</string>
     <string name="patientMapPermissionNeeded">Allow location to see your position</string>
     <string name="patientMapLocationOff">Turn on location to see your position</string>
-    <string name="patientMapSearching">Finding your position</string>
+    <string name="patientMapSearching">Finding your position…</string>
     <string name="patientMapLocationUnavailable">Your position is unavailable</string>
     <string name="patientMapLastKnown">Last known position</string>
     <string name="patientMapLocationFound">Current position</string>
