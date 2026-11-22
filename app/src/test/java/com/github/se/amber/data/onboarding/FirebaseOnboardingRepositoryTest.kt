@@ -149,6 +149,7 @@ class FirebaseOnboardingRepositoryTest {
       assertFailure<OnboardingError.InvalidProfile>(repository.createInitialCareCircle("Family"))
     }
     verify(exactly = 0) { transaction.set(circleDocument, any<CareCircle>()) }
+    verify(exactly = 0) { transaction.update(profileDocument, any<String>(), any<Any>()) }
   }
 
   @Test

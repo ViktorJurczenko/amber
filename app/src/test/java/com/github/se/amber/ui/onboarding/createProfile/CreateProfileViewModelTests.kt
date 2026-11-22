@@ -549,10 +549,10 @@ class CreateProfileViewModelTests {
   }
 
   @Test
-  fun onRoleSelected_everyUpdateOrReadFailure_showsItsOwnMessage() = runTest {
+  fun onRoleSelected_updateAndReadFailures_showTheirOwnMessage() = runTest {
+    // InvalidPersonDetails is checked by onRoleSelected_invalidPersonDetails_setsMappedSubmitError
     val updateFailures =
         mapOf(
-            ProfileUpdateError.InvalidPersonDetails to R.string.createProfileErrorInvalidName,
             ProfileUpdateError.NotAuthenticated to R.string.createProfileErrorSessionExpired,
             ProfileUpdateError.PermissionDenied to R.string.createProfileErrorPermissionDenied,
             ProfileUpdateError.Network to R.string.createProfileErrorOffline,
@@ -583,8 +583,8 @@ class CreateProfileViewModelTests {
   fun onRoleSelected_existingProfileWithSameRoleButOtherName_writesTheTypedName() = runTest {
     val otherNames =
         listOf(
-            Person(id = "uid", firstName = "Grace", lastName = "Lovelace"),
-            Person(id = "uid", firstName = "Ada", lastName = "Byron"),
+            Person(id = "uid", firstName = "Grace", lastName = SURNAME),
+            Person(id = "uid", firstName = NAME, lastName = "Byron"),
         )
     coEvery { profileRepository.createProfile(any(), any()) } returns
         Result.failure(ProfileCreationError.ProfileAlreadyExists)
@@ -602,7 +602,7 @@ class CreateProfileViewModelTests {
     assertEquals(otherNames.size, successCount)
     coVerify(exactly = otherNames.size) {
       profileRepository.updateOnboardingProfile(
-          person = Person(firstName = "Ada", lastName = "Lovelace"),
+          person = Person(firstName = NAME, lastName = SURNAME),
           role = Role.PATIENT,
       )
     }
@@ -626,7 +626,7 @@ class CreateProfileViewModelTests {
     assertEquals(2, successCount)
     coVerify(exactly = 1) {
       profileRepository.updateOnboardingProfile(
-          person = Person(firstName = "Grace", lastName = "Lovelace"),
+          person = Person(firstName = "Grace", lastName = SURNAME),
           role = Role.PATIENT,
       )
     }
@@ -648,15 +648,21 @@ class CreateProfileViewModelTests {
   }
 
   private fun fillValidNameAndSurname() {
-    viewModel.onNameChange("Ada")
-    viewModel.onSurnameChange("Lovelace")
+    viewModel.onNameChange(NAME)
+    viewModel.onSurnameChange(SURNAME)
   }
 
   private fun savedProfile(role: Role, circleIds: List<String> = emptyList()) =
       UserProfile(
           uid = "uid",
           role = role,
-          person = Person(id = "uid", firstName = "Ada", lastName = "Lovelace"),
+          person = Person(id = "uid", firstName = NAME, lastName = SURNAME),
           circleIds = circleIds,
       )
+
+  private companion object {
+    /** The valid name [fillValidNameAndSurname] types, which [savedProfile] also holds. */
+    const val NAME = "Ada"
+    const val SURNAME = "Lovelace"
+  }
 }
