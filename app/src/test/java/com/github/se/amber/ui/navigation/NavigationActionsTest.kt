@@ -182,4 +182,41 @@ class NavigationActionsTest {
     assertEquals(42, options.popUpToId)
     assertTrue(options.isPopUpToInclusive())
   }
+
+  // ---- navigateToSeeMediasSpecificPerson ----
+
+  @Test
+  fun navigateToSeeMediasSpecificPerson_navigatesToTheRouteOfThePerson() {
+    actions.navigateToSeeMediasSpecificPerson("person123")
+
+    verify(exactly = 1) {
+      navController.navigate("patient_see_medias_specific_person/person123")
+    }
+  }
+
+  @Test
+  fun navigateToSeeMediasSpecificPerson_isSimplyPushed() {
+    actions.navigateToSeeMediasSpecificPerson("person123")
+
+    // No NavOptions: no launchSingleTop and no popUpTo, so each click stacks a new screen
+    verify(exactly = 0) {
+      navController.navigate(any<String>(), any<NavOptionsBuilder.() -> Unit>())
+    }
+  }
+
+// ---- SeeMediasSpecificPerson route ----
+
+  @Test
+  fun seeMediasSpecificPerson_routeFor_replacesThePlaceholderWithThePersonId() {
+    val screen = PatientScreen.SeeMediasSpecificPerson
+
+    assertTrue(screen.route.contains("{${NavArgs.PERSON_ID}}"))
+    assertEquals("patient_see_medias_specific_person/abc", screen.routeFor("abc"))
+    assertFalse(screen.routeFor("abc").contains("{"))
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_isNotATopLevelDestination() {
+    assertFalse(PatientScreen.SeeMediasSpecificPerson.isTopLevelDestination)
+  }
 }

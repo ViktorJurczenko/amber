@@ -193,7 +193,7 @@ fun <T : MediaItem> SeeGeneralMedias(
             ) {
               Text(
                   modifier = Modifier.testTag(config.emptyTag),
-                  text = stringResource(config.emptyRes),
+                  text = stringResource(config.emptyRes, *titleArgs.toTypedArray()),
                   textAlign = TextAlign.Center,
                   color = MaterialTheme.colorScheme.onBackground,
                   style = MaterialTheme.typography.titleLarge,

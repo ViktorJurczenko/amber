@@ -9,6 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onAllNodesWithTag
+import com.github.se.amber.ui.media.MediaCardTestTags
+import io.mockk.coEvery
+import io.mockk.every
+import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -118,6 +123,7 @@ class SeeGeneralMediasTest {
    * @param onErrorShown called once the non-blocking error was shown in a Toast.
    * @param onBackClick called when the top navigation action is selected.
    * @param onTabSelected called when a bottom navigation tab is selected.
+   * @param onPersonClick called with the id of a related person when its button is clicked.
    * @param titleRes string resource of the title, to check a title with a placeholder.
    * @param titleArgs format arguments of the title string, empty for a plain title.
    */
@@ -127,6 +133,7 @@ class SeeGeneralMediasTest {
       onErrorShown: () -> Unit = {},
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
       titleRes: Int = R.string.seeAudiosTitle,
       titleArgs: List<Any> = emptyList(),
   ) {
@@ -141,6 +148,7 @@ class SeeGeneralMediasTest {
               onErrorShown = onErrorShown,
               onBackClick = onBackClick,
               onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
               titleArgs = titleArgs,
           ) { item, itemCircle, modifier ->
             receivedCircle = itemCircle
@@ -310,6 +318,34 @@ class SeeGeneralMediasTest {
     composeTestRule.onNodeWithTag(Tags.item("a2")).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.EMPTY).assertIsDisplayed()
   }
+
+    @Test
+    fun clicking_a_related_person_in_a_card_calls_onPersonClick_with_its_id() {
+        val circleWithPerson =
+            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+        val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
+        // MediaCard's ViewModel loads the author, the active circle and the circle of the card
+        coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+        coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+        every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
+        coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+        var clickedId: String? = null
+        setContent(
+            SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf(audio)),
+            onPersonClick = { clickedId = it },
+        )
+
+        composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule
+                .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
+
+        assertEquals("p1", clickedId)
+    }
 
   // ---------------------------------------------------------------------------------------------
   // Non-blocking errors (Toast)

@@ -12,6 +12,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onAllNodesWithTag
+import com.github.se.amber.ui.media.MediaCardTestTags
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -122,21 +124,23 @@ class SeePicturesScreenTest {
   private fun setContent(
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
   ): SeePicturesViewModel {
-    val viewModel = SeePicturesViewModel(mediaRepository, circleRepository, profileRepository)
-    composeTestRule.setContent {
-      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
-        AmberAppTheme(dynamicColor = false) {
-          SeePicturesScreen(
-              pictureViewModel = viewModel,
-              onBackClick = onBackClick,
-              onTabSelected = onTabSelected,
-          )
-        }
+      val viewModel = SeePicturesViewModel(mediaRepository, circleRepository, profileRepository)
+      composeTestRule.setContent {
+          CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+              AmberAppTheme(dynamicColor = false) {
+                  SeePicturesScreen(
+                      pictureViewModel = viewModel,
+                      onBackClick = onBackClick,
+                      onTabSelected = onTabSelected,
+                      onPersonClick = onPersonClick,
+                  )
+              }
+          }
       }
-    }
-    composeTestRule.waitForIdle()
-    return viewModel
+      composeTestRule.waitForIdle()
+      return viewModel
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -291,6 +295,29 @@ class SeePicturesScreenTest {
     assertEquals(listOf(picture), state.items)
     composeTestRule.onNodeWithTag(SeePicturesTestTags.ERROR).assertDoesNotExist()
   }
+
+    @Test
+    fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+        coEvery { circleRepository.getCircle("circle1") } returns
+                Result.success(
+                    CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+                )
+        coEvery { mediaRepository.observeApprovedMedia("circle1") } returns
+                flowOf(listOf(MediaItem.Picture(id = "1", width = 400, height = 300, shownIds = listOf("p1"))))
+        var clickedId: String? = null
+        setContent(onPersonClick = { clickedId = it })
+
+        composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("1")).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule
+                .onAllNodesWithTag(MediaCardTestTags.relatedItem("1", 0))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("1", 0)).performClick()
+
+        assertEquals("p1", clickedId)
+    }
 
   @Test
   @Config(qualifiers = "fr")
