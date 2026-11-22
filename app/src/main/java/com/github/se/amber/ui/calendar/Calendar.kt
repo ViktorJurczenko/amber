@@ -21,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +76,9 @@ private const val MONTH_TITLE_PATTERN = "LLLL yyyy"
  * @param viewModel the ViewModel owning the displayed month. It starts on the current month.
  */
 @Composable
+// Not restartable: the Compose compiler adds no skip or recompose code to this function, which
+// is only a layout around other composables.
+@NonRestartableComposable
 fun Calendar(
     modifier: Modifier = Modifier,
     // Note: the signature of onDayClick may change once the appointment are taken into account
@@ -118,6 +122,7 @@ fun Calendar(
 
 /** Month and year at the top left, the previous and next month arrows at the top right. */
 @Composable
+@NonRestartableComposable
 internal fun CalendarHeader(
     month: YearMonth = YearMonth.now(),
     locale: Locale = Locale.getDefault(),
@@ -166,6 +171,7 @@ internal fun CalendarHeader(
 
 /** The names of the days of the week, starting with the first day of the week of [locale]. */
 @Composable
+@NonRestartableComposable
 internal fun CalendarWeekdays(locale: Locale = Locale.getDefault()) {
   val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
 
@@ -184,6 +190,7 @@ internal fun CalendarWeekdays(locale: Locale = Locale.getDefault()) {
 
 /** Every day of [month], one row per week. A day is clickable: [onDayClick] gets its date. */
 @Composable
+@NonRestartableComposable
 internal fun CalendarDays(
     month: YearMonth = YearMonth.now(),
     locale: Locale = Locale.getDefault(),
