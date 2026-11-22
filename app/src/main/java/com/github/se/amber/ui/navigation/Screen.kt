@@ -215,7 +215,7 @@ sealed class PatientScreen(
       PatientScreen(
           route = "patient_map",
           title = R.string.screenTitlePatientMap,
-          isTopLevelDestination = true
+          isTopLevelDestination = true,
       )
 }
 

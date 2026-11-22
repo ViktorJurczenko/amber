@@ -45,7 +45,7 @@ internal fun MapSearchField(
     modifier: Modifier = Modifier,
     query: String = "",
     onQueryChange: (String) -> Unit = {},
-    onSearch: () -> Unit = {}
+    onSearch: () -> Unit = {},
 ) {
   DisplayPatientTextField(
       value = query,
@@ -66,7 +66,7 @@ internal fun MapSearchField(
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
     locationState: MediaMapLocationState = MediaMapLocationState.Searching,
-    onRecenter: () -> Unit = {}
+    onRecenter: () -> Unit = {},
 ) {
   val detail =
       when (locationState) {

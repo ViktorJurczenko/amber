@@ -49,7 +49,8 @@ class MapUtilsTest {
 
     val field = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     field.assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapSearchHint))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
 
     field.performTextInput("Lausanne")
@@ -63,9 +64,7 @@ class MapUtilsTest {
   @Test
   fun searchField_reflectsQueryChangesFromItsParent() {
     val query = mutableStateOf("Lausanne")
-    composeTestRule.setContent {
-      AmberAppTheme { MapSearchField(query = query.value) }
-    }
+    composeTestRule.setContent { AmberAppTheme { MapSearchField(query = query.value) } }
 
     val field = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     field.assertTextEquals("Lausanne")
@@ -74,7 +73,8 @@ class MapUtilsTest {
     field.assertTextEquals("Geneva")
 
     query.value = ""
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapSearchHint))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
   }
 
@@ -89,11 +89,14 @@ class MapUtilsTest {
     }
 
     composeTestRule.onNodeWithTag(MapTestTags.POSITION_CARD).assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapOverview))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapOverview))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapYourPosition))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapYourPosition))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapRecenter))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapRecenter))
         .assertIsDisplayed()
 
     val statesAndMessages =
@@ -133,11 +136,14 @@ class MapUtilsTest {
       }
     }
 
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapSearchHint))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapPermissionNeeded))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapPermissionNeeded))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.patientMapRecenter))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapRecenter))
         .assertIsDisplayed()
   }
 }

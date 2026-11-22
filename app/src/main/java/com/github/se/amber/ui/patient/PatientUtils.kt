@@ -58,15 +58,15 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS_PATIENT
 import com.github.se.amber.ui.theme.DISABLED_ALPHA
+import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
+import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
+import com.github.se.amber.ui.theme.MIN_LINE_DEFAULT
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
-import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
-import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
-import com.github.se.amber.ui.theme.MIN_LINE_DEFAULT
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
@@ -318,7 +318,13 @@ fun DisplayPatientTextField(
       onValueChange = onValueChange,
       label =
           label?.let {
-            { Text(it, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge) }
+            {
+              Text(
+                  it,
+                  color = MaterialTheme.colorScheme.onSurface,
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            }
           },
       placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
       leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
