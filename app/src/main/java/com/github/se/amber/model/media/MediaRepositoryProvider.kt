@@ -9,9 +9,9 @@ import com.github.se.amber.data.media.MediaFileCache
 import com.github.se.amber.data.media.MediaFileStorageFirebase
 import com.github.se.amber.data.media.MediaOutbox
 import com.github.se.amber.data.media.MediaRepositoryFirebase
-import com.github.se.amber.data.media.MediaSendWorkerFactory
 import com.github.se.amber.data.media.MediaSendWorkerScheduler
 import com.github.se.amber.data.media.MediaSender
+import com.github.se.amber.data.work.MediaSendWorkerFactory
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.google.firebase.Firebase
 import com.google.firebase.app

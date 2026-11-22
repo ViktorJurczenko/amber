@@ -12,6 +12,7 @@ import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import androidx.work.testing.WorkManagerTestInitHelper.ExecutorsMode
 import com.github.se.amber.data.media.FakeMediaSender.Call
+import com.github.se.amber.data.work.MediaSendWorkerFactory
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals

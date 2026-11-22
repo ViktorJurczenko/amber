@@ -10,8 +10,9 @@ import coil3.request.Options
 import com.github.se.amber.data.account.AccountDeletionRepository
 import com.github.se.amber.data.account.AccountDeletionRepositoryProvider
 import com.github.se.amber.data.account.DeletionMarker
-import com.github.se.amber.data.media.MediaSendWorker
 import com.github.se.amber.data.media.image.MediaPictureFetcher
+import com.github.se.amber.data.work.AmberWorkerFactory
+import com.github.se.amber.data.work.MediaSendWorker
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaPicture
@@ -30,8 +31,8 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Checks that the app sets up its two libraries: the image loader showing media pictures through
- * the repository, and WorkManager creating the media send worker. Also checks that it finishes an
- * interrupted account deletion at startup.
+ * the repository, and WorkManager using the app's worker factory, which creates the media send
+ * worker. Also checks that it finishes an interrupted account deletion at startup.
  */
 @RunWith(RobolectricTestRunner::class)
 class AmberApplicationTest {
@@ -81,8 +82,9 @@ class AmberApplicationTest {
   }
 
   @Test
-  fun givesWorkManagerTheMediaSendWorkerFactory() {
+  fun givesWorkManagerTheAppsWorkerFactory() {
     val factory = app.workManagerConfiguration.workerFactory
+    assertTrue(factory is AmberWorkerFactory)
 
     val worker =
         factory.createWorker(

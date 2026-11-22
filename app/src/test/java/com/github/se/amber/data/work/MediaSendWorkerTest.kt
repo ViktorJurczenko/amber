@@ -1,6 +1,6 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
-package com.github.se.amber.data.media
+package com.github.se.amber.data.work
 
 import android.content.Context
 import android.util.Log
@@ -11,7 +11,10 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.workDataOf
+import com.github.se.amber.data.media.FakeMediaSender
 import com.github.se.amber.data.media.FakeMediaSender.Call
+import com.github.se.amber.data.media.MediaSender
+import com.github.se.amber.data.media.SendResult
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
