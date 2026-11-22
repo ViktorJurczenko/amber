@@ -430,6 +430,16 @@
     <string name="audioPlaybackRetry">Réessayer</string>
     <string name="audioPlaybackError">Cet audio n\'a pas pu être lu.</string>
     <!-- MediaMap -->
+    <string name="patientMapSearchHint">Rechercher un lieu</string>
+    <string name="patientMapOverview">VUE D\'ENSEMBLE</string>
+    <string name="patientMapYourPosition">Votre position</string>
+    <string name="patientMapPermissionNeeded">Autorisez la localisation pour voir votre position</string>
+    <string name="patientMapLocationOff">Activez la localisation pour voir votre position</string>
+    <string name="patientMapSearching">Recherche de votre position</string>
+    <string name="patientMapLocationUnavailable">Votre position est indisponible</string>
+    <string name="patientMapLastKnown">Dernière position connue</string>
+    <string name="patientMapLocationFound">Position actuelle</string>
+    <string name="patientMapRecenter">Recentrer</string>
     <string name="mediaMapErrorNoProfile">Aucun profil trouvé.</string>
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>

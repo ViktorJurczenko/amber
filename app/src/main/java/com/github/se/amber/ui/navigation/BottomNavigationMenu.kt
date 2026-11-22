@@ -169,7 +169,7 @@ sealed class PatientTab(
           MAP_TAB_KEY,
           R.string.navigationTabMap,
           Icons.Outlined.Map,
-          PatientScreen.SeeMedias //TODO to change
+          PatientScreen.Map,
       )
 
   data object Setting :
