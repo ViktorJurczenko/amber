@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -160,6 +161,9 @@ fun AddAppointmentScreen(
 }
 
 /** Preview of [AddAppointmentScreen] in light mode. */
+// Not restartable: the restart code that Compose generates adds branches the tests can't reach,
+// which lowers the coverage. For the preview, this aspect don't matter.
+@NonRestartableComposable
 @Preview(showBackground = true, showSystemUi = true, name = "Add appointment light")
 @Composable
 internal fun AddAppointmentScreenPreview(

@@ -25,6 +25,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowToast
 
 /** Tests what [AddAppointmentScreen] shows and what it sends to [AddAppointmentViewModel]. */
 @RunWith(RobolectricTestRunner::class)
@@ -135,6 +137,20 @@ class AddAppointmentScreenTest {
     events.tryEmit(AddAppointmentEvent.Added)
     composeTestRule.waitForIdle()
     assertTrue(wentBack)
+  }
+
+  @Test
+  fun anErrorIsShownInAToastThenCleared() {
+    ShadowToast.reset()
+    val viewModel =
+        viewModel(AddAppointmentUIState(errorMsgRes = R.string.addAppointmentErrorTitleEmpty))
+    showScreen(viewModel)
+    composeTestRule.waitForIdle()
+    assertEquals(
+        string(R.string.addAppointmentErrorTitleEmpty),
+        ShadowToast.getTextOfLatestToast(),
+    )
+    verify(exactly = 1) { viewModel.clearErrorMsg() }
   }
 
   @Test
