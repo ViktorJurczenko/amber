@@ -549,10 +549,10 @@ class CreateProfileViewModelTests {
   }
 
   @Test
-  fun onRoleSelected_updateAndReadFailures_showTheirOwnMessage() = runTest {
-    // InvalidPersonDetails is checked by onRoleSelected_invalidPersonDetails_setsMappedSubmitError
+  fun onRoleSelected_everyUpdateOrReadFailure_showsItsOwnMessage() = runTest {
     val updateFailures =
         mapOf(
+            ProfileUpdateError.InvalidPersonDetails to R.string.createProfileErrorInvalidName,
             ProfileUpdateError.NotAuthenticated to R.string.createProfileErrorSessionExpired,
             ProfileUpdateError.PermissionDenied to R.string.createProfileErrorPermissionDenied,
             ProfileUpdateError.Network to R.string.createProfileErrorOffline,
