@@ -6,6 +6,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber
 
@@ -19,7 +20,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import com.github.se.amber.ui.navigation.NavArgs
 import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.compose.ComposeNavigator
@@ -32,6 +32,7 @@ import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
 import com.github.se.amber.ui.navigation.CaregiverTab
+import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.OnboardingScreen
 import com.github.se.amber.ui.navigation.PatientScreen
@@ -147,16 +148,16 @@ class AmberAppNavigationTest {
   private fun goTo(route: String, expectedRoute: String = route) {
     composeRule.waitUntil(timeoutMillis = NAVIGATION_TIMEOUT_MS) {
       navController.currentBackStackEntry
-        ?.lifecycle
-        ?.currentState
-        ?.isAtLeast(Lifecycle.State.STARTED) == true
+          ?.lifecycle
+          ?.currentState
+          ?.isAtLeast(Lifecycle.State.STARTED) == true
     }
     composeRule.runOnUiThread {
       Handler(Looper.getMainLooper()).post { navController.navigate(route) }
     }
     composeRule.waitUntil(
-      conditionDescription = "navigated to $expectedRoute",
-      timeoutMillis = NAVIGATION_TIMEOUT_MS,
+        conditionDescription = "navigated to $expectedRoute",
+        timeoutMillis = NAVIGATION_TIMEOUT_MS,
     ) {
       navController.currentDestination?.route == expectedRoute
     }
@@ -653,13 +654,13 @@ class AmberAppNavigationTest {
     launch(NavGraphs.PATIENT)
 
     goTo(
-      route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
-      expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
     )
 
     assertEquals(
-      PERSON_ID,
-      navController.currentBackStackEntry?.arguments?.getString(NavArgs.PERSON_ID),
+        PERSON_ID,
+        navController.currentBackStackEntry?.arguments?.getString(NavArgs.PERSON_ID),
     )
   }
 
@@ -668,8 +669,8 @@ class AmberAppNavigationTest {
     launch(NavGraphs.PATIENT)
     goTo(PatientScreen.SeeMedias.route)
     goTo(
-      route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
-      expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
     )
 
     click(TopNavigationMenuTestTags.BACK_BUTTON)
@@ -681,8 +682,8 @@ class AmberAppNavigationTest {
   fun seeMediasSpecificPerson_homeTab_navigatesToPatientHome() {
     launch(NavGraphs.PATIENT)
     goTo(
-      route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
-      expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
     )
 
     click(Tags.PATIENT_TAB_HOME)

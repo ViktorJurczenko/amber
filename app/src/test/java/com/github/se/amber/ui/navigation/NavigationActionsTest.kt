@@ -189,9 +189,7 @@ class NavigationActionsTest {
   fun navigateToSeeMediasSpecificPerson_navigatesToTheRouteOfThePerson() {
     actions.navigateToSeeMediasSpecificPerson("person123")
 
-    verify(exactly = 1) {
-      navController.navigate("patient_see_medias_specific_person/person123")
-    }
+    verify(exactly = 1) { navController.navigate("patient_see_medias_specific_person/person123") }
   }
 
   @Test
@@ -204,7 +202,7 @@ class NavigationActionsTest {
     }
   }
 
-// ---- SeeMediasSpecificPerson route ----
+  // ---- SeeMediasSpecificPerson route ----
 
   @Test
   fun seeMediasSpecificPerson_routeFor_replacesThePlaceholderWithThePersonId() {

@@ -45,7 +45,7 @@ private val specificPersonErrors =
  * @param audioPlayer plays audio and reports playback progress.
  */
 class SeeMediasSpecificPersonViewModel(
-    private val personId: String,
+    private val personId: String = "",
     mediaRepository: MediaRepository = MediaRepositoryProvider.repository,
     circleRepository: CareCircleRepository = CareCircleRepositoryProvider.default.repository,
     private val profileRepository: ProfileRepository = ProfileRepositoryProvider.default.repository,

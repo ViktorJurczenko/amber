@@ -57,7 +57,7 @@ private val specificPersonScreenConfig =
  */
 @Composable
 fun SeeMediasSpecificPersonScreen(
-    personId: String,
+    personId: String = "",
     viewModel: SeeMediasSpecificPersonViewModel =
         viewModel(
             key = personId,

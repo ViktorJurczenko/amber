@@ -5,9 +5,6 @@
 package com.github.se.amber.ui.patient.seeMedias.audios
 
 import android.content.Context
-import com.github.se.amber.data.circle.CareCircleRepository
-import com.github.se.amber.data.profile.ProfileRepository
-import io.mockk.coEvery
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -27,6 +24,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.CareCircleRepository
+import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
@@ -43,6 +42,7 @@ import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasUIState
 import com.github.se.amber.ui.theme.AmberAppTheme
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -68,8 +68,8 @@ class SeeAudiosScreenTest {
       mockk<ActiveCircleRepository> {
         every { activeCircleId(any(), any()) } returns flowOf("circle1")
       }
-    private val profileRepository = mockk<ProfileRepository>()
-    private val circleRepository = mockk<CareCircleRepository>()
+  private val profileRepository = mockk<ProfileRepository>()
+  private val circleRepository = mockk<CareCircleRepository>()
 
   /** Text of [id] in the current test language, with [args] for its placeholders. */
   private fun string(id: Int, vararg args: Any): String =
@@ -78,51 +78,55 @@ class SeeAudiosScreenTest {
   // Like SeePicturesTest, provide MediaCard's ViewModel without its Firebase defaults.
   private fun testOwner(audioViewModel: SeeAudiosViewModel): ViewModelStoreOwner =
       object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
-          override val viewModelStore = ViewModelStore()
-          override val defaultViewModelProviderFactory =
-              object : ViewModelProvider.Factory {
-                  @Suppress("UNCHECKED_CAST")
-                  override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                      when (modelClass) {
-                          SeeAudiosViewModel::class.java -> audioViewModel as T
-                          MediaCardViewModel::class.java ->
-                              MediaCardViewModel(profileRepository, circleRepository, activeCircleRepository)
-                                      as T
-                          else -> error("Unexpected ViewModel: $modelClass")
-                      }
-              }
+        override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory =
+            object : ViewModelProvider.Factory {
+              @Suppress("UNCHECKED_CAST")
+              override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                  when (modelClass) {
+                    SeeAudiosViewModel::class.java -> audioViewModel as T
+                    MediaCardViewModel::class.java ->
+                        MediaCardViewModel(
+                            profileRepository,
+                            circleRepository,
+                            activeCircleRepository,
+                        )
+                            as T
+                    else -> error("Unexpected ViewModel: $modelClass")
+                  }
+            }
       }
 
-    private fun setContent(
-        onBackClick: () -> Unit = {},
-        onTabSelected: (Tab) -> Unit = {},
-        onPersonClick: (String) -> Unit = {},
-        state: SeeGeneralMediasUIState<MediaItem.Audio> =
-            SeeGeneralMediasUIState.Empty(
-                UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
-                CareCircle(id = "circle1"),
-            ),
-        uiState: MutableStateFlow<SeeGeneralMediasUIState<MediaItem.Audio>> = MutableStateFlow(state),
-        playbackStates: MutableStateFlow<Map<String, AudioPlaybackState>> =
-            MutableStateFlow(emptyMap()),
-    ): SeeAudiosViewModel {
-        val viewModel = mockk<SeeAudiosViewModel>(relaxed = true)
-        every { viewModel.uiState } returns uiState
-        every { viewModel.playbackStates } returns playbackStates
-        composeTestRule.setContent {
-            CompositionLocalProvider(LocalViewModelStoreOwner provides testOwner(viewModel)) {
-                AmberAppTheme(dynamicColor = false) {
-                    SeeAudiosScreen(
-                        audioViewModel = viewModel,
-                        onBackClick = onBackClick,
-                        onTabSelected = onTabSelected,
-                        onPersonClick = onPersonClick,
-                    )
-                }
-            }
+  private fun setContent(
+      onBackClick: () -> Unit = {},
+      onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
+      state: SeeGeneralMediasUIState<MediaItem.Audio> =
+          SeeGeneralMediasUIState.Empty(
+              UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
+              CareCircle(id = "circle1"),
+          ),
+      uiState: MutableStateFlow<SeeGeneralMediasUIState<MediaItem.Audio>> = MutableStateFlow(state),
+      playbackStates: MutableStateFlow<Map<String, AudioPlaybackState>> =
+          MutableStateFlow(emptyMap()),
+  ): SeeAudiosViewModel {
+    val viewModel = mockk<SeeAudiosViewModel>(relaxed = true)
+    every { viewModel.uiState } returns uiState
+    every { viewModel.playbackStates } returns playbackStates
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides testOwner(viewModel)) {
+        AmberAppTheme(dynamicColor = false) {
+          SeeAudiosScreen(
+              audioViewModel = viewModel,
+              onBackClick = onBackClick,
+              onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
+          )
         }
-        return viewModel
+      }
     }
+    return viewModel
+  }
 
   @Test
   fun playback_state_updates_the_card_and_retry_calls_view_model() {
@@ -307,32 +311,32 @@ class SeeAudiosScreenTest {
     assertEquals(PatientTab.Home, selected)
   }
 
-    @Test
-    fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
-        val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
-        val circle =
-            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
-        coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
-        coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
-        coEvery { circleRepository.getCircle("circle1") } returns Result.success(circle)
-        val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
-        var clickedId: String? = null
-        setContent(
-            state = SeeGeneralMediasUIState.Content(profile, circle, listOf(audio)),
-            onPersonClick = { clickedId = it },
-        )
+  @Test
+  fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+    val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
+    val circle =
+        CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circle)
+    val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
+    var clickedId: String? = null
+    setContent(
+        state = SeeGeneralMediasUIState.Content(profile, circle, listOf(audio)),
+        onPersonClick = { clickedId = it },
+    )
 
-        composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule
-                .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
-                .fetchSemanticsNodes()
-                .isNotEmpty()
-        }
-        composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
-
-        assertEquals("p1", clickedId)
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
+
+    assertEquals("p1", clickedId)
+  }
 
   @Test
   fun preview_displays_the_empty_message() {

@@ -9,12 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.onAllNodesWithTag
-import com.github.se.amber.ui.media.MediaCardTestTags
-import io.mockk.coEvery
-import io.mockk.every
-import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +30,7 @@ import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.media.MediaCardTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
@@ -41,7 +38,10 @@ import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -319,33 +319,33 @@ class SeeGeneralMediasTest {
     composeTestRule.onNodeWithTag(Tags.EMPTY).assertIsDisplayed()
   }
 
-    @Test
-    fun clicking_a_related_person_in_a_card_calls_onPersonClick_with_its_id() {
-        val circleWithPerson =
-            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
-        val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
-        // MediaCard's ViewModel loads the author, the active circle and the circle of the card
-        coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
-        coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
-        every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
-        coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
-        var clickedId: String? = null
-        setContent(
-            SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf(audio)),
-            onPersonClick = { clickedId = it },
-        )
+  @Test
+  fun clicking_a_related_person_in_a_card_calls_onPersonClick_with_its_id() {
+    val circleWithPerson =
+        CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+    val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
+    // MediaCard's ViewModel loads the author, the active circle and the circle of the card
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+    var clickedId: String? = null
+    setContent(
+        SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf(audio)),
+        onPersonClick = { clickedId = it },
+    )
 
-        composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule
-                .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
-                .fetchSemanticsNodes()
-                .isNotEmpty()
-        }
-        composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
-
-        assertEquals("p1", clickedId)
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
+
+    assertEquals("p1", clickedId)
+  }
 
   // ---------------------------------------------------------------------------------------------
   // Non-blocking errors (Toast)
