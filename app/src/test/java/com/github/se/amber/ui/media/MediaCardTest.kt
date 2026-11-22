@@ -320,6 +320,28 @@ class MediaCardTest {
         .assertTextEquals(string(R.string.mediaCardAddedBy, "Alice"))
   }
 
+  @Test
+  fun expanded_emptyDescription_hidesDescriptionButKeepsAuthor() {
+    setCard(picture(description = ""))
+
+    toggle()
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.addedBy("m1"))
+        .assertTextEquals(string(R.string.mediaCardAddedBy, "Alice"))
+  }
+
+  @Test
+  fun expanded_blankDescription_hidesDescription() {
+    setCard(picture(description = "   "))
+
+    toggle()
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(MediaCardTestTags.addedBy("m1")).assertIsDisplayed()
+  }
+
   // ---------- related persons ----------
 
   @Test

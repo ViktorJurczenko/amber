@@ -166,10 +166,12 @@ fun MediaCard(
                   verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
                   modifier = Modifier.fillMaxWidth(),
               ) {
-                Text(
-                    text = media.description,
-                    modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
-                )
+                if (!media.description.isNullOrBlank()) {
+                  Text(
+                      text = media.description,
+                      modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
+                  )
+                }
                 Text(
                     text = stringResource(R.string.mediaCardAddedBy, uiState.addedByName),
                     modifier =
