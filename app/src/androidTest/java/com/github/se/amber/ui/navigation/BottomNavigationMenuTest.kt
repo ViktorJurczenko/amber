@@ -1,6 +1,7 @@
 // Written by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.navigation
 
@@ -9,11 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -215,14 +216,16 @@ class BottomNavigationMenuTest {
 
   // ---------- Accessibility ----------
 
+  // The name of the tab is visible text, which a screen reader announces: the icon has no
+  // description of its own, otherwise the name would be read twice.
   @Test
-  fun tabHasItsLabelAsContentDescription() {
+  fun tabShowsItsLabel() {
     setMenu(tabs = CaregiverTab.caregiverTabs)
     val upload =
         InstrumentationRegistry.getInstrumentation()
             .targetContext
             .getString(R.string.navigationTabUpload)
-    tabNode(CaregiverTab.Upload).assertContentDescriptionEquals(upload)
+    tabNode(CaregiverTab.Upload).assertTextEquals(upload)
   }
 
   @Test

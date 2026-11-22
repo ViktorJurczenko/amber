@@ -1,27 +1,31 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media.audio
 
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.progressSemantics
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,12 +36,11 @@ import com.github.se.amber.R
 import com.github.se.amber.data.media.audio.WAVEFORM_BARS
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.HALF
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
+import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.SECOND_FIELD_WIDTH
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
@@ -128,13 +131,8 @@ fun DisplayAudioPlayback(
       modifier =
           modifier
               .fillMaxWidth(WEIGHT_ONE)
-              .border(
-                  BORDER_THICKNESS,
-                  MaterialTheme.colorScheme.outline,
-                  RoundedCornerShape(ROUND_CORNER),
-              )
-              .clip(RoundedCornerShape(ROUND_CORNER))
-              .background(MaterialTheme.colorScheme.surface)
+              .clip(MaterialTheme.shapes.medium)
+              .background(MaterialTheme.colorScheme.surfaceContainerHigh)
               .padding(PATIENT_PADDING_SMALL)
               .testTag(AudioPlaybackTestTags.CARD),
       verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
@@ -245,12 +243,25 @@ internal fun PlaybackError(
     @StringRes errorMsgRes: Int = R.string.audioPlaybackError,
     onRetry: () -> Unit = {},
 ) {
-  Text(
-      text = stringResource(errorMsgRes),
-      modifier = Modifier.fillMaxWidth(WEIGHT_ONE).testTag(AudioPlaybackTestTags.ERROR),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.error,
-  )
+  // The icon says it is an error and the text stays in onSurface: the error color alone is neither
+  // enough to tell it from the playback time, nor contrasted enough for a patient to read.
+  Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+  ) {
+    Icon(
+        imageVector = Icons.Outlined.ErrorOutline,
+        contentDescription = null,
+        modifier = Modifier.size(PATIENT_ICON_SIZE),
+        tint = MaterialTheme.colorScheme.error,
+    )
+    Text(
+        text = stringResource(errorMsgRes),
+        modifier = Modifier.weight(WEIGHT_ONE).testTag(AudioPlaybackTestTags.ERROR),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+  }
   DisplayPatientButton(
       buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
       buttonWidth = WEIGHT_ONE,

@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media
 
@@ -8,7 +9,6 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -69,7 +69,8 @@ object MediaCardTestTags {
 
 /**
  * Displays the card related to the Media, including the date, the description, the location and the
- * persons related to it
+ * persons related to it. The date and the location are stacked above the full-width button that
+ * shows or hides the details.
  *
  * This function must only be used on scrollable screens.
  *
@@ -104,50 +105,46 @@ fun MediaCard(
     }
   }
 
-  Column(modifier = modifier.fillMaxWidth().testTag(testTag)) {
-    // see+/- button and date
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      val textToDisplay =
-          stringResource(if (expanded) R.string.mediaCardHideInfos else R.string.mediaCardShowInfos)
-      val actualTestTag =
-          if (expanded) MediaCardTestTags.toggleButtonTextHide(media.id)
-          else MediaCardTestTags.toggleButtonTextShow(media.id)
-      DisplayPatientButton(
-          modifier = Modifier.padding(start = PATIENT_PADDING_MINI),
-          buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
-          buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
-          fillWidth = false,
-          text = textToDisplay,
-          textStyle = MaterialTheme.typography.titleMedium,
-          onClick = { expanded = !expanded },
-          testTag = actualTestTag,
+  Column(
+      modifier = modifier.fillMaxWidth().testTag(testTag),
+      verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+  ) {
+    // When and where, in large type and on their own lines, so a long place never squeezes them
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = PATIENT_PADDING_MINI)) {
+      Text(
+          text =
+              media.date?.let(::memoryDateIntoString)
+                  ?: stringResource(R.string.mediaCardUnknownDate),
+          style = MaterialTheme.typography.titleLarge,
+          modifier = Modifier.testTag(MediaCardTestTags.date(media.id)),
       )
-      Column(
-          horizontalAlignment = Alignment.End,
-          modifier = Modifier.align(Alignment.Top).padding(end = PATIENT_PADDING_MINI),
-      ) {
+      // to display the location if it is not null
+      media.location?.let { location ->
         Text(
             text =
-                media.date?.let(::memoryDateIntoString)
-                    ?: stringResource(R.string.mediaCardUnknownDate),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.testTag(MediaCardTestTags.date(media.id)),
+                geoLocationIntoString(location)
+                    ?: stringResource(R.string.mediaCardUnknownLocation),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.testTag(MediaCardTestTags.location(media.id)),
         )
-        // to display the location if it is not null
-        media.location?.let { location ->
-          Text(
-              text =
-                  geoLocationIntoString(location)
-                      ?: stringResource(R.string.mediaCardUnknownLocation),
-              modifier = Modifier.testTag(MediaCardTestTags.location(media.id)),
-          )
-        }
       }
     }
+    // see+/- button, always under the date and at the same place in every card. It is outlined:
+    // the media is what the card is about, the details are a secondary action.
+    DisplayPatientButton(
+        buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
+        buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+        outlined = true,
+        text =
+            stringResource(
+                if (expanded) R.string.mediaCardHideInfos else R.string.mediaCardShowInfos
+            ),
+        textStyle = MaterialTheme.typography.titleMedium,
+        onClick = { expanded = !expanded },
+        testTag =
+            if (expanded) MediaCardTestTags.toggleButtonTextHide(media.id)
+            else MediaCardTestTags.toggleButtonTextShow(media.id),
+    )
     // content that pop when the user click on the "- see more" button
     AnimatedVisibility(visible = expanded) {
       when {
@@ -156,10 +153,7 @@ fun MediaCard(
                 modifier = Modifier.testTag(MediaCardTestTags.loading(media.id))
             )
         else -> {
-          Column(
-              verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
-              modifier = Modifier.padding(PATIENT_PADDING_SMALL),
-          ) {
+          Column(verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL)) {
             // to display the description and name of the people who wrote it
             DisplayBox() {
               Column(

@@ -1,6 +1,7 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.parameters
 
@@ -11,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
@@ -34,7 +37,7 @@ import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 
 /** Test tags of [PatientParameterScreen]. */
@@ -54,7 +57,6 @@ object PatientParameterTestTags {
  * @param onSignOutClick Callback invoked when the user chooses to open the sign-out screen.
  * @param onDeleteAccountClick Callback invoked when the user chooses to open the delete screen.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientParameterScreen(
     viewModel: PatientParameterViewModel = viewModel(),
@@ -76,14 +78,12 @@ fun PatientParameterScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              DisplayPatientTitle(
-                  title = stringResource(R.string.patientParameterTitle),
-                  testTag = PatientParameterTestTags.TITLE,
-              )
-            }
-        )
+        AmberTopBar {
+          DisplayPatientTitle(
+              title = stringResource(R.string.patientParameterTitle),
+              testTag = PatientParameterTestTags.TITLE,
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -99,18 +99,25 @@ fun PatientParameterScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = PATIENT_PADDING_ENORMOUS)
-                    .padding(horizontal = PATIENT_PADDING_MEDIUM),
+                    .padding(PATIENT_PADDING_MEDIUM),
             verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MEDIUM),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+          // Neither action is the reason to come to this screen, and both leave the app: they are
+          // outlined, so that none of them invites a press. Each icon is next to its label.
           DisplayPatientButton(
+              buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+              outlined = true,
               text = stringResource(R.string.patientParameterSignOut),
+              icon = Icons.AutoMirrored.Outlined.Logout,
               onClick = onSignOutClick,
               testTag = PatientParameterTestTags.SIGN_OUT_BUTTON,
           )
           DisplayPatientButton(
+              buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+              outlined = true,
               text = stringResource(R.string.patientParameterDeleteAccount),
+              icon = Icons.Outlined.Delete,
               onClick = onDeleteAccountClick,
               testTag = PatientParameterTestTags.DELETE_BUTTON,
           )

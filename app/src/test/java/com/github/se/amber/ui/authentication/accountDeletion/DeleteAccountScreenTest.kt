@@ -1,5 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication.accountDeletion
 
@@ -100,6 +101,16 @@ class DeleteAccountScreenTest {
     composeTestRule
         .onNodeWithText(string(R.string.deleteAccountLastCaregiverWarning, "Arthur's family"))
         .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DeleteAccountTestTags.WARNINGS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DeleteAccountTestTags.BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun noWarningShowsNoWarningCard() {
+    stateFlow.value = DeleteAccountUIState(warningsLoaded = true, isLoading = false)
+    setScreen()
+
+    composeTestRule.onNodeWithTag(DeleteAccountTestTags.WARNINGS).assertDoesNotExist()
     composeTestRule.onNodeWithTag(DeleteAccountTestTags.BUTTON).assertIsDisplayed()
   }
 

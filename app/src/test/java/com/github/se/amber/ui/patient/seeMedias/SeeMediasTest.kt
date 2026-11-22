@@ -1,10 +1,12 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +16,7 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,6 +57,21 @@ class SeeMediasScreenTest {
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.BOTTOM_NAVIGATION_MENU)
         .assertIsDisplayed()
+  }
+
+  @Test
+  fun buttons_areStackedWithTheSameWidth() {
+    composeTestRule.setContent { SeeMediasScreen(viewModel = viewModel) }
+
+    val pictures =
+        composeTestRule.onNodeWithTag(SeeMediasTestTags.PICTURES_BUTTON).getUnclippedBoundsInRoot()
+    val audios =
+        composeTestRule.onNodeWithTag(SeeMediasTestTags.AUDIOS_BUTTON).getUnclippedBoundsInRoot()
+
+    // Two choices of the same weight: neither is wider, and they never share a line
+    assertEquals(pictures.left, audios.left)
+    assertEquals(pictures.right, audios.right)
+    assertTrue("audios must be under pictures", pictures.bottom <= audios.top)
   }
 
   @Test

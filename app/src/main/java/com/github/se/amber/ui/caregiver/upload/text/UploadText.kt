@@ -1,5 +1,6 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.text
 
@@ -9,17 +10,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,12 +42,11 @@ import com.github.se.amber.ui.caregiver.upload.media.DisplayLocation
 import com.github.se.amber.ui.caregiver.upload.media.DisplayScrollableDatePicker
 import com.github.se.amber.ui.caregiver.upload.media.DisplayWhoIsInvolved
 import com.github.se.amber.ui.caregiver.upload.media.MediaEvent
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.MAX_CHAR_DESCRIPTION
 import com.github.se.amber.ui.theme.MAX_CHAR_NAME
 import com.github.se.amber.ui.theme.MAX_LINE_DESCRIPTION
@@ -80,7 +77,6 @@ object UploadTextTestTags {
  * @param onUpload called after the view model reports that the story was uploaded.
  * @param goBack called when the caregiver cancels.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadTextScreen(
     viewModel: UploadTextViewModel = viewModel(),
@@ -110,17 +106,12 @@ fun UploadTextScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(Modifier, TopNavigationAction.CANCEL, goBack)
-                DisplayCaregiverTitle(
-                    Modifier.testTag(UploadTextTestTags.TITLE),
-                    stringResource(R.string.uploadTextTitle),
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = goBack) {
+          DisplayCaregiverTitle(
+              Modifier.testTag(UploadTextTestTags.TITLE),
+              stringResource(R.string.uploadTextTitle),
+          )
+        }
       },
       content = { paddingValues ->
         Column(
@@ -131,7 +122,7 @@ fun UploadTextScreen(
                     .padding(CAREGIVER_PADDING_MEDIUM)
                     .verticalScroll(rememberScrollState())
                     .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
+            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
         ) {
           Column(Modifier.testTag(UploadTextTestTags.STORY_TITLE)) {
             DisplayTextField(

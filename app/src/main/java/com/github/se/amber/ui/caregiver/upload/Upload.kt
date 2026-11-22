@@ -18,10 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,10 +33,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.caregiver.DisplayBoxWithIconText
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags.AUDIO_BUTTON
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags.PICTURE_BUTTON
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
@@ -46,6 +46,7 @@ import com.github.se.amber.ui.navigation.CaregiverTab.Companion.caregiverTabs
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 
 object UploadTestTags {
@@ -65,7 +66,6 @@ object UploadTestTags {
  * @param onUploadTextClick callback invoked when text upload is selected.
  * @param onTabSelected callback invoked when a bottom navigation tab is selected.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadScreen(
     viewModel: UploadViewModel = viewModel(),
@@ -89,14 +89,12 @@ fun UploadScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              DisplayCaregiverTitle(
-                  modifier = Modifier.testTag(UploadTestTags.TITLE),
-                  title = stringResource(R.string.uploadTitle),
-              )
-            }
-        )
+        AmberTopBar {
+          DisplayCaregiverTitle(
+              modifier = Modifier.testTag(UploadTestTags.TITLE),
+              title = stringResource(R.string.uploadTitle),
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -112,34 +110,35 @@ fun UploadScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(CAREGIVER_PADDING_SMALL),
+                    .padding(CAREGIVER_PADDING_MEDIUM),
             verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
         ) {
-          DisplayCaregiverButton(
+          // Three choices of the same weight: one tinted row each, its icon in a circle
+          DisplayBoxWithIconText(
               modifier = Modifier.testTag(PICTURE_BUTTON),
-              widthPercentage = CAREGIVER_BUTTON_WIDTH_ENORMOUS,
               icon = Icons.Outlined.PhotoCamera,
+              contentDescription = stringResource(R.string.uploadChoosePictureIcon),
               text = stringResource(R.string.uploadChoosePicture),
-              description = stringResource(R.string.uploadChoosePictureIcon),
-              onClick = { onUploadPictureClick() },
+              style = MaterialTheme.typography.titleMedium,
+              onClick = onUploadPictureClick,
           )
 
-          DisplayCaregiverButton(
+          DisplayBoxWithIconText(
               modifier = Modifier.testTag(AUDIO_BUTTON),
-              widthPercentage = CAREGIVER_BUTTON_WIDTH_ENORMOUS,
               icon = Icons.Outlined.Mic,
+              contentDescription = stringResource(R.string.uploadChooseAudioIcon),
               text = stringResource(R.string.uploadChooseAudio),
-              description = stringResource(R.string.uploadChooseAudioIcon),
-              onClick = { onUploadAudioClick() },
+              style = MaterialTheme.typography.titleMedium,
+              onClick = onUploadAudioClick,
           )
 
-          DisplayCaregiverButton(
+          DisplayBoxWithIconText(
               modifier = Modifier.testTag(UploadTestTags.TEXT_BUTTON),
-              widthPercentage = CAREGIVER_BUTTON_WIDTH_ENORMOUS,
               icon = Icons.Outlined.Description,
+              contentDescription = stringResource(R.string.uploadChooseTextIcon),
               text = stringResource(R.string.uploadChooseText),
-              description = stringResource(R.string.uploadChooseTextIcon),
-              onClick = { onUploadTextClick() },
+              style = MaterialTheme.typography.titleMedium,
+              onClick = onUploadTextClick,
           )
         }
       },

@@ -1,6 +1,7 @@
 // Written by MeiliV, with assistance from OpenAI Codex
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication.signIn
 
@@ -167,7 +168,8 @@ internal fun EmailSignInContent(
         text = stringResource(R.string.signInInstruction),
         textAlign = TextAlign.Center,
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.secondary,
+        // A patient signs in here too: the text keeps the enhanced contrast
+        color = MaterialTheme.colorScheme.onBackground,
     )
     AuthenticationButton(
         text =

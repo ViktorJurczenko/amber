@@ -4,9 +4,10 @@
 // Moved by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 package com.github.se.amber.ui.caregiver.upload.media
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,9 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,10 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 import com.github.se.amber.ui.utils.selectableChipColors
 
@@ -88,18 +85,14 @@ fun DisplayWhoIsInvolved(
             modifier =
                 Modifier.weight(WEIGHT_ONE)
                     .testTag(DisplayWhoIsInvolvedTestTags.NO_PERSON_INVOLVED)
-                    .border(
-                        width = BORDER_THICKNESS,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        shape = RoundedCornerShape(ROUND_CORNER),
-                    )
-                    .clip(RoundedCornerShape(ROUND_CORNER))
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(CAREGIVER_PADDING_MEDIUM),
             contentAlignment = Alignment.Center,
         ) {
           Text(
               text = stringResource(R.string.personInvolvedEmpty),
-              color = MaterialTheme.colorScheme.onBackground,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
               style = MaterialTheme.typography.bodyMedium,
           )
         }
@@ -143,20 +136,11 @@ private fun DisplayAddPersonChip(
     modifier: Modifier = Modifier,
     onAddPerson: () -> Unit = {},
 ) {
+  // Material's own outlined chip: its outline and its label are readable on the page
   AssistChip(
       onClick = onAddPerson,
       label = { Text("+", style = MaterialTheme.typography.labelMedium) },
       modifier = modifier.testTag(DisplayWhoIsInvolvedTestTags.ADD_PERSON),
-      colors =
-          AssistChipDefaults.assistChipColors(
-              containerColor = MaterialTheme.colorScheme.tertiary,
-              labelColor = MaterialTheme.colorScheme.onTertiary,
-          ),
-      border =
-          AssistChipDefaults.assistChipBorder(
-              enabled = true,
-              borderColor = MaterialTheme.colorScheme.tertiary,
-          ),
   )
 }
 

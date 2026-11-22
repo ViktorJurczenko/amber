@@ -15,26 +15,43 @@ Keywords: MUST / MUST NOT are mandatory. SHOULD is the default unless there is a
 - MUST use `MaterialTheme.colorScheme.<role>`. Use the description to decide the role.
 - MUST NOT add a new color to `Color.kt` if an existing one fits. A new color needs a specific, written justification.
 - Light theme uses orange/red tones. Dark theme uses cyan tones. Dark mode is automatic through `Theme.kt`: do not write theme-specific branches in screens.
+- `Theme.kt` sets every Material 3 role, so a Material component used with its default colors already matches the app. Prefer the defaults; override a color only when the table below asks for it.
+- `ThemeContrastTest` checks the contrast of every pair. If you change a color, run it.
 
 ### Role mapping - current palette
 
-| Role                          | Light               | Dark                 | Use for                                                            |
-|-------------------------------|---------------------|----------------------|--------------------------------------------------------------------|
-| `background` / `onBackground` | White / Black       | darkCyan / White     | Screen background and text on it                                   |
-| `primary` / `onPrimary`       | darkOrange / Black  | cyan / Black         | Main title                                                         |
-| `secondary` / `onSecondary`   | orange / Black      | lightCyan / darkCyan | Secondary title, selected icon                                     |
-| `tertiary` / `onTertiary`     | lightOrange / Black | lightGray / darkCyan | Button, unselected icon                                            |
-| `surface` / `onSurface`       | White / Black       | darkCyan / White     | Surfaces and text on them                                          |
-| `error`                       | darkOrange          | White                | Errors                                                             |
+| Role                                               | Light                    | Dark                   | Use for                                               |
+|----------------------------------------------------|--------------------------|------------------------|-------------------------------------------------------|
+| `background` / `onBackground`                      | warmWhite / warmBlack    | deepCyan / White       | Screen background and text on it                      |
+| `primary` / `onPrimary`                            | darkOrange / White       | cyan / deepCyan        | Main title, filled button, back arrow and its label   |
+| `primaryContainer` / `onPrimaryContainer`          | paleRust / maroon        | tealGreen / White      | Highlighted card                                      |
+| `secondary`                                        | orange                   | lightCyan              | Secondary title (large text only), played waveform    |
+| `secondaryContainer` / `onSecondaryContainer`      | backOrange / deepBrown   | backCyan / deepCyan    | Selected chip, selected tab indicator, icon circle    |
+| `surfaceContainer` / `onSurface`                   | warmSurface / warmBlack  | cyanSurface / White    | Card, list row, bottom navigation bar                 |
+| `surfaceContainerHigh` / `onSurface`               | warmSurfaceHigh / warmBlack | darkCyan / White    | Dialog, box inside a card                             |
+| `onSurfaceVariant`                                 | warmGray                 | mistCyan               | Muted text, hints, unselected icon                    |
+| `outline`                                          | warmOutline              | cyanOutline            | Border that must be seen (text field)                 |
+| `outlineVariant`                                   | warmOutlineSoft          | cyanOutlineSoft        | Divider, decorative border                            |
+| `error` / `errorContainer` + `onErrorContainer`    | red / paleRust + maroon  | salmon / darkRed + paleRust | Errors, actions that cannot be undone            |
+| `tertiary` / `onTertiary`                          | lightOrange / deepBrown  | lightGray / darkCyan   | Accent. Never as text or a border on the background   |
 
 Content color rule: a container color and its content color MUST come as a pair.
 Example: `containerColor = MaterialTheme.colorScheme.primary` goes with `contentColor` / icon tint `MaterialTheme.colorScheme.onPrimary`.
 
-#### Buttons
-- All buttons of the same kind use the same container color, content color, `RoundedCornerShape` and text size. Do not restyle a button locally. Use the Helper function.
-- Do not hand-build buttons in screens. Use the shared button helpers : `CaregiverButton*(...)` and `PatientButton*(...)`.
+Separate areas with a tone (`surfaceContainer`), not with a colored border.
 
-Preview note: the top bar looks purple in `@Preview`. This is expected. Do not "fix" it.
+#### Shapes
+- MUST use `MaterialTheme.shapes.<size>`: `medium` for cards, list rows and text fields, `large` for caregiver buttons, `extraLarge` for patient buttons and dialogs.
+
+#### Buttons
+- All buttons of the same kind use the same container color, content color, shape and text size. Do not restyle a button locally. Use the Helper function.
+- Do not hand-build buttons in screens. Use the shared button helpers : `CaregiverButton*(...)` and `PatientButton*(...)`.
+- A filled button is `primary` / `onPrimary`. A screen has one filled main action; a secondary action is outlined (`DisplayPatientButton(outlined = true)`) or a list row (`DisplayBoxWithIconText`).
+
+#### Patient screens
+- Text and its background reach a contrast of 7:1: use `onBackground`, `onSurface` or `primary`, not `secondary`, `outline` or `onSurfaceVariant`.
+- Every icon comes with a visible text label.
+- A state (error, selected) is never shown by color alone: add an icon, a shape or a word.
 
 ## Typography
 
@@ -43,7 +60,7 @@ Preview note: the top bar looks purple in `@Preview`. This is expected. Do not "
 - Pick the category by role first, then the size (small / medium / large) from Figma and the need:
   - `headline`, `title`, `body`, `label`.
   - Patient screens need larger text: use body medium/large.
-- `Type.kt` was deleted as useless. Only (re)create it if a default style must be overridden, and override only that style.
+- `Type.kt` overrides only what differs from Material's defaults: semi-bold headlines and titles, and a larger `labelLarge` for buttons. Override another style there only if it must change everywhere.
 
 ## Sizes, padding and constants
 
@@ -125,6 +142,7 @@ Replace `Name` with the screen name.
 An example of a valid testTag is: `object UploadPictureTestTags { const val button = "upload_picture_button"  }`.
 
 - Screens shared by caregiver and patient and needing separate versions: `CaregiverNameScreen` / `PatientNameScreen`.
+- The top bar of a screen is `AmberTopBar { title }`. A screen reached from another one passes `action` and `onBackClick` to get the back row; a `TopLevelDestination` screen does not. Do not nest a `TopAppBar` in another one.
 - Every screen MUST have a ViewModel with the basic layout (UI state + class), even if empty at first. It simplifies later implementation.
 - Do NOT split a screen into a "Screen" (calls the ViewModel) and a "Content" part. One composable `NameScreen`.
 
@@ -160,5 +178,6 @@ Run through this list on every UI change. Fix violations before reporting the ta
 - [ ] Naming follows `NameScreen` / `NameViewModel` / `NameUIState` / `NameTestTags`.
 - [ ] A ViewModel exists for the screen (even if minimal).
 - [ ] `collectAsStateWithLifecycle()` is used.
-- [ ] No top bar on `TopLevelDestination` screens.
+- [ ] The top bar is `AmberTopBar`, with no back row on `TopLevelDestination` screens.
+- [ ] Patient screens: 7:1 text, labelled icons, no state shown by color alone.
 - [ ] Figma status mentioned to the user if the screen changed.

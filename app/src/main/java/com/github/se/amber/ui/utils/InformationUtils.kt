@@ -1,4 +1,5 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.utils
 
@@ -26,7 +27,8 @@ import com.github.se.amber.ui.theme.PADDING_MINI
 
 /**
  * Displays an information icon followed by one or more sentences of hint text, in the muted
- * `outline` color unless [color] says otherwise, shared by the screens that guide the user.
+ * `onSurfaceVariant` color unless [color] says otherwise, shared by the screens that guide the
+ * user.
  *
  * Design choice: [icon] and [contentDescription] are independent parameters, so nothing forces the
  * description to follow the icon. It is the responsibility of the caller: whoever passes a custom
@@ -48,7 +50,7 @@ fun DisplayInformation(
     sentences: List<String> = emptyList(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     size: Dp = CAREGIVER_ICON_SIZE,
-    color: Color = MaterialTheme.colorScheme.outline,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
   Row(
       modifier = modifier,

@@ -1,6 +1,7 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias.audios
 
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -369,7 +371,11 @@ class SeeAudiosScreenTest {
   fun content_preview_resolves_second_cards_author_and_related_person() {
     composeTestRule.setContent { SeeAudiosContentPreview() }
 
-    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("sample2")).performClick()
+    // The second memory starts below the first one's card: it is scrolled to before the click
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("sample2"))
+        .performScrollTo()
+        .performClick()
 
     composeTestRule
         .onNodeWithTag(MediaCardTestTags.addedBy("sample2"))
@@ -407,12 +413,18 @@ class SeeAudiosScreenTest {
   fun content_preview_second_card_can_expand_and_collapse() {
     composeTestRule.setContent { SeeAudiosContentPreview() }
 
-    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("sample2")).performClick()
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("sample2"))
+        .performScrollTo()
+        .performClick()
     composeTestRule
         .onNodeWithTag(MediaCardTestTags.description("sample2"))
         .assertTextEquals("I saw otters at the zoo today!")
 
-    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextHide("sample2")).performClick()
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.toggleButtonTextHide("sample2"))
+        .performScrollTo()
+        .performClick()
     composeTestRule.onNodeWithTag(MediaCardTestTags.description("sample2")).assertDoesNotExist()
   }
 

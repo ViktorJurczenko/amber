@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.invitationRedemption
 
@@ -13,11 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,8 +36,8 @@ import com.github.se.amber.data.invitation.InvitationRedemptionRepository
 import com.github.se.amber.data.invitation.InvitationRedemptionResult
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.onboarding.AmberHeader
 import com.github.se.amber.ui.onboarding.OnboardingOutlinedTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
@@ -67,7 +66,6 @@ object InvitationRedemptionTestTags {
  * @param onRedeemSuccess called with the redeemed circle and role after a successful redeem.
  * @param onBack called when the user taps Cancel.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvitationRedemptionScreen(
     modifier: Modifier = Modifier,
@@ -82,13 +80,9 @@ fun InvitationRedemptionScreen(
       containerColor = MaterialTheme.colorScheme.background,
       contentColor = MaterialTheme.colorScheme.onBackground,
       topBar = {
-        TopAppBar(
-            title = {
-              TopNavigationMenu(
-                  action = TopNavigationAction.CANCEL,
-                  onBackClick = { if (!uiState.isRedeeming) onBack() },
-              )
-            }
+        AmberTopBar(
+            action = TopNavigationAction.CANCEL,
+            onBackClick = { if (!uiState.isRedeeming) onBack() },
         )
       },
   ) { innerPadding ->

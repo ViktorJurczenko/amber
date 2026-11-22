@@ -4,6 +4,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.choice
 
@@ -12,11 +13,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GroupAdd
+import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -33,17 +35,15 @@ import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
-import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
+import com.github.se.amber.ui.caregiver.DisplayBoxWithIconText
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.onboarding.AmberHeader
-import com.github.se.amber.ui.onboarding.Divider
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
-import com.github.se.amber.ui.theme.PADDING_MINI
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.utils.DisplayInformation
 
 /** Test tags for [CaregiverChoiceScreen]. */
@@ -62,7 +62,6 @@ object CaregiverChoiceTestTags {
  * again. [onCreateCircle] and [onJoinCircle] are invoked directly from the buttons so a navigation
  * owner can route to CreateCareCircle or EnterInvitation respectively.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaregiverChoiceScreen(
     viewModel: CaregiverChoiceViewModel = viewModel(),
@@ -75,16 +74,7 @@ fun CaregiverChoiceScreen(
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
       contentColor = MaterialTheme.colorScheme.onBackground,
-      topBar = {
-        TopAppBar(
-            title = {
-              TopNavigationMenu(
-                  action = TopNavigationAction.CANCEL,
-                  onBackClick = onBack,
-              )
-            }
-        )
-      },
+      topBar = { AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = onBack) },
   ) { innerPadding ->
     Column(
         modifier =
@@ -118,29 +108,29 @@ fun CaregiverChoiceScreen(
               modifier = Modifier.testTag(CaregiverChoiceTestTags.QUESTION),
               text = stringResource(R.string.caregiverChoiceQuestion),
               style = MaterialTheme.typography.titleMedium,
-              color = MaterialTheme.colorScheme.onBackground,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
               textAlign = TextAlign.Center,
           )
         }
 
+        // Two equal choices: two cards of the same weight, each with its icon and its label
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(PADDING_MINI),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
         ) {
-          DisplayCaregiverButton(
-              onClick = onCreateCircle,
-              text = stringResource(R.string.caregiverChoiceCreateCircle),
-              style = MaterialTheme.typography.labelLarge,
+          DisplayBoxWithIconText(
               modifier = Modifier.testTag(CaregiverChoiceTestTags.CREATE_BUTTON),
+              icon = Icons.Outlined.GroupAdd,
+              text = stringResource(R.string.caregiverChoiceCreateCircle),
+              style = MaterialTheme.typography.titleMedium,
+              onClick = onCreateCircle,
           )
-
-          Divider(modifier = Modifier.fillMaxWidth(CAREGIVER_BUTTON_WIDTH_MEDIUM))
-
-          DisplayCaregiverButton(
-              onClick = onJoinCircle,
-              text = stringResource(R.string.caregiverChoiceJoinCircle),
-              style = MaterialTheme.typography.labelLarge,
+          DisplayBoxWithIconText(
               modifier = Modifier.testTag(CaregiverChoiceTestTags.JOIN_BUTTON),
+              icon = Icons.Outlined.Mail,
+              text = stringResource(R.string.caregiverChoiceJoinCircle),
+              style = MaterialTheme.typography.titleMedium,
+              onClick = onJoinCircle,
           )
         }
 

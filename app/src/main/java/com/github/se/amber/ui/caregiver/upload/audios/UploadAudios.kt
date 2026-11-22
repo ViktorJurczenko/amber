@@ -2,6 +2,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.audios
 
@@ -16,7 +17,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -25,10 +25,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,12 +57,11 @@ import com.github.se.amber.ui.caregiver.upload.media.DisplayScrollableDatePicker
 import com.github.se.amber.ui.caregiver.upload.media.DisplayWhoIsInvolved
 import com.github.se.amber.ui.caregiver.upload.media.MediaEvent
 import com.github.se.amber.ui.media.audio.DisplayAudioRecorder
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.MAX_CHAR_DESCRIPTION
 import com.github.se.amber.ui.theme.MAX_LINE_DESCRIPTION
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
@@ -111,7 +108,6 @@ object UploadAudioScreenTestTags {
  *   taken back as far as possible. It is best effort: once the audio is saved, or its send has
  *   begun, it may still be sent.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadAudioScreen(
     viewModel: UploadAudioViewModel = viewModel(),
@@ -180,17 +176,12 @@ fun UploadAudioScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(Modifier, TopNavigationAction.CANCEL, cancel)
-                DisplayCaregiverTitle(
-                    Modifier.testTag(UploadAudioScreenTestTags.TITLE),
-                    stringResource(R.string.uploadAudioTitle),
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = cancel) {
+          DisplayCaregiverTitle(
+              Modifier.testTag(UploadAudioScreenTestTags.TITLE),
+              stringResource(R.string.uploadAudioTitle),
+          )
+        }
       },
       content = { paddingValues ->
         Column(
@@ -201,7 +192,7 @@ fun UploadAudioScreen(
                     .padding(CAREGIVER_PADDING_MEDIUM)
                     .verticalScroll(rememberScrollState())
                     .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
+            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
         ) {
           // One state at a time: idle, recording, recorded, or listening to the recording
           when (uiState.recordingState) {

@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.navigation
 
@@ -11,7 +12,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Photo
@@ -23,9 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -36,7 +36,6 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
-import com.github.se.amber.ui.theme.ROUND_CORNER
 
 /** Stable tab keys, used in test tags. They are never shown; the visible text is [Tab.label]. */
 internal const val HOME_TAB_KEY = "Home"
@@ -61,7 +60,7 @@ object BottomNavigationMenuTestTags {
  *
  * @property key Stable name of the tab, used in its test tag. It is not shown, so it is not
  *   translated.
- * @property label Label used as the icon content description, as a string resource.
+ * @property label Name of the tab shown under its icon, as a string resource.
  * @property icon Icon drawn for this tab.
  * @property iconSize Drawn size of [icon]. Caregiver and patient tabs use different sizes.
  * @property destination Screen opened when the tab is selected.
@@ -80,7 +79,7 @@ sealed interface Tab {
  * Caregiver bottom navigation tabs.
  *
  * @property key Stable name of the tab, used in its test tag.
- * @property label Label used as the icon content description, as a string resource.
+ * @property label Name of the tab shown under its icon, as a string resource.
  * @property icon Icon drawn for this tab.
  * @property destination Screen opened when the tab is selected.
  * @property iconSize Drawn size of [icon]. Defaults to [CAREGIVER_ICON_SIZE].
@@ -134,7 +133,7 @@ sealed class CaregiverTab(
  * Patient bottom navigation tabs.
  *
  * @property key Stable name of the tab, used in its test tag.
- * @property label Label used as the icon content description, as a string resource.
+ * @property label Name of the tab shown under its icon, as a string resource.
  * @property icon Icon drawn for this tab.
  * @property destination Screen opened when the tab is selected.
  * @property iconSize Drawn size of [icon]. Defaults to [PATIENT_ICON_SIZE].
@@ -179,8 +178,9 @@ sealed class PatientTab(
 /**
  * Bottom bar for the tabs of one role.
  *
- * A selected icon uses `secondary`. An unselected icon uses `tertiary`. The selection indicator
- * uses `surface` so it does not fall back to the theme's unset container color.
+ * Every tab shows its icon and its name: an icon alone has to be remembered, a word can be read.
+ * The selected tab is marked by a `secondaryContainer` pill behind its icon and by darker text, so
+ * the selection does not rely on color alone.
  *
  * @param modifier Modifier applied to the column that holds the divider and the bar.
  * @param selectedTab Tab that is currently selected. Ignored when it is not in [tabs].
@@ -201,32 +201,39 @@ fun BottomNavigationMenu(
     HorizontalDivider(
         modifier = Modifier.testTag(BottomNavigationMenuTestTags.DIVIDER),
         thickness = DIVIDER_THICKNESS,
-        color = MaterialTheme.colorScheme.outline,
+        color = MaterialTheme.colorScheme.outlineVariant,
     )
 
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         content = {
           tabs.forEach { tab ->
             NavigationBarItem(
+                // The icon is decorative: the label next to it already names the tab.
                 icon = {
                   Icon(
                       imageVector = tab.icon,
-                      contentDescription = stringResource(tab.label),
+                      contentDescription = null,
                       modifier = Modifier.size(tab.iconSize),
+                  )
+                },
+                label = {
+                  Text(
+                      text = stringResource(tab.label),
+                      style = MaterialTheme.typography.labelLarge,
                   )
                 },
                 selected = tab == selectedTab,
                 onClick = { onTabSelected(tab) },
-                modifier =
-                    Modifier.clip(RoundedCornerShape(ROUND_CORNER))
-                        .testTag(BottomNavigationMenuTestTags.tabTag(tab)),
+                modifier = Modifier.testTag(BottomNavigationMenuTestTags.tabTag(tab)),
                 colors =
                     NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.secondary,
-                        unselectedIconColor = MaterialTheme.colorScheme.tertiary,
-                        indicatorColor = MaterialTheme.colorScheme.surface,
+                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
             )
           }

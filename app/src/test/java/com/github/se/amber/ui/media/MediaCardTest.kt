@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media
 
@@ -188,7 +189,10 @@ class MediaCardTest {
 
   private val cardWidth = 360.dp
 
-  /** The toggle, the date and the location are displayed, and the toggle overlaps neither. */
+  /**
+   * The toggle, the date and the location are displayed, and the toggle is under both: they are
+   * stacked, so a long location cannot push the toggle out of the card.
+   */
   private fun assertHeaderLayoutIsSound(toggleTag: String) {
     composeTestRule.onNodeWithTag(toggleTag).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MediaCardTestTags.date("m1")).assertIsDisplayed()
@@ -200,8 +204,9 @@ class MediaCardTest {
     val locationBounds =
         composeTestRule.onNodeWithTag(MediaCardTestTags.location("m1")).getUnclippedBoundsInRoot()
     assertTrue("toggle must stay inside the card", toggleBounds.right <= cardWidth)
-    assertTrue("toggle must not overlap the date", toggleBounds.right <= dateBounds.left)
-    assertTrue("toggle must not overlap the location", toggleBounds.right <= locationBounds.left)
+    assertTrue("toggle must not overlap the date", dateBounds.bottom <= toggleBounds.top)
+    assertTrue("toggle must not overlap the location", locationBounds.bottom <= toggleBounds.top)
+    assertTrue("date must be above the location", dateBounds.bottom <= locationBounds.top)
   }
 
   /** Checks the header layout both collapsed and expanded, in a narrow card with long texts. */

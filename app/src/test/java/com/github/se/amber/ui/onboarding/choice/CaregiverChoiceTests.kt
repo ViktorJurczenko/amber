@@ -1,12 +1,14 @@
 // Written by Alaabrine with the aid of AI coding agent
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.choice
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -19,6 +21,7 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -143,6 +146,23 @@ class CaregiverChoiceUITests {
     setScreen()
 
     composeTestRule.onNodeWithTag(CaregiverChoiceTestTags.JOIN_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun choices_showTheirLabelsOneAboveTheOther() {
+    setScreen()
+
+    val create = composeTestRule.onNodeWithTag(CaregiverChoiceTestTags.CREATE_BUTTON)
+    val join = composeTestRule.onNodeWithTag(CaregiverChoiceTestTags.JOIN_BUTTON)
+    create.assertTextEquals(context.getString(R.string.caregiverChoiceCreateCircle))
+    join.assertTextEquals(context.getString(R.string.caregiverChoiceJoinCircle))
+
+    // Two cards of the same width: neither choice is put forward
+    val createBounds = create.getUnclippedBoundsInRoot()
+    val joinBounds = join.getUnclippedBoundsInRoot()
+    assertEquals(createBounds.left, joinBounds.left)
+    assertEquals(createBounds.right, joinBounds.right)
+    assertTrue(createBounds.bottom <= joinBounds.top)
   }
 
   @Test

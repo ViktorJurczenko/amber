@@ -1,6 +1,7 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.utils
 
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -32,10 +32,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.github.se.amber.R
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.DIALOG_WIDTH
 import com.github.se.amber.ui.theme.POPUP_DIALOG_MIN_HEIGHT_FRACTION
-import com.github.se.amber.ui.theme.ROUND_CORNER
 
 /**
  * Shared popup frame with a title, close button, caller content, and one bottom action.
@@ -79,8 +79,8 @@ fun PopupDialog(
     Surface(
         modifier =
             modifier.fillMaxWidth(DIALOG_WIDTH).heightIn(min = minHeight).testTag(dialogTestTag),
-        shape = RoundedCornerShape(ROUND_CORNER),
-        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
       // The title and the content stay on top, the action button goes to the bottom: when the popup
@@ -89,7 +89,7 @@ fun PopupDialog(
           modifier =
               Modifier.imePadding()
                   .verticalScroll(rememberScrollState())
-                  .padding(CAREGIVER_PADDING_MEDIUM),
+                  .padding(CAREGIVER_PADDING_BIG),
           verticalArrangement = Arrangement.SpaceBetween,
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM)) {
@@ -105,7 +105,7 @@ fun PopupDialog(
               Icon(
                   Icons.Default.Close,
                   contentDescription = stringResource(R.string.popupDialogClose),
-                  tint = MaterialTheme.colorScheme.onSurface,
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
           }

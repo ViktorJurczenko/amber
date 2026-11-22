@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.createCareCircle
 
@@ -15,11 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,8 +39,8 @@ import com.github.se.amber.data.onboarding.OnboardingRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.onboarding.AmberHeader
 import com.github.se.amber.ui.onboarding.OnboardingOutlinedTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
@@ -71,7 +70,6 @@ object CreateCareCircleTestTags {
  *   System back is ignored in those same states.
  * @param viewModel ViewModel holding the form state and handling creation.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateCareCircleScreen(
     modifier: Modifier = Modifier,
@@ -108,13 +106,9 @@ fun CreateCareCircleScreen(
       containerColor = MaterialTheme.colorScheme.background,
       contentColor = MaterialTheme.colorScheme.onBackground,
       topBar = {
-        TopAppBar(
-            title = {
-              TopNavigationMenu(
-                  action = TopNavigationAction.CANCEL,
-                  onBackClick = { if (isEditable) onBack() },
-              )
-            }
+        AmberTopBar(
+            action = TopNavigationAction.CANCEL,
+            onBackClick = { if (isEditable) onBack() },
         )
       },
   ) { innerPadding ->
@@ -156,6 +150,8 @@ fun CreateCareCircleScreen(
           text = stringResource(R.string.createCareCircleInviteLater),
           modifier = Modifier.fillMaxWidth(WEIGHT_ONE).padding(top = CAREGIVER_PADDING_MEDIUM),
           style = MaterialTheme.typography.bodyMedium,
+          // A hint, quieter than the form above it
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
           textAlign = TextAlign.Center,
       )
     }

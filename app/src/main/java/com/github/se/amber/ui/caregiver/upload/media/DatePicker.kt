@@ -1,12 +1,12 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.media
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,11 +34,9 @@ import com.github.se.amber.R
 import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.ui.caregiver.upload.media.DatePickerTestTags.CANCEL_BUTTON
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.DATE_PICKER_WIDTH_FRACTION
 import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 import com.github.se.amber.ui.theme.YEAR_RANGE
 import java.time.LocalDate
@@ -184,12 +181,8 @@ fun DisplayScrollableDatePicker(
     Row(
         modifier =
             Modifier.fillMaxWidth(DATE_PICKER_WIDTH_FRACTION)
-                .border(
-                    width = BORDER_THICKNESS,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    shape = RoundedCornerShape(size = ROUND_CORNER),
-                )
-                .clip(shape = RoundedCornerShape(size = ROUND_CORNER))
+                .clip(MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(CAREGIVER_PADDING_SMALL),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -285,17 +278,20 @@ private fun DateBox(
       modifier =
           modifier
               .fillMaxWidth()
-              .clip(shape = RoundedCornerShape(size = ROUND_CORNER))
+              .clip(MaterialTheme.shapes.small)
+              // One tone above the picker while pressed: the text stays readable in both themes
               .then(
-                  if (isPressed) Modifier.background(MaterialTheme.colorScheme.tertiary)
-                  else Modifier
+                  if (isPressed) {
+                    Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                  } else Modifier
               )
               .clickable(
                   enabled = enabled,
                   interactionSource = interactionSource,
                   indication = null,
                   onClick = onClick,
-              ),
+              )
+              .padding(vertical = CAREGIVER_PADDING_SMALL),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
   ) {
@@ -308,7 +304,7 @@ private fun DateBox(
     HorizontalDivider(
         modifier = Modifier.testTag(DatePickerTestTags.DIVIDER),
         thickness = DIVIDER_THICKNESS,
-        color = MaterialTheme.colorScheme.tertiary,
+        color = MaterialTheme.colorScheme.outlineVariant,
     )
     Text(
         modifier = Modifier.testTag(DatePickerTestTags.boxValue(field)),

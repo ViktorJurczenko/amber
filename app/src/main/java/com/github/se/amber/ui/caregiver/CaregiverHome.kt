@@ -11,11 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,11 +29,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 
@@ -52,7 +53,6 @@ object CaregiverHomeTestTags {
  * @param viewModel ViewModel providing the patient information displayed on the screen.
  * @param onTabSelected Callback invoked when the user selects a bottom navigation tab.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaregiverHomeScreen(
     viewModel: CaregiverHomeViewModel = viewModel(),
@@ -74,14 +74,12 @@ fun CaregiverHomeScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              DisplayCaregiverTitle(
-                  title = stringResource(R.string.caregiverHomeTitle),
-                  modifier = Modifier.testTag(CaregiverHomeTestTags.TITLE),
-              )
-            }
-        )
+        AmberTopBar {
+          DisplayCaregiverTitle(
+              title = stringResource(R.string.caregiverHomeTitle),
+              modifier = Modifier.testTag(CaregiverHomeTestTags.TITLE),
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -103,21 +101,31 @@ fun CaregiverHomeScreen(
             verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-          Text(
-              text =
-                  if (uiState.patient.uid.isNotBlank()) {
-                    stringResource(
-                        R.string.caregiverHomeWelcomePatient,
-                        uiState.patient.person.firstName,
-                    )
-                  } else {
-                    stringResource(R.string.caregiverHomeWelcomeNoPatient)
-                  },
-              modifier = Modifier.fillMaxWidth().testTag(CaregiverHomeTestTags.WELCOME_TEXT),
-              color = MaterialTheme.colorScheme.onBackground,
-              style = MaterialTheme.typography.bodyLarge,
-              textAlign = TextAlign.Center,
-          )
+          // The welcome message stands out from the page in a tinted card
+          Surface(
+              modifier = Modifier.fillMaxWidth(),
+              shape = MaterialTheme.shapes.large,
+              color = MaterialTheme.colorScheme.secondaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+          ) {
+            Text(
+                text =
+                    if (uiState.patient.uid.isNotBlank()) {
+                      stringResource(
+                          R.string.caregiverHomeWelcomePatient,
+                          uiState.patient.person.firstName,
+                      )
+                    } else {
+                      stringResource(R.string.caregiverHomeWelcomeNoPatient)
+                    },
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(CAREGIVER_PADDING_BIG)
+                        .testTag(CaregiverHomeTestTags.WELCOME_TEXT),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+          }
         }
       },
   )

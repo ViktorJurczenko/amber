@@ -1,4 +1,5 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.utils
 
@@ -127,7 +128,7 @@ class InformationUtilsTest {
   fun theTextUsesTheMutedColorByDefault() {
     var mutedColor = Color.Unspecified
     composeTestRule.setContent {
-      mutedColor = MaterialTheme.colorScheme.outline
+      mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
       DisplayInformation(sentences = listOf(FIRST))
     }
     assertEquals(mutedColor, textLayoutOf(FIRST).layoutInput.style.color)

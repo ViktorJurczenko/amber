@@ -3,6 +3,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.pictures
 
@@ -15,7 +16,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -25,11 +25,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,12 +58,11 @@ import com.github.se.amber.ui.caregiver.upload.media.DisplayWhoIsInvolved
 import com.github.se.amber.ui.caregiver.upload.media.MediaEvent
 import com.github.se.amber.ui.caregiver.upload.pictures.UploadPictureScreenTestTags.SELECT_DATE
 import com.github.se.amber.ui.caregiver.upload.pictures.UploadPictureScreenTestTags.UPLOAD_BUTTON
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.MAX_CHAR_DESCRIPTION
 import com.github.se.amber.ui.theme.MAX_LINE_DESCRIPTION
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
@@ -142,7 +139,6 @@ private fun rememberCameraActions(
  * @param onUpload The callback invoked after the upload action is requested.
  * @param goBack The callback invoked when the user cancels the upload.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadPictureScreen(
     viewModel: UploadPictureViewModel = viewModel(factory = UploadPictureViewModel.Factory),
@@ -183,17 +179,12 @@ fun UploadPictureScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(Modifier, TopNavigationAction.CANCEL, goBack)
-                DisplayCaregiverTitle(
-                    Modifier.testTag(UploadPictureScreenTestTags.TITLE),
-                    stringResource(R.string.uploadPictureTitle),
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = goBack) {
+          DisplayCaregiverTitle(
+              Modifier.testTag(UploadPictureScreenTestTags.TITLE),
+              stringResource(R.string.uploadPictureTitle),
+          )
+        }
       },
       content = { paddingValues ->
         Column(
@@ -204,7 +195,7 @@ fun UploadPictureScreen(
                     .padding(CAREGIVER_PADDING_MEDIUM)
                     .verticalScroll(rememberScrollState())
                     .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
+            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
         ) {
           // Display the "Take a new Picture with the camera"
           DisplayBoxWithIconText(

@@ -3,6 +3,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Yuhan YANG, with assistance from Cursor
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.theme
 
@@ -62,7 +63,8 @@ const val CAREGIVER_BUTTON_WIDTH_MEDIUM = 0.5f
 const val CAREGIVER_BUTTON_WIDTH_ENORMOUS = 1f
 
 // ------- PATIENT BUTTON -------
-val PATIENT_BUTTON_HEIGHT_SMALL = 52.dp
+// 56.dp is the smallest target a patient is given, a little above Material's 48.dp minimum.
+val PATIENT_BUTTON_HEIGHT_SMALL = 56.dp
 val PATIENT_BUTTON_HEIGHT_MEDIUM = 96.dp
 val PATIENT_BUTTON_HEIGHT_BIG = 120.dp
 
@@ -72,18 +74,24 @@ const val PATIENT_BUTTON_WIDTH = 0.7f
 const val PATIENT_BUTTON_WIDTH_BIG = 1f
 
 // ------- BOX -------
-val ROUND_CORNER = 12.dp
+// Corner radii, also given to MaterialTheme.shapes (extraSmall to extraLarge) in Theme.kt.
+// Prefer MaterialTheme.shapes.<size> in new code.
+val ROUND_CORNER_MINI = 8.dp
+val ROUND_CORNER_SMALL = 12.dp
+val ROUND_CORNER = 16.dp
+val ROUND_CORNER_BIG = 24.dp
+val ROUND_CORNER_ENORMOUS = 28.dp
 val DIVIDER_THICKNESS = 1.dp
 
 // This constant will be renamed BORDER_THICKNESS_CAREGIVER when less Pr are open.
 // Currently, this would create too much conflicts.
-val BORDER_THICKNESS = 3.dp
+val BORDER_THICKNESS = 1.dp
 
-// This constant is intended for the person responsible for setting up the patient screens.
-// I’ll leave it to them to decide on a value that fits in with the rest.
-// If the thickness specified for caregiver is suitable,
-// you can delete it and rename the one for the caregiver.
-val BORDER_THICKNESS_PATIENT = 3.dp
+// Thicker than the caregiver border: a patient must see the edge of a control at a glance.
+val BORDER_THICKNESS_PATIENT = 2.dp
+
+/** Shadow under a filled patient button, so that it reads as something to press. */
+val PATIENT_BUTTON_ELEVATION = 2.dp
 
 // ------- SURFACE -------
 

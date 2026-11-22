@@ -1,9 +1,11 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Moved by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.media
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -138,9 +141,19 @@ internal fun DisplayLocation(
                 UploadMediaLocationTestTags.NO_RESULT,
             )
         else ->
-            Column {
+            // The suggestions are one tinted list, a thin line between two of them
+            Column(
+                modifier =
+                    Modifier.clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+            ) {
               state.suggestions.forEachIndexed { index, place ->
-                if (index > 0) HorizontalDivider(thickness = DIVIDER_THICKNESS)
+                if (index > 0) {
+                  HorizontalDivider(
+                      thickness = DIVIDER_THICKNESS,
+                      color = MaterialTheme.colorScheme.outlineVariant,
+                  )
+                }
                 DisplayPlaceSuggestion(place = place, onClick = { onSuggestionClick(place) })
               }
             }
@@ -169,7 +182,7 @@ internal fun DisplayPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick:
     Icon(
         imageVector = Icons.Outlined.Place,
         contentDescription = null, // the place name next to it says it all
-        tint = MaterialTheme.colorScheme.onSurface,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
         text = place.placeName.orEmpty(),
@@ -189,7 +202,7 @@ internal fun DisplayPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick:
 internal fun DisplayLocationHint(text: String = "", tag: String = "") {
   Text(
       text = text,
-      color = MaterialTheme.colorScheme.onBackground,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
       style = MaterialTheme.typography.bodySmall,
       modifier = Modifier.padding(CAREGIVER_PADDING_SMALL).testTag(tag),
   )

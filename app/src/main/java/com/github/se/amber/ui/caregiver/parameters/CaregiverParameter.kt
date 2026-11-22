@@ -21,35 +21,33 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.caregiver.DisplayBoxWithIconText
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
-import com.github.se.amber.ui.caregiver.upload.DisplayButton
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 
 /** Test tags of [CaregiverParameterScreen]. */
 object CaregiverParametersTestTags {
@@ -78,7 +76,6 @@ object CaregiverParametersTestTags {
  * @param onSignOutClick Callback invoked when the user opens the sign-out confirmation screen.
  * @param onDeleteAccountClick Callback invoked when the user opens account deletion.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaregiverParameterScreen(
     viewModel: CaregiverParameterViewModel = viewModel(),
@@ -110,14 +107,12 @@ fun CaregiverParameterScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              DisplayCaregiverTitle(
-                  modifier = Modifier.testTag(CaregiverParametersTestTags.TITLE),
-                  title = stringResource(R.string.caregiverParameterTitle),
-              )
-            }
-        )
+        AmberTopBar {
+          DisplayCaregiverTitle(
+              modifier = Modifier.testTag(CaregiverParametersTestTags.TITLE),
+              title = stringResource(R.string.caregiverParameterTitle),
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -133,51 +128,49 @@ fun CaregiverParameterScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = CAREGIVER_PADDING_ENORMOUS)
-                    .padding(horizontal = CAREGIVER_PADDING_MEDIUM),
-            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_ENORMOUS),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .padding(CAREGIVER_PADDING_MEDIUM),
+            verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
         ) {
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.CREATE_CARE_CIRCLE_BUTTON),
+          // Each row names its action next to its icon, so the icon needs no description.
+          // The care circle and its invitations
+          ParameterRow(
+              testTag = CaregiverParametersTestTags.CREATE_CARE_CIRCLE_BUTTON,
               icon = Icons.Outlined.Add,
               text = createCareCircleLabel,
-              description = createCareCircleLabel,
               onClick = onCreateCareCircleClick,
           )
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.CREATE_INVITATION_BUTTON),
+          ParameterRow(
+              testTag = CaregiverParametersTestTags.CREATE_INVITATION_BUTTON,
               icon = Icons.Outlined.PersonAdd,
               text = createInvitationLabel,
-              description = createInvitationLabel,
               onClick = onCreateInvitationClick,
           )
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.ENTER_INVITATION_BUTTON),
+          ParameterRow(
+              testTag = CaregiverParametersTestTags.ENTER_INVITATION_BUTTON,
               icon = Icons.Outlined.Mail,
               text = enterInvitationLabel,
-              description = enterInvitationLabel,
               onClick = onEnterInvitationClick,
           )
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.SWITCH_CARE_CIRCLE_BUTTON),
+          ParameterRow(
+              testTag = CaregiverParametersTestTags.SWITCH_CARE_CIRCLE_BUTTON,
               icon = Icons.Outlined.SwapHoriz,
               text = switchCareCircleLabel,
-              description = switchCareCircleLabel,
               onClick = onSwitchCareCircleClick,
           )
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.SIGN_OUT_BUTTON),
+
+          // The account, set apart from the care circle
+          ParameterRow(
+              modifier = Modifier.padding(top = CAREGIVER_PADDING_MEDIUM),
+              testTag = CaregiverParametersTestTags.SIGN_OUT_BUTTON,
               icon = Icons.AutoMirrored.Outlined.Logout,
               text = signOutLabel,
-              description = signOutLabel,
               onClick = onSignOutClick,
           )
-          DisplayButton(
-              modifier = Modifier.testTag(CaregiverParametersTestTags.DELETE_ACCOUNT_BUTTON),
+          ParameterRow(
+              testTag = CaregiverParametersTestTags.DELETE_ACCOUNT_BUTTON,
               icon = Icons.Outlined.Delete,
               text = deleteAccountLabel,
-              description = deleteAccountLabel,
+              isDestructive = true,
               onClick = onDeleteAccountClick,
           )
 
@@ -188,15 +181,62 @@ fun CaregiverParameterScreen(
                   stringResource(R.string.caregiverParameterInvitationHint, createInvitationLabel),
               modifier =
                   Modifier.fillMaxWidth()
-                      .padding(bottom = CAREGIVER_PADDING_ENORMOUS)
+                      .padding(vertical = CAREGIVER_PADDING_MEDIUM)
                       .testTag(CaregiverParametersTestTags.INVITATION_HINT),
-              color = MaterialTheme.colorScheme.onBackground,
-              style = MaterialTheme.typography.bodyLarge,
-              textAlign = TextAlign.Center,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              style = MaterialTheme.typography.bodyMedium,
           )
         }
       },
   )
+}
+
+/**
+ * One action of the parameters screen: a [DisplayBoxWithIconText] row carrying [testTag].
+ *
+ * @param modifier modifier applied to the row, before its test tag.
+ * @param testTag test tag of the row.
+ * @param icon icon of the action.
+ * @param text name of the action.
+ * @param isDestructive whether the action cannot be undone. Its icon is then in the error colors.
+ * @param onClick called when the row is pressed.
+ */
+@Composable
+private fun ParameterRow(
+    modifier: Modifier = Modifier,
+    testTag: String = "",
+    icon: ImageVector = Icons.Outlined.Add,
+    text: String = "",
+    isDestructive: Boolean = false,
+    onClick: () -> Unit = {},
+) {
+  val colorScheme = MaterialTheme.colorScheme
+  DisplayBoxWithIconText(
+      modifier = modifier.testTag(testTag),
+      icon = icon,
+      text = text,
+      style = MaterialTheme.typography.titleMedium,
+      iconContainerColor =
+          if (isDestructive) colorScheme.errorContainer else colorScheme.secondaryContainer,
+      iconColor =
+          if (isDestructive) colorScheme.onErrorContainer else colorScheme.onSecondaryContainer,
+      onClick = onClick,
+  )
+}
+
+/** Preview of a regular and a destructive [ParameterRow]. */
+@Preview(showBackground = true)
+@Composable
+private fun ParameterRowPreview() {
+  AmberAppTheme(dynamicColor = false) {
+    Column(
+        modifier = Modifier.padding(CAREGIVER_PADDING_MEDIUM),
+        verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
+    ) {
+      ParameterRow(text = "Create a care circle")
+      ParameterRow(icon = Icons.Outlined.Delete, text = "Delete account", isDestructive = true)
+    }
+  }
 }
 
 /** Preview of [CaregiverParameterScreen], including the create-care-circle button. */

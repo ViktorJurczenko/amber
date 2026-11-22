@@ -1,4 +1,5 @@
 // Written by nehachak1, with assistance fromClaude Code
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication
 
@@ -169,6 +170,20 @@ class AuthenticationComponentsTest {
     }
 
     composeTestRule.onNodeWithTag(BUTTON).assertTextEquals("Sign in with Google")
+    composeTestRule
+        .onNodeWithTag(AuthenticationComponentTestTags.BUTTON_LEADING_ICON, useUnmergedTree = true)
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun buttonWithoutLeadingIconShowsNoIcon() {
+    composeTestRule.setContent {
+      AuthenticationButton(modifier = Modifier.testTag(BUTTON), text = "Continue")
+    }
+
+    composeTestRule
+        .onNodeWithTag(AuthenticationComponentTestTags.BUTTON_LEADING_ICON, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   @Test

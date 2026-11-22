@@ -2,10 +2,12 @@
 // Modified by nehachak1, with assistance from Claude Code
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication.signIn
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +18,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.testTag
@@ -45,13 +48,13 @@ import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_REGULAR
 import com.github.se.amber.ui.theme.PADDING_MINI
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.SURFACE_SMALL
 import com.github.se.amber.ui.theme.TEXT_FIELD_SMALL
 
 /** Test tags of the components shared by the authentication screens. */
 internal object AuthenticationComponentTestTags {
   const val TERMS_FOOTER = "authentication_terms_footer"
+  const val BUTTON_LEADING_ICON = "authentication_button_leading_icon"
 }
 
 /**
@@ -139,7 +142,7 @@ internal fun AuthenticationTextField(
       },
       keyboardOptions = keyboardOptions,
       visualTransformation = visualTransformation,
-      shape = RoundedCornerShape(ROUND_CORNER),
+      shape = MaterialTheme.shapes.medium,
   )
 }
 
@@ -164,18 +167,25 @@ internal fun AuthenticationButton(
       onClick = onClick,
       enabled = enabled,
       modifier = modifier.fillMaxWidth().height(CAREGIVER_BUTTON_HEIGHT_BIG),
-      shape = RoundedCornerShape(ROUND_CORNER),
+      shape = MaterialTheme.shapes.large,
       colors =
           ButtonDefaults.buttonColors(
-              containerColor = MaterialTheme.colorScheme.tertiary,
-              contentColor = MaterialTheme.colorScheme.onTertiary,
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
           ),
   ) {
     leadingIcon?.let { icon ->
+      // A provider logo has its own colors: a neutral disc keeps them visible on the button
       Image(
           painter = icon,
           contentDescription = null, // Decorative: the button text already describes the action
-          modifier = Modifier.padding(end = CAREGIVER_PADDING_REGULAR).size(SURFACE_SMALL),
+          modifier =
+              Modifier.padding(end = CAREGIVER_PADDING_REGULAR)
+                  .clip(CircleShape)
+                  .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                  .padding(PADDING_MINI)
+                  .size(SURFACE_SMALL)
+                  .testTag(AuthenticationComponentTestTags.BUTTON_LEADING_ICON),
       )
     }
     AuthenticationText(

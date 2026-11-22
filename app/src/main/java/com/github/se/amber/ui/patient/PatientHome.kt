@@ -13,11 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,11 +35,13 @@ import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.PATIENT_PADDING_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 
 /** No-op [ProfileRepository] used by Compose previews (and preview-driven tests). */
@@ -69,7 +70,6 @@ object PatientHomeTestTags {
  * @param homeViewModel ViewModel providing the patient profile displayed on the screen.
  * @param onTabSelected Callback invoked when the user selects a bottom navigation tab.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientHomeScreen(
     homeViewModel: PatientHomeViewModel = viewModel(),
@@ -90,9 +90,7 @@ fun PatientHomeScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = { DisplayPatientTitle(title = stringResource(R.string.patientHomeTitle)) }
-        )
+        AmberTopBar { DisplayPatientTitle(title = stringResource(R.string.patientHomeTitle)) }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -108,17 +106,27 @@ fun PatientHomeScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = PATIENT_PADDING_MEDIUM),
+                    .padding(PATIENT_PADDING_MEDIUM),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           val firstName = uiState.patientProfile.person.firstName
-          Text(
-              modifier = Modifier.fillMaxWidth().testTag(PatientHomeTestTags.GREETINGS),
-              text = stringResource(R.string.patientHomeGreeting, firstName),
-              textAlign = TextAlign.Center,
-              color = MaterialTheme.colorScheme.onBackground,
-              style = MaterialTheme.typography.headlineMedium,
-          )
+          // The greeting is the first thing the patient reads: one large, calm, tinted card.
+          Surface(
+              modifier = Modifier.fillMaxWidth(),
+              shape = MaterialTheme.shapes.extraLarge,
+              color = MaterialTheme.colorScheme.primaryContainer,
+              contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          ) {
+            Text(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(PATIENT_PADDING_BIG)
+                        .testTag(PatientHomeTestTags.GREETINGS),
+                text = stringResource(R.string.patientHomeGreeting, firstName),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineMedium,
+            )
+          }
         }
       },
   )

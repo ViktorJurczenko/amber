@@ -1,6 +1,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding
 
@@ -8,14 +9,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,9 +27,7 @@ import com.github.se.amber.ui.onboarding.DividerTestTags.HORIZONTAL_DIVIDER_RIGH
 import com.github.se.amber.ui.onboarding.DividerTestTags.ROW
 import com.github.se.amber.ui.onboarding.DividerTestTags.TEXT
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
-import com.github.se.amber.ui.theme.lightGray
 
 /** Test tags for [Divider]. */
 object DividerTestTags {
@@ -42,29 +38,10 @@ object DividerTestTags {
 }
 
 /**
- * Shared [OutlinedTextField] colors for onboarding forms.
- *
- * Keeps outline, label, placeholder, cursor, and error colors aligned across create-profile,
- * create-care-circle, and invitation-redemption screens.
- */
-@Composable
-fun onboardingOutlinedTextFieldColors(): TextFieldColors =
-    OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MaterialTheme.colorScheme.outline,
-        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-        focusedLabelColor = MaterialTheme.colorScheme.onSurface,
-        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-        cursorColor = MaterialTheme.colorScheme.onSurface,
-        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurface,
-        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurface,
-        errorBorderColor = MaterialTheme.colorScheme.error,
-        errorLabelColor = MaterialTheme.colorScheme.error,
-        errorCursorColor = MaterialTheme.colorScheme.error,
-        errorSupportingTextColor = MaterialTheme.colorScheme.error,
-    )
-
-/**
  * Single-line outlined field used by onboarding forms.
+ *
+ * Its outline, label, cursor and error colors are Material's, from the theme: the field that has
+ * the focus is outlined in `primary`, a field with an error in `error`.
  *
  * @param modifier modifier applied to the text field.
  * @param value current text.
@@ -96,14 +73,15 @@ fun OnboardingOutlinedTextField(
       modifier = modifier.fillMaxWidth(),
       enabled = enabled,
       keyboardOptions = keyboardOptions,
-      label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
+      // No style on the label: Material shrinks it itself when it moves up to the outline
+      label = { Text(text = label) },
       placeholder =
           placeholder?.let { hint ->
             {
               Text(
                   text = hint,
                   modifier = placeholderTestTag?.let { Modifier.testTag(it) } ?: Modifier,
-                  style = MaterialTheme.typography.labelMedium,
+                  style = MaterialTheme.typography.bodyLarge,
               )
             }
           },
@@ -119,8 +97,7 @@ fun OnboardingOutlinedTextField(
           },
       isError = error != null,
       singleLine = true,
-      shape = RoundedCornerShape(ROUND_CORNER),
-      colors = onboardingOutlinedTextFieldColors(),
+      shape = MaterialTheme.shapes.medium,
   )
 }
 
@@ -144,13 +121,12 @@ fun Divider(
   ) {
     HorizontalDivider(
         modifier = Modifier.weight(WEIGHT_ONE).testTag(HORIZONTAL_DIVIDER_LEFT),
-        // independent of DarkMode and lightMode
-        color = lightGray,
+        color = MaterialTheme.colorScheme.outlineVariant,
     )
 
     Text(
         text = text,
-        color = MaterialTheme.colorScheme.outline,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = style,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(horizontal = CAREGIVER_PADDING_SMALL).testTag(TEXT),
@@ -158,7 +134,7 @@ fun Divider(
 
     HorizontalDivider(
         modifier = Modifier.weight(WEIGHT_ONE).testTag(HORIZONTAL_DIVIDER_RIGHT),
-        color = lightGray,
+        color = MaterialTheme.colorScheme.outlineVariant,
     )
   }
 }

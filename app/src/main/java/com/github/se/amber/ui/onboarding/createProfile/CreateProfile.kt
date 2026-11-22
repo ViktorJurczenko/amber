@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.createProfile
 
@@ -13,11 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +40,8 @@ import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.authentication.signOut.PreviewActiveCircleRepository
 import com.github.se.amber.ui.authentication.signOut.PreviewSignOutAuthRepository
 import com.github.se.amber.ui.authentication.signOut.SignOutViewModel
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.onboarding.AmberHeader
 import com.github.se.amber.ui.onboarding.OnboardingOutlinedTextField
 import com.github.se.amber.ui.patient.DisplayPatientButton
@@ -80,7 +79,6 @@ object CreateProfileTestTags {
  *   composition; tests can pass a custom instance with a fake profile repository.
  * @param signOutViewModel shared sign-out action used by the top bar.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateProfileScreen(
     modifier: Modifier = Modifier,
@@ -109,13 +107,9 @@ fun CreateProfileScreen(
       containerColor = MaterialTheme.colorScheme.background,
       contentColor = MaterialTheme.colorScheme.onBackground,
       topBar = {
-        TopAppBar(
-            title = {
-              TopNavigationMenu(
-                  action = TopNavigationAction.SIGN_OUT,
-                  onBackClick = { if (!uiState.isSaving) signOutViewModel.signOut() },
-              )
-            }
+        AmberTopBar(
+            action = TopNavigationAction.SIGN_OUT,
+            onBackClick = { if (!uiState.isSaving) signOutViewModel.signOut() },
         )
       },
   ) { innerPadding ->
@@ -142,7 +136,8 @@ fun CreateProfileScreen(
           modifier = Modifier.fillMaxWidth(),
           style = MaterialTheme.typography.titleMedium,
           textAlign = TextAlign.Center,
-          color = MaterialTheme.colorScheme.secondary,
+          // A patient reads this screen too: the text keeps the enhanced contrast
+          color = MaterialTheme.colorScheme.onBackground,
       )
 
       ProfileNameField(
@@ -167,7 +162,7 @@ fun CreateProfileScreen(
           modifier = Modifier.fillMaxWidth().padding(top = CAREGIVER_PADDING_MEDIUM),
           style = MaterialTheme.typography.titleMedium,
           textAlign = TextAlign.Center,
-          color = MaterialTheme.colorScheme.secondary,
+          color = MaterialTheme.colorScheme.onBackground,
       )
 
       val canChooseRole = uiState.canSubmit && !signOutState.isSigningOut

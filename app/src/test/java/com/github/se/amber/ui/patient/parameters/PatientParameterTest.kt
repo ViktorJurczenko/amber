@@ -1,19 +1,23 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.parameters
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.Tab
+import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -78,6 +82,22 @@ class PatientParameterScreenTest {
 
     assertEquals(1, clicks)
     assertEquals(0, signOutClicks)
+  }
+
+  @Test
+  fun eachActionShowsAnIconNextToItsLabel() {
+    setScreen()
+
+    // An icon alone is not enough for a patient: each one comes with the name of its action
+    composeTestRule
+        .onAllNodesWithTag(PatientUtilsTestTags.BUTTON_ICON, useUnmergedTree = true)
+        .assertCountEquals(2)
+    composeTestRule
+        .onNodeWithTag(PatientParameterTestTags.SIGN_OUT_BUTTON)
+        .assertTextEquals(string(R.string.patientParameterSignOut))
+    composeTestRule
+        .onNodeWithTag(PatientParameterTestTags.DELETE_BUTTON)
+        .assertTextEquals(string(R.string.patientParameterDeleteAccount))
   }
 
   @Test

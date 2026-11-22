@@ -2,13 +2,13 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media.audio
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -23,11 +23,9 @@ import com.github.se.amber.R
 import com.github.se.amber.data.media.audio.WAVEFORM_BARS
 import com.github.se.amber.model.media.AudioRecordingState
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.HALF
 import com.github.se.amber.ui.theme.NO_PLAYED_FRACTION
-import com.github.se.amber.ui.theme.ROUND_CORNER
 
 /** Test tags owned by [DisplayAudioRecorder]. */
 object AudioRecorderTestTags {
@@ -44,7 +42,7 @@ object AudioRecorderTestTags {
  *   right.
  * - [AudioRecordingState.RECORDED]: the full waveform; play on the right.
  * - [AudioRecordingState.LISTENING]: the full waveform while it is heard, the part already heard in
- *   tertiary; stop on the right.
+ *   primary; stop on the right.
  *
  * [AudioRecordingState.IDLE] has no audio to show: it is drawn like [AudioRecordingState.RECORDED].
  * The caller passes what stop does in each state, since stopping a recording and stopping the
@@ -85,12 +83,8 @@ fun DisplayAudioRecorder(
       modifier =
           modifier
               .fillMaxWidth()
-              .border(
-                  width = BORDER_THICKNESS,
-                  color = MaterialTheme.colorScheme.tertiary,
-                  shape = RoundedCornerShape(ROUND_CORNER),
-              )
-              .clip(RoundedCornerShape(ROUND_CORNER))
+              .clip(MaterialTheme.shapes.medium)
+              .background(MaterialTheme.colorScheme.surfaceContainer)
               .padding(CAREGIVER_PADDING_MEDIUM),
       waveform = waveformState,
       isPatient = false,
@@ -120,7 +114,6 @@ fun DisplayAudioRecorder(
             )
           },
       waveformTestTag = AudioRecorderTestTags.WAVEFORM,
-      playedColor = MaterialTheme.colorScheme.tertiary,
   )
 }
 

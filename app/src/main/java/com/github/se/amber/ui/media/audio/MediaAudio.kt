@@ -1,6 +1,7 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media.audio
 
@@ -88,7 +89,7 @@ sealed interface AudioWaveformState {
 
   /**
    * The finished waveform while it is being heard. The portion up to [playedFraction] is drawn in
-   * secondary. [playedFraction] is from 0 to 1.
+   * primary, darker than the rest. [playedFraction] is from 0 to 1.
    */
   data class Listening(
       val levels: List<Float> = emptyList(),
@@ -136,7 +137,7 @@ fun MediaAudio(
     isPatient: Boolean = true,
     waveformTestTag: String = MediaAudioTestTags.WAVEFORM,
     waveformModifier: Modifier = Modifier,
-    playedColor: Color = MaterialTheme.colorScheme.secondary,
+    playedColor: Color = MaterialTheme.colorScheme.primary,
 ) {
   val buttonSpacing = if (isPatient) PATIENT_PADDING_SMALL else CAREGIVER_PADDING_SMALL
   Row(
@@ -223,7 +224,7 @@ private fun MediaAudioIconButton(
 fun DisplayAudioWaveform(
     modifier: Modifier = Modifier,
     waveform: AudioWaveformState = AudioWaveformState.None,
-    playedColor: Color = MaterialTheme.colorScheme.secondary,
+    playedColor: Color = MaterialTheme.colorScheme.primary,
 ) {
   val unplayedColor = MaterialTheme.colorScheme.outline
   val bars = displayedWaveformLevels(waveformLevels(waveform))

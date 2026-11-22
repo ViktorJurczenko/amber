@@ -3,12 +3,13 @@
 // Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.parameters.createInvitation
 
 import android.content.res.Configuration
 import androidx.annotation.StringRes
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,19 +17,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GroupAdd
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -40,22 +39,18 @@ import com.github.se.amber.R
 import com.github.se.amber.data.invitation.InvitationStatus
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
-import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_HEIGHT_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 import java.text.DateFormat
 import java.util.Date
@@ -73,7 +68,6 @@ object CreateInvitationTestTags {
   fun codeRow(code: String) = "create_invitation_code_row_$code"
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateInvitationScreen(
     viewModel: CreateInvitationViewModel = viewModel(),
@@ -85,23 +79,12 @@ fun CreateInvitationScreen(
   val colors = MaterialTheme.colorScheme
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(
-                  modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
-              ) {
-                TopNavigationMenu(
-                    modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = checkout,
-                )
-                DisplayCaregiverTitle(
-                    Modifier.testTag(CreateInvitationTestTags.TITLE),
-                    stringResource(R.string.createInvitationTitle),
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = checkout) {
+          DisplayCaregiverTitle(
+              Modifier.testTag(CreateInvitationTestTags.TITLE),
+              stringResource(R.string.createInvitationTitle),
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -141,14 +124,11 @@ fun CreateInvitationScreen(
                     uiState.generatedCode ?: stringResource(R.string.createInvitationPlaceholder),
                 modifier =
                     Modifier.weight(WEIGHT_ONE)
-                        .border(
-                            DIVIDER_THICKNESS,
-                            colors.outline,
-                            RoundedCornerShape(ROUND_CORNER),
-                        )
-                        .padding(CAREGIVER_PADDING_SMALL)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(colors.surfaceContainer)
+                        .padding(CAREGIVER_PADDING_MEDIUM)
                         .testTag(CreateInvitationTestTags.HINT_BOX),
-                color = colors.onBackground,
+                color = colors.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
             )
           }
@@ -156,9 +136,9 @@ fun CreateInvitationScreen(
               text = stringResource(R.string.createInvitationUsage),
               modifier =
                   Modifier.fillMaxWidth()
-                      .padding(top = CAREGIVER_PADDING_ENORMOUS)
+                      .padding(top = CAREGIVER_PADDING_BIG)
                       .testTag(CreateInvitationTestTags.USAGE_TEXT),
-              color = colors.onBackground,
+              color = colors.onSurfaceVariant,
               style = MaterialTheme.typography.bodyMedium,
           )
           uiState.errorMsgRes?.let { errorMsgRes ->
@@ -175,22 +155,20 @@ fun CreateInvitationScreen(
           }
           Column(
               modifier =
-                  Modifier.padding(top = CAREGIVER_PADDING_ENORMOUS)
+                  Modifier.padding(vertical = CAREGIVER_PADDING_BIG)
                       .fillMaxWidth()
                       .weight(WEIGHT_ONE)
-                      .border(
-                          DIVIDER_THICKNESS,
-                          colors.outline,
-                          RoundedCornerShape(ROUND_CORNER),
-                      )
+                      .clip(MaterialTheme.shapes.medium)
+                      .background(colors.surfaceContainer)
                       .verticalScroll(rememberScrollState())
-                      .padding(top = CAREGIVER_PADDING_MEDIUM)
+                      .padding(CAREGIVER_PADDING_MEDIUM)
                       .testTag(CreateInvitationTestTags.CODE_LIST),
               horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
           ) {
             Text(
                 text = stringResource(R.string.createInvitationListHeader),
-                color = colors.onBackground,
+                color = colors.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
@@ -204,7 +182,7 @@ fun CreateInvitationScreen(
                           stringResource(invitation.status.labelRes()),
                       ),
                   modifier = Modifier.testTag(CreateInvitationTestTags.codeRow(invitation.code)),
-                  color = colors.onBackground,
+                  color = colors.onSurface,
                   style = MaterialTheme.typography.bodyMedium,
                   textAlign = TextAlign.Center,
               )

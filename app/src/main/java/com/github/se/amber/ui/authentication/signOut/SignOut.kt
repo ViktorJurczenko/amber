@@ -16,11 +16,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,12 +37,11 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.authentication.DisplayAuthenticationButton
 import com.github.se.amber.ui.authentication.authenticationTextStyle
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
-import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 
 /** Test tags of [SignOutScreen]. */
@@ -67,7 +65,6 @@ object SignOutTestTags {
  * @param onSignedOut Called once sign-out succeeds.
  * @param onBack Called when the user cancels from the top bar.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignOutScreen(
     isPatient: Boolean = true,
@@ -98,28 +95,22 @@ fun SignOutScreen(
   }
 
   Scaffold(
+      containerColor = MaterialTheme.colorScheme.background,
+      contentColor = MaterialTheme.colorScheme.onBackground,
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = onBack,
-                )
-                if (isPatient) {
-                  DisplayPatientTitle(
-                      title = stringResource(R.string.signOutTitle),
-                      testTag = SignOutTestTags.TITLE,
-                  )
-                } else {
-                  DisplayCaregiverTitle(
-                      modifier = Modifier.testTag(SignOutTestTags.TITLE),
-                      title = stringResource(R.string.signOutTitle),
-                  )
-                }
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = onBack) {
+          if (isPatient) {
+            DisplayPatientTitle(
+                title = stringResource(R.string.signOutTitle),
+                testTag = SignOutTestTags.TITLE,
+            )
+          } else {
+            DisplayCaregiverTitle(
+                modifier = Modifier.testTag(SignOutTestTags.TITLE),
+                title = stringResource(R.string.signOutTitle),
+            )
+          }
+        }
       },
       content = { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -132,13 +123,20 @@ fun SignOutScreen(
               verticalArrangement = Arrangement.spacedBy(padding, Alignment.CenterVertically),
               horizontalAlignment = Alignment.CenterHorizontally,
           ) {
-            Text(
-                text = stringResource(R.string.signOutExplanation),
-                color = MaterialTheme.colorScheme.onBackground,
-                style = textStyle,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().testTag(SignOutTestTags.EXPLANATION),
-            )
+            // The explanation is on a calm card, so the one button below is the only action
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+              Text(
+                  text = stringResource(R.string.signOutExplanation),
+                  style = textStyle,
+                  textAlign = TextAlign.Center,
+                  modifier =
+                      Modifier.fillMaxWidth().padding(padding).testTag(SignOutTestTags.EXPLANATION),
+              )
+            }
             DisplayAuthenticationButton(
                 isPatient = isPatient,
                 text = stringResource(R.string.signOutButton),

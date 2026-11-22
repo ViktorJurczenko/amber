@@ -1,5 +1,6 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias
 
@@ -12,9 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
@@ -31,7 +31,8 @@ import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
+import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 
 object SeeMediasTestTags {
   const val TITLE = "see_medias_title"
@@ -47,7 +48,6 @@ object SeeMediasTestTags {
  * @param onSeeAudioClick callback invoked when see audio is selected.
  * @param onTabSelected callback invoked when one of the tab in the bottomBarMenu is selected
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeeMediasScreen(
     viewModel: SeeMediasViewModel = viewModel(),
@@ -58,14 +58,12 @@ fun SeeMediasScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              DisplayPatientTitle(
-                  title = stringResource(R.string.seeMediasTitle),
-                  testTag = SeeMediasTestTags.TITLE,
-              )
-            }
-        )
+        AmberTopBar {
+          DisplayPatientTitle(
+              title = stringResource(R.string.seeMediasTitle),
+              testTag = SeeMediasTestTags.TITLE,
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -80,12 +78,14 @@ fun SeeMediasScreen(
             modifier =
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = PATIENT_PADDING_SMALL)
-                    .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+                    .verticalScroll(rememberScrollState())
+                    .padding(PATIENT_PADDING_MEDIUM),
+            verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MEDIUM),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+          // Two choices of the same weight: both take the full width, one under the other.
           DisplayPatientButton(
+              buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
               text = stringResource(R.string.seeMediasPictures),
               icon = Icons.Outlined.PhotoCamera,
               description = stringResource(R.string.seeMediasPicturesIcon),
@@ -93,6 +93,7 @@ fun SeeMediasScreen(
               testTag = SeeMediasTestTags.PICTURES_BUTTON,
           )
           DisplayPatientButton(
+              buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
               text = stringResource(R.string.seeMediasAudios),
               icon = Icons.Outlined.Mic,
               description = stringResource(R.string.seeMediasAudiosIcon),

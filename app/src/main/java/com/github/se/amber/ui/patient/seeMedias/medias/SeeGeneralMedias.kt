@@ -1,4 +1,5 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias.medias
 
@@ -11,40 +12,47 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.ui.media.MediaCard
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
-import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTitle
+import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
+import com.github.se.amber.ui.theme.SURFACE_MEDIUM
 
 /**
  * What differs between two "See medias" screens apart from how one item is drawn: texts and test
@@ -74,7 +82,8 @@ data class SeeGeneralMediasConfig(
 
 /**
  * Scaffold, loading / blocking error / empty states, error Toast and scrollable list shared by the
- * patient "See medias" screens. Each item is its media ([itemContent]) followed by its [MediaCard].
+ * patient "See medias" screens. Each item is one card: its media ([itemContent]) followed by its
+ * [MediaCard].
  *
  * [uiState], [config] and [itemContent] have no default value on purpose: there is no sensible
  * state to show, no texts that fit every kind of media, and the general screen cannot draw a media
@@ -91,7 +100,6 @@ data class SeeGeneralMediasConfig(
  *   title that contains a value such as a name. Empty when the title is a plain text.
  * @param itemContent draws one media; use the given modifier (it carries the common width).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T : MediaItem> SeeGeneralMedias(
     uiState: SeeGeneralMediasUIState<T>,
@@ -125,21 +133,12 @@ fun <T : MediaItem> SeeGeneralMedias(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column {
-                TopNavigationMenu(
-                    modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = onBackClick,
-                )
-                DisplayPatientTitle(
-                    title = stringResource(config.titleRes, *titleArgs.toTypedArray()),
-                    testTag = config.titleTag,
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = onBackClick) {
+          DisplayPatientTitle(
+              title = stringResource(config.titleRes, *titleArgs.toTypedArray()),
+              testTag = config.titleTag,
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(
@@ -171,12 +170,10 @@ fun <T : MediaItem> SeeGeneralMedias(
                     Arrangement.spacedBy(PATIENT_PADDING_SMALL, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-              Text(
-                  modifier = Modifier.testTag(config.errorTag),
+              DisplayMediaMessage(
                   text = stringResource(uiState.errorMsgRes),
-                  textAlign = TextAlign.Center,
-                  color = MaterialTheme.colorScheme.error,
-                  style = MaterialTheme.typography.titleLarge,
+                  textTag = config.errorTag,
+                  isError = true,
               )
               DisplayPatientButton(text = stringResource(config.retryRes), onClick = onRetry)
             }
@@ -188,13 +185,7 @@ fun <T : MediaItem> SeeGeneralMedias(
                     Modifier.fillMaxSize().padding(paddingValues).padding(PATIENT_PADDING_MEDIUM),
                 contentAlignment = Alignment.Center,
             ) {
-              Text(
-                  modifier = Modifier.testTag(config.emptyTag),
-                  text = stringResource(config.emptyRes),
-                  textAlign = TextAlign.Center,
-                  color = MaterialTheme.colorScheme.onBackground,
-                  style = MaterialTheme.typography.titleLarge,
-              )
+              DisplayMediaMessage(text = stringResource(config.emptyRes), textTag = config.emptyTag)
             }
           }
 
@@ -202,21 +193,31 @@ fun <T : MediaItem> SeeGeneralMedias(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(PATIENT_PADDING_SMALL),
-                verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+                verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MEDIUM),
             ) {
               items(uiState.items, key = { it.id }) { item ->
-                // One Column so the media and its MediaCard do not touch
-                Column(verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL)) {
-                  itemContent(
-                      item,
-                      uiState.careCircle,
-                      Modifier.fillMaxWidth(PATIENT_BUTTON_WIDTH_BIG),
-                  )
-                  MediaCard(
-                      modifier = Modifier.fillMaxWidth(PATIENT_BUTTON_WIDTH_BIG),
-                      media = item,
-                      testTag = config.cardTag(item.id),
-                  )
+                // One card per memory, so the media and its date, place and details read as one
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                  Column(
+                      modifier = Modifier.padding(PATIENT_PADDING_SMALL),
+                      verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+                  ) {
+                    itemContent(
+                        item,
+                        uiState.careCircle,
+                        Modifier.fillMaxWidth(PATIENT_BUTTON_WIDTH_BIG)
+                            .clip(MaterialTheme.shapes.medium),
+                    )
+                    MediaCard(
+                        modifier = Modifier.fillMaxWidth(PATIENT_BUTTON_WIDTH_BIG),
+                        media = item,
+                        testTag = config.cardTag(item.id),
+                    )
+                  }
                 }
               }
             }
@@ -224,4 +225,63 @@ fun <T : MediaItem> SeeGeneralMedias(
         }
       },
   )
+}
+
+/**
+ * A message that replaces the list: an icon above [text], in a tinted card. An error has its own
+ * icon and its own tint, so that it is not told from the empty message by its color alone.
+ *
+ * @param modifier modifier applied to the card.
+ * @param text the message.
+ * @param textTag test tag of the message.
+ * @param isError whether the message is an error.
+ */
+@Composable
+private fun DisplayMediaMessage(
+    modifier: Modifier = Modifier,
+    text: String = "",
+    textTag: String = "",
+    isError: Boolean = false,
+) {
+  val colorScheme = MaterialTheme.colorScheme
+  Surface(
+      modifier = modifier.fillMaxWidth(),
+      shape = MaterialTheme.shapes.large,
+      color = if (isError) colorScheme.errorContainer else colorScheme.surfaceContainer,
+      contentColor = if (isError) colorScheme.onErrorContainer else colorScheme.onSurface,
+  ) {
+    Column(
+        modifier = Modifier.padding(PATIENT_PADDING_MEDIUM),
+        verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      // Decorative: the text below says the same thing
+      Icon(
+          imageVector = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
+          contentDescription = null,
+          modifier = Modifier.size(SURFACE_MEDIUM),
+      )
+      Text(
+          modifier = Modifier.testTag(textTag),
+          text = text,
+          textAlign = TextAlign.Center,
+          style = MaterialTheme.typography.titleLarge,
+      )
+    }
+  }
+}
+
+/** Preview of the empty and error messages of [SeeGeneralMedias]. */
+@Preview(showBackground = true)
+@Composable
+private fun DisplayMediaMessagePreview() {
+  AmberAppTheme(dynamicColor = false) {
+    Column(
+        modifier = Modifier.padding(PATIENT_PADDING_SMALL),
+        verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+    ) {
+      DisplayMediaMessage(text = "There are no pictures yet.")
+      DisplayMediaMessage(text = "Failed to load the media.", isError = true)
+    }
+  }
 }

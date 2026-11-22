@@ -1,5 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication.accountDeletion
 
@@ -8,17 +9,21 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,7 +33,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,19 +44,24 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.authentication.DisplayAuthenticationButton
 import com.github.se.amber.ui.authentication.authenticationTextStyle
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.patient.DisplayPatientTitle
+import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
+import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.WEIGHT_FIFTEENTH
+import com.github.se.amber.ui.theme.WEIGHT_ONE
 import com.github.se.amber.ui.utils.asString
 
 /** Tags for the title, explanation, and confirmation button. */
 object DeleteAccountTestTags {
   const val TITLE = "delete_account_title"
   const val EXPLANATION = "delete_account_explanation"
+  const val WARNINGS = "delete_account_warnings"
   const val BUTTON = "delete_account_button"
 }
 
@@ -67,7 +80,6 @@ object DeleteAccountTestTags {
  * @param credentialManager Requests a fresh Google credential when deletion is confirmed.
  * @param onBack Returns to parameters when deletion is not running.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeleteAccountScreen(
     isPatient: Boolean = true,
@@ -92,30 +104,26 @@ fun DeleteAccountScreen(
     }
   }
   Scaffold(
+      containerColor = MaterialTheme.colorScheme.background,
+      contentColor = MaterialTheme.colorScheme.onBackground,
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                if (!uiState.isDeleting) {
-                  TopNavigationMenu(
-                      action = TopNavigationAction.CANCEL,
-                      onBackClick = onBack,
-                  )
-                }
-                if (isPatient) {
-                  DisplayPatientTitle(
-                      title = stringResource(R.string.deleteAccountTitle),
-                      testTag = DeleteAccountTestTags.TITLE,
-                  )
-                } else {
-                  DisplayCaregiverTitle(
-                      modifier = Modifier.testTag(DeleteAccountTestTags.TITLE),
-                      title = stringResource(R.string.deleteAccountTitle),
-                  )
-                }
-              }
-            }
-        )
+        AmberTopBar(
+            // No way back while the account is being deleted
+            action = if (uiState.isDeleting) null else TopNavigationAction.CANCEL,
+            onBackClick = onBack,
+        ) {
+          if (isPatient) {
+            DisplayPatientTitle(
+                title = stringResource(R.string.deleteAccountTitle),
+                testTag = DeleteAccountTestTags.TITLE,
+            )
+          } else {
+            DisplayCaregiverTitle(
+                modifier = Modifier.testTag(DeleteAccountTestTags.TITLE),
+                title = stringResource(R.string.deleteAccountTitle),
+            )
+          }
+        }
       },
       content = { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -132,23 +140,31 @@ fun DeleteAccountScreen(
               verticalArrangement = Arrangement.spacedBy(padding, Alignment.CenterVertically),
               horizontalAlignment = Alignment.CenterHorizontally,
           ) {
-            Text(
-                text =
-                    stringResource(
-                        if (isPatient) R.string.deleteAccountPatientExplanation
-                        else R.string.deleteAccountCaregiverExplanation
-                    ),
-                color = MaterialTheme.colorScheme.onBackground,
-                style = textStyle,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().testTag(DeleteAccountTestTags.EXPLANATION),
-            )
-            uiState.warnings.forEach { warning ->
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
               Text(
-                  text = warning.asString(resources),
-                  color = MaterialTheme.colorScheme.error,
+                  text =
+                      stringResource(
+                          if (isPatient) R.string.deleteAccountPatientExplanation
+                          else R.string.deleteAccountCaregiverExplanation
+                      ),
                   style = textStyle,
                   textAlign = TextAlign.Center,
+                  modifier =
+                      Modifier.fillMaxWidth()
+                          .padding(padding)
+                          .testTag(DeleteAccountTestTags.EXPLANATION),
+              )
+            }
+            if (uiState.warnings.isNotEmpty()) {
+              DeleteAccountWarnings(
+                  modifier = Modifier.testTag(DeleteAccountTestTags.WARNINGS),
+                  warnings = uiState.warnings.map { it.asString(resources) },
+                  textStyle = textStyle,
+                  padding = padding,
               )
             }
             when {
@@ -190,4 +206,63 @@ fun DeleteAccountScreen(
         }
       },
   )
+}
+
+/**
+ * The consequences of the deletion, on one error card with a warning icon: a warning is never told
+ * by its color alone.
+ *
+ * @param modifier Modifier applied to the card.
+ * @param warnings The warnings, already translated, one per line.
+ * @param textStyle Style of the warnings, larger for a patient.
+ * @param padding Padding inside the card, larger for a patient.
+ */
+@Composable
+private fun DeleteAccountWarnings(
+    modifier: Modifier = Modifier,
+    warnings: List<String> = emptyList(),
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    padding: Dp = CAREGIVER_PADDING_BIG,
+) {
+  Surface(
+      modifier = modifier.fillMaxWidth(),
+      shape = MaterialTheme.shapes.large,
+      color = MaterialTheme.colorScheme.errorContainer,
+      contentColor = MaterialTheme.colorScheme.onErrorContainer,
+  ) {
+    Row(
+        modifier = Modifier.padding(padding),
+        horizontalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(
+          imageVector = Icons.Outlined.WarningAmber,
+          contentDescription = null, // the warnings next to it say it all
+          modifier = Modifier.size(PATIENT_ICON_SIZE),
+      )
+      Column(
+          modifier = Modifier.weight(WEIGHT_ONE),
+          verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),
+      ) {
+        warnings.forEach { warning -> Text(text = warning, style = textStyle) }
+      }
+    }
+  }
+}
+
+/** Preview of [DeleteAccountWarnings] using the Amber application theme. */
+@Preview(showBackground = true)
+@Composable
+private fun DeleteAccountWarningsPreview() {
+  AmberAppTheme(dynamicColor = false) {
+    DeleteAccountWarnings(
+        warnings =
+            listOf(
+                stringResource(
+                    R.string.deleteAccountLastCaregiverWarning,
+                    stringResource(R.string.title_activity_main),
+                )
+            )
+    )
+  }
 }

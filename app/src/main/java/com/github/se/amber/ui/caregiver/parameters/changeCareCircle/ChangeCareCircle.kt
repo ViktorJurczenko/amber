@@ -1,9 +1,10 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.parameters.changeCareCircle
 
 import android.widget.Toast
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,21 +14,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -39,14 +38,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
 import com.github.se.amber.ui.caregiver.DisplayCaregiverButton
 import com.github.se.amber.ui.caregiver.DisplayCaregiverTitle
+import com.github.se.amber.ui.navigation.AmberTopBar
 import com.github.se.amber.ui.navigation.TopNavigationAction
-import com.github.se.amber.ui.navigation.TopNavigationMenu
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.utils.selectableChipColors
 
 /** Tags for the change care circle screen. */
@@ -80,7 +77,7 @@ object ChangeCareCircleTestTags {
  * @param viewModel Provides the screen state and receives chip selections.
  * @param onBackClick Called when the top-bar back button is pressed.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChangeCareCircleScreen(
     viewModel: ChangeCareCircleViewModel = viewModel(),
@@ -102,20 +99,12 @@ fun ChangeCareCircleScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = onBackClick,
-                )
-                DisplayCaregiverTitle(
-                    modifier = Modifier.testTag(ChangeCareCircleTestTags.TITLE),
-                    title = stringResource(R.string.changeCareCircleTitle),
-                )
-              }
-            }
-        )
+        AmberTopBar(action = TopNavigationAction.CANCEL, onBackClick = onBackClick) {
+          DisplayCaregiverTitle(
+              modifier = Modifier.testTag(ChangeCareCircleTestTags.TITLE),
+              title = stringResource(R.string.changeCareCircleTitle),
+          )
+        }
       }
   ) { paddingValues ->
     when (uiState.status) {
@@ -212,11 +201,8 @@ fun ChangeCareCircleScreen(
             FlowRow(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .border(
-                            DIVIDER_THICKNESS,
-                            MaterialTheme.colorScheme.outline,
-                            RoundedCornerShape(ROUND_CORNER),
-                        )
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .padding(CAREGIVER_PADDING_MEDIUM)
                         .testTag(ChangeCareCircleTestTags.CIRCLE_LIST),
                 horizontalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL),

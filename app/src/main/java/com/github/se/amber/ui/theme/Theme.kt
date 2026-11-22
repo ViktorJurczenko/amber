@@ -1,11 +1,14 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.theme
 
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -20,71 +23,121 @@ import androidx.core.view.WindowCompat
 /**
  * Amber Color Scheme for dark Mode
  *
- * If an element doesn't fit inside one of the description, use the color define in [Color]
+ * Every role a Material component reads is set, so none falls back to Material's purple baseline.
+ * See [LightColorScheme] for what each role is used for.
  */
-private val DarkColorScheme =
+internal val DarkColorScheme =
     darkColorScheme(
-        background = darkCyan,
-        onBackground = Color.White,
-
-        /** Main Title */
         primary = cyan,
-        onPrimary = Color.Black,
-
-        /** Secondary Title, selected icon */
-        secondary = lightGray,
-        onSecondary = darkCyan,
-
-        /** Selected Chips */
+        onPrimary = deepCyan,
+        primaryContainer = tealGreen,
+        onPrimaryContainer = Color.White,
+        inversePrimary = tealGreen,
+        secondary = lightCyan,
+        onSecondary = deepCyan,
         secondaryContainer = backCyan,
-
-        /** Button, unselected icon */
-        tertiary = lightCyan,
+        onSecondaryContainer = deepCyan,
+        tertiary = lightGray,
         onTertiary = darkCyan,
-
-        /** Unselected Chips */
-        tertiaryContainer = lightGray,
-
-        /** Gray text, comments */
-        outline = Color.White,
-        surface = darkCyan,
+        tertiaryContainer = tealGreen,
+        onTertiaryContainer = Color.White,
+        background = deepCyan,
+        onBackground = Color.White,
+        surface = deepCyan,
         onSurface = Color.White,
-        error = backCyan,
+        surfaceVariant = cyanSurfaceHighest,
+        onSurfaceVariant = mistCyan,
+        surfaceTint = cyan,
+        inverseSurface = lightGray,
+        inverseOnSurface = darkCyan,
+        error = salmon,
+        onError = maroon,
+        errorContainer = darkRed,
+        onErrorContainer = paleRust,
+        outline = cyanOutline,
+        outlineVariant = cyanOutlineSoft,
+        scrim = Color.Black,
+        surfaceBright = cyanSurfaceHighest,
+        surfaceDim = deepCyan,
+        surfaceContainerLowest = cyanSurfaceLowest,
+        surfaceContainerLow = cyanSurfaceLow,
+        surfaceContainer = cyanSurface,
+        surfaceContainerHigh = darkCyan,
+        surfaceContainerHighest = cyanSurfaceHighest,
     )
 
 /**
  * Amber Color Scheme for light Mode
  *
- * If an element doesn't fit inside one of the description, use the color define in [Color]
+ * A container color always goes with its `on` color: text on `primary` is `onPrimary`.
  */
-private val LightColorScheme =
+internal val LightColorScheme =
     lightColorScheme(
-        background = Color.White,
-        onBackground = Color.Black,
-
-        /** Main Title */
+        /** Main title, filled button */
         primary = darkOrange,
-        onPrimary = Color.Black,
+        onPrimary = Color.White,
 
-        /** Secondary Title, selected icon */
+        /** Highlighted card */
+        primaryContainer = paleRust,
+        onPrimaryContainer = maroon,
+        inversePrimary = salmon,
+
+        /** Secondary title */
         secondary = orange,
         onSecondary = Color.Black,
 
-        /** Selected chips */
+        /** Selected chip, selected tab indicator, icon circle */
         secondaryContainer = backOrange,
+        onSecondaryContainer = deepBrown,
 
-        /** Button, unselected icon */
+        /** Accent */
         tertiary = lightOrange,
-        onTertiary = Color.Black,
+        onTertiary = deepBrown,
+        tertiaryContainer = paleAmber,
+        onTertiaryContainer = deepBrown,
+        background = warmWhite,
+        onBackground = warmBlack,
+        surface = warmWhite,
+        onSurface = warmBlack,
+        surfaceVariant = warmSurfaceHighest,
 
-        /** Unselected Chips */
-        tertiaryContainer = lightGray,
+        /** Muted text, unselected icon */
+        onSurfaceVariant = warmGray,
+        surfaceTint = darkOrange,
+        inverseSurface = warmCharcoal,
+        inverseOnSurface = warmSurfaceLow,
+        error = red,
+        onError = Color.White,
+        errorContainer = paleRust,
+        onErrorContainer = maroon,
 
-        /** Gray text, comments */
-        outline = darkGray,
-        surface = Color.White,
-        onSurface = Color.Black,
-        error = darkOrange,
+        /** Border that must be seen, e.g. around a text field */
+        outline = warmOutline,
+
+        /** Decorative border, divider */
+        outlineVariant = warmOutlineSoft,
+        scrim = Color.Black,
+        surfaceBright = warmWhite,
+        surfaceDim = warmSurfaceDim,
+        surfaceContainerLowest = Color.White,
+        surfaceContainerLow = warmSurfaceLow,
+
+        /** Card, list row, bottom navigation bar */
+        surfaceContainer = warmSurface,
+
+        /** Dialog */
+        surfaceContainerHigh = warmSurfaceHigh,
+        surfaceContainerHighest = warmSurfaceHighest,
+    )
+
+/** Corner radii of the Material components, from the smallest component to the largest. */
+private val AmberShapes =
+    Shapes(
+        extraSmall = RoundedCornerShape(ROUND_CORNER_MINI),
+        small = RoundedCornerShape(ROUND_CORNER_SMALL),
+        medium = RoundedCornerShape(ROUND_CORNER),
+        large = RoundedCornerShape(ROUND_CORNER_BIG),
+        extraLarge = RoundedCornerShape(ROUND_CORNER_ENORMOUS),
     )
 
 @Composable
@@ -110,5 +163,10 @@ fun AmberAppTheme(
     }
   }
 
-  MaterialTheme(colorScheme = colorScheme, content = content)
+  MaterialTheme(
+      colorScheme = colorScheme,
+      shapes = AmberShapes,
+      typography = AmberTypography,
+      content = content,
+  )
 }

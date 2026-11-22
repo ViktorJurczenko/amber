@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient
 
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
@@ -43,13 +43,13 @@ import androidx.compose.ui.unit.Dp
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS_PATIENT
 import com.github.se.amber.ui.theme.DISABLED_ALPHA
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_ELEVATION
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
 object PatientUtilsTestTags {
@@ -99,13 +99,13 @@ fun DisplayPatientTitle(
  * @param buttonHeight height of the button
  * @param buttonWidth fraction of the available width taken by the button. Ignored when [fillWidth]
  *   is false.
- * @param outlined if true, the button is transparent with a visible outline instead of the filled
+ * @param outlined if true, the button has no fill and a visible outline instead of the filled
  *   style. Use it for secondary actions.
  * @param fillWidth if true, the button fills the available width (scaled by [buttonWidth]) and is
  *   centered. If false, the button only wraps its content.
  * @param text label displayed on the button.
  * @param textStyle typography style of the button label
- * @param icon icon displayed after the label. No icon is displayed when null.
+ * @param icon icon displayed before the label. No icon is displayed when null.
  * @param description content description for the icon. Only used when [icon] is not null.
  * @param enabled say if the button is clickable or not
  * @param onClick callback invoked when the button is selected.
@@ -140,46 +140,53 @@ fun DisplayPatientButton(
       testTag
           ?: if (icon != null) PatientUtilsTestTags.BUTTON_WITH_ICON
           else PatientUtilsTestTags.BUTTON
+  // The outline of a disabled button fades with its label, so that it does not look pressable.
+  val outlineColor =
+      if (enabled) MaterialTheme.colorScheme.primary
+      else MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
   Button(
       onClick = onClick,
       modifier = modifier.then(sizeModifier).height(buttonHeight).testTag(resolvedTestTag),
       enabled = enabled,
-      shape = RoundedCornerShape(ROUND_CORNER),
-      border =
-          if (outlined) BorderStroke(BORDER_THICKNESS_PATIENT, MaterialTheme.colorScheme.tertiary)
-          else null,
+      shape = MaterialTheme.shapes.extraLarge,
+      border = if (outlined) BorderStroke(BORDER_THICKNESS_PATIENT, outlineColor) else null,
+      // A filled button casts a small shadow, so that it reads as something to press.
+      elevation =
+          if (outlined) null
+          else ButtonDefaults.buttonElevation(defaultElevation = PATIENT_BUTTON_ELEVATION),
       colors =
           if (outlined) {
             ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.primary,
             )
           } else {
             ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             )
           },
   ) {
+    // The icon and the label are centered together, the icon first: it is what the eye finds first.
     Row(
         modifier = if (fillWidth) Modifier.fillMaxSize() else Modifier,
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement =
+            Arrangement.spacedBy(PATIENT_PADDING_SMALL, Alignment.CenterHorizontally),
     ) {
-      Text(
-          text,
-          style = textStyle,
-          textAlign = TextAlign.Center,
-          modifier = if (fillWidth) Modifier.weight(WEIGHT_ONE) else Modifier,
-      )
       icon?.let {
         Icon(
             imageVector = it,
             contentDescription = description,
-            modifier =
-                (if (fillWidth) Modifier else Modifier.padding(start = PATIENT_PADDING_SMALL))
-                    .testTag(iconTestTag),
+            modifier = Modifier.size(PATIENT_ICON_SIZE).testTag(iconTestTag),
         )
       }
+      Text(
+          text,
+          style = textStyle,
+          textAlign = TextAlign.Center,
+          modifier = if (fillWidth) Modifier.weight(WEIGHT_ONE, fill = false) else Modifier,
+      )
     }
   }
 }
@@ -211,7 +218,7 @@ fun DisplayPatientCircularIconButton(
     testTag: String = PatientUtilsTestTags.ICON_BUTTON,
     spinnerTestTag: String = "",
 ) {
-  val contentColor = MaterialTheme.colorScheme.onTertiary
+  val contentColor = MaterialTheme.colorScheme.onPrimary
   FilledIconButton(
       onClick = onClick,
       enabled = enabled,
@@ -223,10 +230,10 @@ fun DisplayPatientCircularIconButton(
       shape = CircleShape,
       colors =
           IconButtonDefaults.filledIconButtonColors(
-              containerColor = MaterialTheme.colorScheme.tertiary,
+              containerColor = MaterialTheme.colorScheme.primary,
               contentColor = contentColor,
               disabledContainerColor =
-                  MaterialTheme.colorScheme.tertiary.copy(alpha = DISABLED_ALPHA),
+                  MaterialTheme.colorScheme.primary.copy(alpha = DISABLED_ALPHA),
               disabledContentColor = contentColor.copy(alpha = DISABLED_ALPHA),
           ),
   ) {

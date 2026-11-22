@@ -1,15 +1,14 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.media
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -21,10 +20,9 @@ import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
-import com.github.se.amber.ui.theme.ROUND_CORNER
+import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import java.util.Locale
 
 object MediaUtilsTestTags {
@@ -71,7 +69,8 @@ fun geoLocationIntoString(location: GeoLocation): String? {
 }
 
 /**
- * Displays a box with visible orange outlines around its content.
+ * Displays its content in a tinted, rounded box, which sets it apart without a border. Its tone is
+ * one step above a card, so it also stands out when it is placed inside one.
  *
  * @param modifier modifier to apply to the box
  * @param content content displayed inside the box
@@ -83,10 +82,11 @@ fun DisplayBox(
 ) {
   Surface(
       modifier = modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(ROUND_CORNER),
-      border = BorderStroke(BORDER_THICKNESS, MaterialTheme.colorScheme.outline),
+      shape = MaterialTheme.shapes.medium,
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      contentColor = MaterialTheme.colorScheme.onSurface,
   ) {
-    Box(Modifier.padding(PADDING_MINI)) { content() }
+    Box(Modifier.padding(PATIENT_PADDING_SMALL)) { content() }
   }
 }
 

@@ -3,11 +3,11 @@
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.BlurOn
@@ -31,7 +30,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,7 +61,6 @@ import com.github.se.amber.ui.caregiver.DisplayTextFieldTestTags.MAX_CHAR_MESSAG
 import com.github.se.amber.ui.caregiver.DisplayTextFieldTestTags.MAX_LINES_MESSAGE
 import com.github.se.amber.ui.caregiver.DisplayTextFieldTestTags.TEXT
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_HEIGHT_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
@@ -74,9 +71,6 @@ import com.github.se.amber.ui.theme.DISABLED_ALPHA
 import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
 import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
 import com.github.se.amber.ui.theme.MIN_LINE_DEFAULT
-import com.github.se.amber.ui.theme.PADDING_BIG
-import com.github.se.amber.ui.theme.PADDING_MEDIUM
-import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.SURFACE_MEDIUM
 
 /**
@@ -93,7 +87,7 @@ fun DisplayCaregiverTitle(modifier: Modifier = Modifier, title: String) {
               .padding(top = CAREGIVER_PADDING_SMALL, bottom = CAREGIVER_PADDING_MEDIUM)
               .fillMaxWidth(CAREGIVER_TITLE_WIDTH),
       text = title,
-      textAlign = TextAlign.Center,
+      textAlign = TextAlign.Start,
       color = MaterialTheme.colorScheme.primary,
       style = MaterialTheme.typography.headlineSmall,
   )
@@ -150,12 +144,13 @@ fun DisplayCaregiverButton(
       // A minimum height lets multiline text expand without being clipped.
       modifier =
           modifier.fillMaxWidth(widthPercentage).heightIn(min = height).testTag(buttonTestTag),
+      // The icon and the text take the content color, which Material fades when disabled.
       colors =
           ButtonDefaults.buttonColors(
-              containerColor = MaterialTheme.colorScheme.tertiary,
-              contentColor = MaterialTheme.colorScheme.onTertiary,
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
           ),
-      shape = RoundedCornerShape(ROUND_CORNER),
+      shape = MaterialTheme.shapes.large,
   ) {
     val iconAboveTheText = iconAboveText && icon != null
     val iconContent: @Composable () -> Unit = {
@@ -164,7 +159,6 @@ fun DisplayCaregiverButton(
             imageVector = icon,
             contentDescription = description,
             modifier = Modifier.testTag(DisplayCaregiverButtonTestTags.ICON),
-            tint = MaterialTheme.colorScheme.onTertiary,
         )
       }
     }
@@ -174,7 +168,6 @@ fun DisplayCaregiverButton(
           modifier =
               Modifier.then(if (iconAboveTheText) Modifier.fillMaxWidth() else Modifier)
                   .testTag(DisplayCaregiverButtonTestTags.TEXT),
-          color = MaterialTheme.colorScheme.onTertiary,
           textAlign = TextAlign.Center,
           style = style,
       )
@@ -235,7 +228,7 @@ fun DisplayCaregiverIconButton(
     testTag: String = DisplayCaregiverIconButtonTestTags.BUTTON,
     spinnerTestTag: String = "",
 ) {
-  val contentColor = MaterialTheme.colorScheme.onTertiary
+  val contentColor = MaterialTheme.colorScheme.onPrimary
   FilledIconButton(
       onClick = onClick,
       enabled = enabled,
@@ -243,10 +236,10 @@ fun DisplayCaregiverIconButton(
       shape = CircleShape,
       colors =
           IconButtonDefaults.filledIconButtonColors(
-              containerColor = MaterialTheme.colorScheme.tertiary,
+              containerColor = MaterialTheme.colorScheme.primary,
               contentColor = contentColor,
               disabledContainerColor =
-                  MaterialTheme.colorScheme.tertiary.copy(alpha = DISABLED_ALPHA),
+                  MaterialTheme.colorScheme.primary.copy(alpha = DISABLED_ALPHA),
               disabledContentColor = contentColor.copy(alpha = DISABLED_ALPHA),
           ),
   ) {
@@ -313,42 +306,20 @@ fun DisplayTextField(
   assert(maxChar > 0)
   assert(minLines > 0)
 
-  var isFocused by remember { mutableStateOf(false) }
   var hasBeenFocused by remember { mutableStateOf(false) }
 
+  // The outline, the label and their focused and error colors are Material's, from the theme.
   OutlinedTextField(
       value = value,
       onValueChange = onValueChange,
-      label = {
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-      },
+      label = { Text(text = label) },
       placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
       modifier =
           modifier
               .fillMaxWidth()
-              .border(
-                  width = BORDER_THICKNESS,
-                  color =
-                      if (isFocused) MaterialTheme.colorScheme.secondary
-                      else MaterialTheme.colorScheme.tertiary,
-                  shape = RoundedCornerShape(ROUND_CORNER),
-              )
-              .onFocusChanged { focusState ->
-                isFocused = focusState.isFocused
-                if (focusState.isFocused) hasBeenFocused = true
-              }
+              .onFocusChanged { focusState -> if (focusState.isFocused) hasBeenFocused = true }
               .testTag(TEXT),
-      shape = RoundedCornerShape(ROUND_CORNER),
-      // necessary, otherwise a double back border is visible
-      colors =
-          OutlinedTextFieldDefaults.colors(
-              focusedBorderColor = Color.Transparent,
-              unfocusedBorderColor = Color.Transparent,
-          ),
+      shape = MaterialTheme.shapes.medium,
       singleLine = singleLine,
       minLines = minLines,
       maxLines = if (singleLine) 1 else maxLines,
@@ -392,12 +363,18 @@ object DisplayBoxWithIconTextTestTags {
 }
 
 /**
- * Displays a bordered, fully clickable row with a circular icon and a label.
+ * Displays a tinted, fully clickable row with a circular icon and a label. Use it for one entry in
+ * a list of actions.
  *
  * @param modifier The modifier applied to the action container.
  * @param icon The icon shown inside the button.
- * @param contentDescription The accessibility description of the icon.
+ * @param contentDescription The accessibility description of the icon. Leave it empty when [text]
+ *   already names the action, so that it is not read twice.
  * @param text The text displayed next to the button.
+ * @param style The typography style of [text].
+ * @param iconContainerColor The color of the circle behind the icon. Give `errorContainer` for an
+ *   action that cannot be undone.
+ * @param iconColor The color of the icon; it MUST be the `on` color of [iconContainerColor].
  * @param onClick The callback invoked when the box is pressed.
  */
 @Composable
@@ -407,36 +384,35 @@ fun DisplayBoxWithIconText(
     contentDescription: String = "",
     text: String = "",
     style: TextStyle = MaterialTheme.typography.bodyMedium,
+    iconContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    iconColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     onClick: () -> Unit = {},
 ) {
   Row(
       modifier =
           modifier
               .fillMaxWidth()
-              .border(
-                  width = BORDER_THICKNESS,
-                  color = MaterialTheme.colorScheme.tertiary,
-                  shape = RoundedCornerShape(ROUND_CORNER),
-              )
-              .clip(RoundedCornerShape(ROUND_CORNER))
+              .clip(MaterialTheme.shapes.medium)
+              .background(MaterialTheme.colorScheme.surfaceContainer)
               .clickable(role = Role.Button, onClick = onClick)
-              .padding(PADDING_MEDIUM),
+              .padding(CAREGIVER_PADDING_MEDIUM),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(PADDING_BIG),
+      horizontalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
   ) {
     Box(
         modifier =
             Modifier.size(SURFACE_MEDIUM)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.tertiary)
+                .background(iconContainerColor)
                 .testTag(BOX),
         contentAlignment = Alignment.Center,
     ) {
       Icon(
           modifier = Modifier.testTag(ICON),
           imageVector = icon,
-          contentDescription = contentDescription,
-          tint = MaterialTheme.colorScheme.onTertiary,
+          // Without a description the icon is decorative: TalkBack reads the text of the row
+          contentDescription = contentDescription.ifEmpty { null },
+          tint = iconColor,
       )
     }
 

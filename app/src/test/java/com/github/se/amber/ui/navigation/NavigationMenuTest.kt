@@ -1,5 +1,6 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.navigation
 
@@ -7,8 +8,8 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
@@ -57,24 +58,60 @@ class NavigationMenuTest {
   }
 
   @Test
-  @Config(qualifiers = "fr")
-  fun bottomMenuTabsAreDescribedInFrench() {
+  fun topMenuLabelClickInvokesCallback() {
+    var clicks = 0
+    composeTestRule.setContent { TopNavigationMenu(onBackClick = { clicks++ }) }
+
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.TITLE).performClick()
+
+    assertEquals(1, clicks)
+  }
+
+  @Test
+  fun bottomMenuShowsTheNameOfEveryCaregiverTab() {
     composeTestRule.setContent { BottomNavigationMenu() }
 
-    listOf("Accueil", "Ajouter", "Paramètres").forEach { label ->
-      composeTestRule.onNodeWithContentDescription(label, useUnmergedTree = true).assertExists()
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    CaregiverTab.caregiverTabs.forEach { tab ->
+      composeTestRule
+          .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(tab))
+          .assertTextEquals(context.getString(tab.label))
+    }
+  }
+
+  @Test
+  fun bottomMenuShowsTheNameOfEveryPatientTab() {
+    composeTestRule.setContent {
+      BottomNavigationMenu(selectedTab = PatientTab.Home, tabs = PatientTab.patientTabs)
+    }
+
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    PatientTab.patientTabs.forEach { tab ->
+      composeTestRule
+          .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(tab))
+          .assertTextEquals(context.getString(tab.label))
     }
   }
 
   @Test
   @Config(qualifiers = "fr")
-  fun patientBottomMenuTabsAreDescribedInFrench() {
+  fun bottomMenuTabsAreLabelledInFrench() {
+    composeTestRule.setContent { BottomNavigationMenu() }
+
+    listOf("Accueil", "Ajouter", "Paramètres").forEach { label ->
+      composeTestRule.onNodeWithText(label, useUnmergedTree = true).assertIsDisplayed()
+    }
+  }
+
+  @Test
+  @Config(qualifiers = "fr")
+  fun patientBottomMenuTabsAreLabelledInFrench() {
     composeTestRule.setContent {
       BottomNavigationMenu(selectedTab = PatientTab.Home, tabs = PatientTab.patientTabs)
     }
 
     listOf("Accueil", "Médias", "Paramètres").forEach { label ->
-      composeTestRule.onNodeWithContentDescription(label, useUnmergedTree = true).assertExists()
+      composeTestRule.onNodeWithText(label, useUnmergedTree = true).assertIsDisplayed()
     }
   }
 
