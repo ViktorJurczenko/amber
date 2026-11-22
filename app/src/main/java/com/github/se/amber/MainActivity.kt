@@ -303,7 +303,7 @@ fun AmberApp(
         SeeMediasSpecificPersonScreen(
             personId = personId,
             onBackClick = { navigationActions.goBack() },
-            onTabSelected = { tab -> navigationActions.navigateToTab(tab)},
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
             onPersonClick = { id ->
               // Clicking the person we are already looking at would just stack a duplicate screen
               if (id != personId) navigationActions.navigateToSeeMediasSpecificPerson(id)

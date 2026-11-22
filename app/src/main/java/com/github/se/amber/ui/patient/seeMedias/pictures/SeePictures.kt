@@ -59,6 +59,7 @@ fun SeePicturesScreen(
       onErrorShown = pictureViewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
+      onPersonClick = onPersonClick,
   ) { picture, circle, modifier ->
     MediaImage(
         circle = circle,

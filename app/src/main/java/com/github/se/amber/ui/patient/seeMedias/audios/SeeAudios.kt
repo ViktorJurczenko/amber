@@ -68,6 +68,7 @@ fun SeeAudiosScreen(
       onErrorShown = audioViewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
+      onPersonClick = onPersonClick,
   ) { audio, _, modifier ->
     DisplayAudioPlayback(
         modifier = modifier.testTag(SeeAudiosTestTags.audio(audio.id)),
