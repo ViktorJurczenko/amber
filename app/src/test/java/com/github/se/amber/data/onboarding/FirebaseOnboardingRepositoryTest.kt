@@ -1,5 +1,6 @@
 // This file was written by Neha Chakraborty and Copilot
 // Modified by Alaabrine, with assistance from Cursor (Grok).
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.onboarding
 
