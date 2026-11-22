@@ -25,6 +25,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -545,6 +546,105 @@ class CreateProfileViewModelTests {
         R.string.createProfileErrorAlreadyInCircle,
         viewModel.uiState.value.errorMsgRes,
     )
+  }
+
+  @Test
+  fun onRoleSelected_everyUpdateOrReadFailure_showsItsOwnMessage() = runTest {
+    val updateFailures =
+        mapOf(
+            ProfileUpdateError.InvalidPersonDetails to R.string.createProfileErrorInvalidName,
+            ProfileUpdateError.NotAuthenticated to R.string.createProfileErrorSessionExpired,
+            ProfileUpdateError.PermissionDenied to R.string.createProfileErrorPermissionDenied,
+            ProfileUpdateError.Network to R.string.createProfileErrorOffline,
+        )
+    val readFailures =
+        mapOf(
+            ProfileReadError.PermissionDenied to R.string.createProfileErrorPermissionDenied,
+            ProfileReadError.Network to R.string.createProfileErrorOffline,
+        )
+    coEvery { profileRepository.createProfile(any(), any()) } returns
+        Result.failure(ProfileCreationError.ProfileAlreadyExists)
+
+    coEvery { profileRepository.getCurrentProfile() } returns
+        Result.success(savedProfile(role = Role.CAREGIVER))
+    updateFailures.forEach { (error, message) ->
+      coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns
+          Result.failure(error)
+      assertEquals(error.toString(), message, failedMessageOfAFreshScreen())
+    }
+    readFailures.forEach { (error, message) ->
+      coEvery { profileRepository.getCurrentProfile() } returns Result.failure(error)
+      assertEquals(error.toString(), message, failedMessageOfAFreshScreen())
+    }
+    assertEquals(0, successCount)
+  }
+
+  @Test
+  fun onRoleSelected_existingProfileWithSameRoleButOtherName_writesTheTypedName() = runTest {
+    val otherNames =
+        listOf(
+            Person(id = "uid", firstName = "Grace", lastName = "Lovelace"),
+            Person(id = "uid", firstName = "Ada", lastName = "Byron"),
+        )
+    coEvery { profileRepository.createProfile(any(), any()) } returns
+        Result.failure(ProfileCreationError.ProfileAlreadyExists)
+    coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns Result.success(Unit)
+
+    otherNames.forEach { stored ->
+      coEvery { profileRepository.getCurrentProfile() } returns
+          Result.success(savedProfile(role = Role.PATIENT).copy(person = stored))
+      viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+      fillValidNameAndSurname()
+      viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+      advanceUntilIdle()
+    }
+
+    assertEquals(otherNames.size, successCount)
+    coVerify(exactly = otherNames.size) {
+      profileRepository.updateOnboardingProfile(
+          person = Person(firstName = "Ada", lastName = "Lovelace"),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  @Test
+  fun onRoleSelected_sameRoleAfterEditingAName_savesTheEditedName() = runTest {
+    coEvery { profileRepository.createProfile(any(), any()) } returns Result.success(Unit)
+    coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns Result.success(Unit)
+    fillValidNameAndSurname()
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    viewModel.onNameChange("Grace")
+    viewModel.onRoleSelected(Role.PATIENT)
+    advanceUntilIdle()
+    viewModel.onSurnameChange("Hopper")
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(2, successCount)
+    coVerify(exactly = 1) {
+      profileRepository.updateOnboardingProfile(
+          person = Person(firstName = "Grace", lastName = "Lovelace"),
+          role = Role.PATIENT,
+      )
+    }
+    coVerify(exactly = 1) {
+      profileRepository.updateOnboardingProfile(
+          person = Person(firstName = "Grace", lastName = "Hopper"),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  /** Picks Patient on a new screen with a valid name and returns the message it shows. */
+  private fun TestScope.failedMessageOfAFreshScreen(): Int? {
+    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    fillValidNameAndSurname()
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+    return viewModel.uiState.value.errorMsgRes
   }
 
   private fun fillValidNameAndSurname() {

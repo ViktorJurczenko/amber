@@ -1208,6 +1208,7 @@ class MediaViewModelTest {
   private val home = Place(id = "home", name = "Home", location = GeoLocation(46.5, 6.6))
   private val doctor = Place(id = "doctor", name = "Dr. Martin", location = GeoLocation(46.2, 6.1))
   private val unmapped = Place(id = "old", name = "Old house") // no coordinates
+  private val halfMapped = Place(id = "lake", name = "Lake", location = GeoLocation(lat = 46.4))
 
   private fun circleWithPlaces(vararg places: Place) {
     circle = fakeCircle(places = places.associateBy { it.id })
@@ -1231,7 +1232,7 @@ class MediaViewModelTest {
 
   @Test
   fun placeOptionsLeaveOutPlacesWithoutCoordinates() {
-    circleWithPlaces(home, unmapped)
+    circleWithPlaces(home, unmapped, halfMapped)
     assertEquals(mapOf("home" to "Home"), createViewModel().placeOptions.value)
   }
 
@@ -1416,6 +1417,24 @@ class MediaViewModelTest {
   }
 
   @Test
+  fun lastNameWithDigitsIsRefusedWithErrorUnderTheFieldAndNotSaved() {
+    loadCircle(CareCircle(id = "circle1"))
+    val vm = createViewModel()
+    vm.onAddPerson()
+    vm.setPersonFirstName("Anne")
+    vm.setPersonLastName("Smith2")
+
+    val common = vm.uiState.value.common
+    assertEquals(UiText.Resource(R.string.inputErrorNameFormat), common.personLastNameError)
+    assertFalse(common.canAddPerson)
+    assertFalse(common.arePersonNamesValid)
+
+    vm.addPerson()
+
+    coVerify(exactly = 0) { circleRepo.addPerson(any(), any()) }
+  }
+
+  @Test
   fun unfinishedPersonNameShowsItsErrorOnlyOnceAddIsTapped() {
     loadCircle(CareCircle(id = "circle1"))
     val vm = createViewModel()
@@ -1533,6 +1552,7 @@ class MediaViewModelTest {
 
     vm.addPerson()
     assertTrue(vm.uiState.value.common.isAddingPerson)
+    assertFalse(vm.uiState.value.common.canAddPerson)
     vm.dismissAddPerson()
     assertTrue(vm.uiState.value.common.isAddPersonOpen)
     assertEquals("Anne", vm.uiState.value.common.personFirstName)

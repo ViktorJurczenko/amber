@@ -131,6 +131,27 @@ class FirebaseOnboardingRepositoryTest {
   }
 
   @Test
+  fun createInitialCareCircle_rejectsEveryInvalidProfileWithoutWriting() = runBlocking {
+    val allFields = setOf("uid", "role", "person", "circleIds")
+    val invalidProfiles =
+        listOf(
+            null to allFields,
+            profile() to allFields - "uid",
+            profile() to allFields - "role",
+            profile() to allFields - "person",
+            profile().copy(uid = "someone-else") to allFields,
+            profile().copy(person = Person(id = "someone-else", firstName = "Ada")) to allFields,
+        )
+
+    invalidProfiles.forEach { (stored, fields) ->
+      stubTransactionWithProfile(profile = stored, validFields = fields)
+
+      assertFailure<OnboardingError.InvalidProfile>(repository.createInitialCareCircle("Family"))
+    }
+    verify(exactly = 0) { transaction.set(circleDocument, any<CareCircle>()) }
+  }
+
+  @Test
   fun createInitialCareCircle_rejectsPatientWhoAlreadyHasCirclesWithoutWriting() = runBlocking {
     stubTransactionWithProfile(
         profile =
