@@ -521,6 +521,11 @@ class MediaMapViewModelTest {
 
     activeCircleRepository.activeId.tryEmit("circle2")
 
+    // the next circle's pins really failed, not just loaded empty
+    assertEquals(
+        MediaMapUIState.BlockingError(R.string.mediaMapErrorLoadMedia),
+        viewModel.uiState.value,
+    )
     assertEquals(MediaMapLocationState.Located(nearLausanne), viewModel.location())
   }
 

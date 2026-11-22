@@ -345,6 +345,7 @@ class ChangeCareCircleViewModelTest {
     viewModel.clearErrorMsg()
 
     assertEquals(ChangeCareCircleStatus.ERROR, blockingError.status)
+    assertEquals(R.string.changeCareCircleErrorLoadCircle, blockingError.errorMsgRes)
     assertEquals(blockingError, viewModel.uiState.value)
   }
 
