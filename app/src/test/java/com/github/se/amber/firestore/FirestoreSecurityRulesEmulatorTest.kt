@@ -686,6 +686,93 @@ class FirestoreSecurityRulesEmulatorTest {
     fs.assertSucceeds(pat, fs.patch("$path/a1", edit + ("updatedBy" to pat)))
   }
 
+  /**
+   * The reminder list of an appointment, against the real rules.
+   *
+   * The rules can't loop over a list, so they check each of the 5 places on its own. A bad value at
+   * the first and at the last place shows that no place was left out.
+   */
+  @Test
+  fun appointments_reminderList_checkedLikeTheApp_enforcedByEmulator() {
+    val circleId = "c-reminders"
+    val care = "care"
+    val pat = "pat"
+    fs.adminSet("careCircles/$circleId", circle(circleId, care, listOf(care, pat), patientId = pat))
+    fs.adminSet("users/$care", user(care, "CAREGIVER", listOf(circleId), "Ada"))
+    fs.adminSet("users/$pat", user(pat, "PATIENT", listOf(circleId), "Pat"))
+    val path = "careCircles/$circleId/appointments"
+    val week = 7 * 24 * 60
+
+    // from a caregiver and from the patient, on create and on edit
+    fs.assertSucceeds(care, fs.set("$path/a1", appointment("a1", care)))
+    fs.assertSucceeds(pat, fs.set("$path/a2", appointment("a2", pat)))
+    val edit = mapOf("updatedBy" to pat, "updatedAt" to START)
+    fs.assertSucceeds(
+        pat,
+        fs.patch("$path/a1", edit + ("reminderMinutesBefore" to listOf(0, 60, 1440, 2880, week))),
+    )
+    fs.assertSucceeds(
+        care,
+        fs.patch(
+            "$path/a2",
+            edit + ("updatedBy" to care) + ("reminderMinutesBefore" to emptyList<Int>()),
+        ),
+    )
+    // the field can't be left out
+    fs.assertFails(care, fs.set("$path/a3", appointment("a3", care) - "reminderMinutesBefore"))
+
+    // too many values, a value out of 0..7 days at the first or the last place, not a list
+    listOf(listOf(1, 2, 3, 4, 5, 6), listOf(-1), listOf(1, 2, 3, 4, week + 1), listOf("60"), 60)
+        .forEach { reminders ->
+          fs.assertFails(
+              care,
+              fs.set("$path/a4", appointment("a4", care) + ("reminderMinutesBefore" to reminders)),
+          )
+          fs.assertFails(pat, fs.patch("$path/a1", edit + ("reminderMinutesBefore" to reminders)))
+        }
+  }
+
+  /**
+   * The patient of an appointment, against the real rules: the circle's, then never changed. A
+   * circle without a patient can't have appointments.
+   */
+  @Test
+  fun appointments_patientIsTheCirclesAndNeverChanges_enforcedByEmulator() {
+    val circleId = "c-patient"
+    val care = "care"
+    fs.adminSet(
+        "careCircles/$circleId",
+        circle(circleId, care, listOf(care, PATIENT), patientId = PATIENT),
+    )
+    fs.adminSet("users/$care", user(care, "CAREGIVER", listOf(circleId), "Ada"))
+    fs.adminSet("users/$PATIENT", user(PATIENT, "PATIENT", listOf(circleId), "Pat"))
+    val path = "careCircles/$circleId/appointments"
+
+    fs.assertSucceeds(care, fs.set("$path/a1", appointment("a1", care)))
+    // another member, nobody, or no field at all
+    val other = appointment("a2", care)
+    fs.assertFails(care, fs.set("$path/a2", other + ("patientId" to care)))
+    fs.assertFails(care, fs.set("$path/a2", other + ("patientId" to "")))
+    fs.assertFails(care, fs.set("$path/a2", other - "patientId"))
+    // a circle whose patient hasn't joined yet, even with a matching ""
+    fs.adminSet("careCircles/c-empty", circle("c-empty", care, listOf(care), patientId = ""))
+    fs.adminSet("users/$care", user(care, "CAREGIVER", listOf(circleId, "c-empty"), "Ada"))
+    fs.assertFails(
+        care,
+        fs.set(
+            "careCircles/c-empty/appointments/a5",
+            appointment("a5", care) + ("patientId" to ""),
+        ),
+    )
+
+    // An edit keeps it, from a caregiver and from the patient
+    val edit = mapOf("title" to "Dentist", "updatedAt" to START)
+    fs.assertSucceeds(care, fs.patch("$path/a1", edit + ("updatedBy" to care)))
+    fs.assertSucceeds(PATIENT, fs.patch("$path/a1", edit + ("updatedBy" to PATIENT)))
+    fs.assertFails(care, fs.patch("$path/a1", edit + ("updatedBy" to care) + ("patientId" to care)))
+    fs.assertFails(care, fs.patch("$path/a1", edit + ("updatedBy" to care) + ("patientId" to "")))
+  }
+
   /** The reads behind CareCircleRepository.getCircle(circleId). */
   @Test
   fun careCircleRead_allowsOnlySignedInMembersOfExistingCircle_enforcedByEmulator() {
@@ -857,6 +944,12 @@ class FirestoreSecurityRulesEmulatorTest {
     /** One hour, in milliseconds. */
     private const val HOUR = 60 * 60_000L
 
+    /**
+     * The patient of every circle the appointment tests write to. The rules refuse an appointment
+     * whose patient isn't the circle's, so each of those circles must use this uid as patientId.
+     */
+    private const val PATIENT = "pat"
+
     /** Wall-clock millis so invite expiry compares correctly to emulator `request.time`. */
     private val now: Long
       get() = System.currentTimeMillis()
@@ -952,7 +1045,8 @@ class FirestoreSecurityRulesEmulatorTest {
 
     /**
      * @return a valid appointment [id], created and last saved by [savedBy], with the fields
-     *   AppointmentRepository writes.
+     *   AppointmentRepository writes. Its patient is [PATIENT], the patient of every circle these
+     *   tests write appointments to.
      */
     private fun appointment(id: String, savedBy: String) =
         mapOf(
@@ -963,6 +1057,8 @@ class FirestoreSecurityRulesEmulatorTest {
             "durationMinutes" to 60,
             "location" to null,
             "attendeeIds" to listOf(savedBy),
+            "reminderMinutesBefore" to listOf(24 * 60),
+            "patientId" to PATIENT,
             "lastEndAt" to START + 60 * 60_000L,
             "createdBy" to savedBy,
             "createdAt" to START - 1,

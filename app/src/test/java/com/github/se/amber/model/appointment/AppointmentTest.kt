@@ -28,6 +28,8 @@ class AppointmentTest {
           durationMinutes = 30,
           location = GeoLocation(lat = 46.5, lng = 6.6, placeName = "CHUV"),
           attendeeIds = listOf("u1", "u2"),
+          reminderMinutesBefore = listOf(60, 24 * 60),
+          patientId = "pat",
           lastEndAt = 1_000L + 30.minutes.inWholeMilliseconds,
           createdBy = "u1",
           createdAt = 500L,
@@ -42,6 +44,11 @@ class AppointmentTest {
     assertNull(valid.copy(durationMinutes = 1).validationError())
     // One day, written out so that a wrong MAX_DURATION_MINUTES fails.
     assertNull(valid.copy(durationMinutes = 24 * 60).validationError())
+    // No reminder, and the limits: 5 values, from 0 minutes to 7 days written out.
+    assertNull(valid.copy(reminderMinutesBefore = emptyList()).validationError())
+    assertNull(
+        valid.copy(reminderMinutesBefore = listOf(0, 1, 2, 3, 7 * 24 * 60)).validationError()
+    )
   }
 
   @Test
@@ -77,6 +84,16 @@ class AppointmentTest {
   }
 
   @Test
+  fun invalidRemindersAreRefused() {
+    listOf(listOf(1, 2, 3, 4, 5, 6), listOf(-1), listOf(60, 7 * 24 * 60 + 1)).forEach { reminders ->
+      assertEquals(
+          AppointmentValidationError.INVALID_REMINDERS,
+          valid.copy(reminderMinutesBefore = reminders).validationError(),
+      )
+    }
+  }
+
+  @Test
   fun checksRunInTheOrderOfTheEnum() {
     assertEquals(
         AppointmentValidationError.BLANK_TITLE,
@@ -85,6 +102,10 @@ class AppointmentTest {
     assertEquals(
         AppointmentValidationError.MISSING_START,
         valid.copy(startAt = 0L, durationMinutes = 0).validationError(),
+    )
+    assertEquals(
+        AppointmentValidationError.INVALID_DURATION,
+        valid.copy(durationMinutes = 0, reminderMinutesBefore = listOf(-1)).validationError(),
     )
   }
 
@@ -102,6 +123,8 @@ class AppointmentTest {
             "durationMinutes",
             "location",
             "attendeeIds",
+            "reminderMinutesBefore",
+            "patientId",
             "lastEndAt",
             "createdBy",
             "createdAt",
@@ -121,18 +144,25 @@ class AppointmentTest {
   }
 
   @Test
-  fun aDocumentWrittenBeforeTheNewFieldsGetsTheirDefaults() {
-    val oldDocument =
-        mapOf(
-            "id" to "a1",
-            "title" to "Dr. Martin",
-            "startAt" to 1_000L,
-            "createdBy" to "u1",
-            "createdAt" to 500L,
-        )
+  fun anEmptyReminderListIsReadBackEmptyNotAsTheDefault() {
+    val noReminder = stored.copy(reminderMinutesBefore = emptyList())
+    val map = CustomClassMapper.convertToPlainJavaTypes(noReminder)
 
-    val read = CustomClassMapper.convertToCustomClass(oldDocument, Appointment::class.java, null)
+    val read = CustomClassMapper.convertToCustomClass(map, Appointment::class.java, null)
 
-    assertEquals(valid.copy(createdBy = "u1", createdAt = 500L), read)
+    assertEquals(emptyList<Int>(), read.reminderMinutesBefore)
+  }
+
+  @Test
+  fun remindersStoredAsLongsAreReadBackAsInts() {
+    // Firestore gives back every whole number as a Long, so the mapper must turn them into Ints.
+    @Suppress("UNCHECKED_CAST")
+    val map = CustomClassMapper.convertToPlainJavaTypes(stored) as Map<String, Any?>
+    val fromServer = map + ("reminderMinutesBefore" to listOf(60L, 1440L))
+
+    val read = CustomClassMapper.convertToCustomClass(fromServer, Appointment::class.java, null)
+
+    // An Integer never equals a Long, so this fails if the mapper kept the Longs.
+    assertEquals(listOf(60, 1440), read.reminderMinutesBefore)
   }
 }

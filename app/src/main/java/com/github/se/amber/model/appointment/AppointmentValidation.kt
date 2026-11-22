@@ -17,6 +17,12 @@ enum class AppointmentValidationError {
 
   /** [Appointment.durationMinutes] is set but not between 1 and [MAX_DURATION_MINUTES]. */
   INVALID_DURATION,
+
+  /**
+   * [Appointment.reminderMinutesBefore] holds more than [MAX_REMINDERS] values. It is also refused
+   * when one value is below 0 or above [MAX_REMINDER_MINUTES].
+   */
+  INVALID_REMINDERS,
 }
 
 /**
@@ -35,6 +41,9 @@ fun Appointment.validationError(): AppointmentValidationError? {
     startAt <= 0L -> AppointmentValidationError.MISSING_START
     duration != null && duration !in 1..MAX_DURATION_MINUTES ->
         AppointmentValidationError.INVALID_DURATION
+    reminderMinutesBefore.size > MAX_REMINDERS ||
+        reminderMinutesBefore.any { it !in 0..MAX_REMINDER_MINUTES } ->
+        AppointmentValidationError.INVALID_REMINDERS
     else -> null
   }
 }

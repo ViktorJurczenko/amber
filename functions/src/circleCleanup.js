@@ -72,11 +72,20 @@ async function removeFromRemainingMedia(uid, circleRef) {
 /**
  * Deletes the appointments the user created in a circle. Removes the user from the attendees of the
  * others, and empties their last editor where it was the user.
+ *
+ * When the user is the circle's patient, every appointment of the circle is deleted instead. Each
+ * one is part of that patient's schedule, and its patientId can't change. A new patient would never
+ * get reminders for them.
  * @param {string} uid the user being deleted
  * @param {DocumentReference} circleRef the circle to clean up
+ * @param {string} patientId the circle's patient, before the user leaves it
  */
-async function removeFromAppointments(uid, circleRef) {
+async function removeFromAppointments(uid, circleRef, patientId) {
   const appointments = circleRef.collection("appointments");
+  if (uid === patientId) {
+    await deleteDocuments((await appointments.get()).docs);
+    return;
+  }
   const [created, attending, updated] = await Promise.all([
     appointments.where("createdBy", "==", uid).get(),
     appointments.where("attendeeIds", "array-contains", uid).get(),
@@ -237,7 +246,7 @@ async function removeFromCircle(uid, circleSnapshot) {
   }
   await deleteAuthoredMedia(uid, circleRef, bucketName);
   await removeFromRemainingMedia(uid, circleRef);
-  await removeFromAppointments(uid, circleRef);
+  await removeFromAppointments(uid, circleRef, circleSnapshot.get("patientId"));
   // The folder goes before leaveCircle drops their personPhotos entry
   if (othersStay) {
     await deletePhotoFolder(uid, circleRef.id, bucketName);
