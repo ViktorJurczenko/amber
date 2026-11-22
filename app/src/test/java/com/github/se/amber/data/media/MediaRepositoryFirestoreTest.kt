@@ -514,6 +514,8 @@ class MediaRepositoryFirestoreTest {
         events,
     )
     assertNull(outbox.get("c1", "m1"))
+    // only the blocking folder: the sent file never made it into the cache
+    assertEquals(listOf("careCircles_c1_media_m1.jpg"), copiesOnPhone())
   }
 
   @Test
