@@ -9,6 +9,7 @@
     <string name="navigationTabUpload">Upload</string>
     <string name="navigationTabSetting">Setting</string>
     <string name="navigationTabMedias">Medias</string>
+    <string name="navigationTabMap">Map</string>
     <string name="navigationCancel">Cancel</string>
     <string name="navigationSignOut">Sign out</string>
     <string name="navigationBack">Back</string>
@@ -34,7 +35,9 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
+    <string name="screenTitlePatientMap">Parameters</string>
     <string name="screenTitlePatientParameters">Parameters</string>
+
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Welcome to Amber</string>

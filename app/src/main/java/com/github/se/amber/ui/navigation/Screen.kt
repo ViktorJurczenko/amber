@@ -210,6 +210,13 @@ sealed class PatientScreen(
           route = "patient_delete_account",
           title = R.string.screenTitleDeleteAccount,
       )
+
+  data object Map :
+      PatientScreen(
+          route = "patient_map",
+          title = R.string.screenTitlePatientMap,
+          isTopLevelDestination = true
+      )
 }
 
 /** Routes of the nested navigation graphs, one per user role. */

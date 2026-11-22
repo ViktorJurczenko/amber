@@ -5,6 +5,7 @@
     <string name="navigationTabUpload">Ajouter</string>
     <string name="navigationTabSetting">Paramètres</string>
     <string name="navigationTabMedias">Médias</string>
+    <string name="navigationTabMap">Carte</string>
     <string name="navigationCancel">Annuler</string>
     <string name="navigationSignOut">Déconnexion</string>
     <string name="navigationBack">Retour</string>
@@ -30,7 +31,9 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
+
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Bienvenue sur Amber</string>

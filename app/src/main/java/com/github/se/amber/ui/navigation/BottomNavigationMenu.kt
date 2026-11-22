@@ -1,7 +1,7 @@
 // Written by Lou-Anne Maier.
 // Modified by Yuhan YANG, with assistance from Cursor.
-// Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.navigation
 
@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Settings
@@ -43,6 +44,7 @@ internal const val HOME_TAB_KEY = "Home"
 internal const val UPLOAD_TAB_KEY = "Upload"
 internal const val SETTING_TAB_KEY = "Setting"
 internal const val MEDIAS_TAB_KEY = "Medias"
+internal const val MAP_TAB_KEY = "Map"
 
 /** Stable tags for the bottom bar, its divider, and one tag per [Tab]. */
 object BottomNavigationMenuTestTags {
@@ -161,6 +163,15 @@ sealed class PatientTab(
           PatientScreen.SeeMedias,
       )
 
+  /** Map displaying medias and location. */
+  data object Map :
+      PatientTab(
+          MAP_TAB_KEY,
+          R.string.navigationTabMap,
+          Icons.Outlined.Map,
+          PatientScreen.SeeMedias //TODO to change
+      )
+
   data object Setting :
       PatientTab(
           SETTING_TAB_KEY,
@@ -172,7 +183,7 @@ sealed class PatientTab(
   companion object {
     /** Tabs shown on patient screens, in bar order. */
     val patientTabs: List<PatientTab>
-      get() = listOf(Home, SeeMedias, Setting)
+      get() = listOf(Home, SeeMedias, Map, Setting)
   }
 }
 
