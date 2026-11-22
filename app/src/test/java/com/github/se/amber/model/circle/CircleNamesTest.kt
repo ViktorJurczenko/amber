@@ -31,6 +31,11 @@ class CircleNamesTest {
   }
 
   @Test
+  fun displayNameWithoutAKnownViewerIgnoresEveryNickname() {
+    assertEquals("Anne", circle.displayNameOf("p1", null, emptyMap()))
+  }
+
+  @Test
   fun displayNameIgnoresBlankViewerNickname() {
     val blank = circle.copy(nicknames = mapOf("u2" to mapOf("p1" to " ")))
     assertEquals("Anne", blank.displayNameOf("p1", "u2", emptyMap()))

@@ -127,6 +127,18 @@ class MediaItemMappingTest {
   }
 
   @Test
+  fun smallNumberKindsAreReadAndAnIntTooSmallIsNot() {
+    val fields = picture.toMap()
+    val width: Short = 640
+    val height: Byte = 48
+
+    val read = mediaItemFromMap("m1", fields + ("width" to width) + ("height" to height))
+
+    assertEquals(picture.copy(width = width.toInt(), height = height.toInt()), read)
+    assertNull(mediaItemFromMap("m1", fields + ("width" to Long.MIN_VALUE)))
+  }
+
+  @Test
   fun numbersAreReadWhateverTheirKind() {
     // Firestore gives integers as Long; JSON gives a whole Double back as an Int
     val read =
