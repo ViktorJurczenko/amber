@@ -39,6 +39,21 @@ class CalendarUtilsTest {
   }
 
   @Test
+  fun sundayFirstMonthStartingOnMondayHasOneLeadingBlank() {
+    // February 2027 starts on a Monday: the difference with Sunday is negative (1 - 7), which is
+    // the case that needs the + daysInWeek before the modulo.
+    assertEquals(
+        listOf(null, 1),
+        calendarCells(YearMonth.of(2027, 2), DayOfWeek.SUNDAY).take(2),
+    )
+  }
+
+  @Test
+  fun sundayFirstMonthStartingOnMondayFillsFiveWeeks() {
+    assertEquals(35, calendarCells(YearMonth.of(2027, 2), DayOfWeek.SUNDAY).size)
+  }
+
+  @Test
   fun everyDayOfTheMonthAppearsOnce() {
     assertEquals((1..30).toList(), calendarCells(november, DayOfWeek.MONDAY).filterNotNull())
   }

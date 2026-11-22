@@ -4,9 +4,6 @@ package com.github.se.amber.ui.calendar
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -32,6 +29,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** Tests [Calendar]: the box, the month navigation, the weekdays and the days. */
 @RunWith(RobolectricTestRunner::class)
@@ -107,12 +105,31 @@ class CalendarTest {
     assertEquals(LocalDate.of(2026, 12, 5), clicked)
   }
 
+  // The title and the arrows of the header are grouped in one test, to launch the header only once.
   @Test
-  fun headerTitleUsesTheGivenLocale() {
+  fun headerShowsTheTitleOfTheGivenLocaleAndTranslatedButtonDescriptions() {
     composeTestRule.setContent {
       AmberAppTheme { CalendarHeader(month = november, locale = Locale.US) }
     }
     composeTestRule.onNodeWithTag(MONTH_TITLE).assertTextEquals("November 2026")
+    composeTestRule
+        .onNodeWithTag(PREVIOUS_MONTH_BUTTON)
+        .assertContentDescriptionEquals(
+            composeTestRule.activity.getString(R.string.calendarPreviousMonth)
+        )
+    composeTestRule
+        .onNodeWithTag(NEXT_MONTH_BUTTON)
+        .assertContentDescriptionEquals(
+            composeTestRule.activity.getString(R.string.calendarNextMonth)
+        )
+  }
+
+  // The language comes from the app configuration, not from a Locale given to the header.
+  @Test
+  @Config(qualifiers = "fr")
+  fun calendarFollowsTheAppLanguage() {
+    launch()
+    composeTestRule.onNodeWithTag(MONTH_TITLE).assertTextEquals("Novembre 2026")
   }
 
   @Test
@@ -147,23 +164,6 @@ class CalendarTest {
     composeTestRule.onNodeWithTag(NEXT_MONTH_BUTTON).performClick()
     assertEquals(1, previousClicks)
     assertEquals(1, nextClicks)
-  }
-
-  @Test
-  fun headerButtonsHaveTranslatedContentDescriptions() {
-    composeTestRule.setContent {
-      AmberAppTheme { CalendarHeader(month = november, locale = Locale.US) }
-    }
-    composeTestRule
-        .onNodeWithTag(PREVIOUS_MONTH_BUTTON)
-        .assertContentDescriptionEquals(
-            composeTestRule.activity.getString(R.string.calendarPreviousMonth)
-        )
-    composeTestRule
-        .onNodeWithTag(NEXT_MONTH_BUTTON)
-        .assertContentDescriptionEquals(
-            composeTestRule.activity.getString(R.string.calendarNextMonth)
-        )
   }
 
   @Test
@@ -202,16 +202,11 @@ class CalendarTest {
   // and should pass it a fake repository.
 
   @Test
-  fun displaysTheCalendarWithTheDefaultParameters() {
+  fun displaysTheCalendarWithTheDefaultParametersAndChangesItsMonth() {
     // Case for no viewModel and no onDayClick:
     // the calendar uses its own ViewModel and ignores the clicks.
     composeTestRule.setContent { AmberAppTheme { Calendar() } }
     composeTestRule.onNodeWithTag(CALENDAR).assertIsDisplayed()
-  }
-
-  @Test
-  fun nextArrowChangesTheMonthOfTheDefaultViewModel() {
-    composeTestRule.setContent { AmberAppTheme { Calendar() } }
     val before = monthTitle()
     composeTestRule.onNodeWithTag(NEXT_MONTH_BUTTON).performClick()
     assertNotEquals(before, monthTitle())
