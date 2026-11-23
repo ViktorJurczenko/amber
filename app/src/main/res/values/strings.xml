@@ -428,4 +428,13 @@
     <string name="mediaMapErrorLoadProfile">Failed to load the profile.</string>
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
     <string name="mediaMapErrorLoadMedia">Failed to load the memories of the map.</string>
+
+    <!-- AddAppointment -->
+    <string name="addAppointmentTitle">Add an event</string>
+    <string name="addAppointmentTitleLabel">Title</string>
+    <string name="addAppointmentTitlePlaceholder">Enter a title</string>
+    <string name="addAppointmentNoteLabel">Note - Optional</string>
+    <string name="addAppointmentNotePlaceholder">Enter a note for yourself or the patient</string>
+    <string name="addAppointmentAddButton">Add event</string>
+    <string name="addAppointmentErrorTitleEmpty">The title cannot be empty</string>
 </resources>
