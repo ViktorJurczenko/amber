@@ -24,17 +24,25 @@ const val MAX_REMINDER_MINUTES = 7 * 24 * 60
 fun Appointment.isLinkedTo(uid: String): Boolean = uid == patientId || uid in attendeeIds
 
 /**
- * One reminder to show on this phone: [occurrence] starts in [Appointment.reminderMinutesBefore]
- * minutes, and the notification comes at [fireAt].
+ * One reminder to show on this phone: [occurrence] starts in [minutesBefore] minutes, and the
+ * notification comes at [fireAt].
  *
  * @property key identifies this reminder among all the reminders of the circle. It is
  *   `appointmentId@start@minutes`, so it stays the same as long as the appointment keeps its start
  *   and this reminder time. It is the WorkManager work name. Changing its format leaves the
  *   reminders already scheduled under the old name, and they fire twice.
  * @property occurrence the occurrence the reminder is for, from `occurrencesIn`.
- * @property fireAt when the notification comes, in epoch milliseconds.
+ * @property minutesBefore the value of [Appointment.reminderMinutesBefore] this reminder is for.
+ *   The reminder checks it is still there before it shows anything.
+ * @property fireAt when the notification comes, in epoch milliseconds: [minutesBefore] minutes
+ *   before the occurrence starts.
  */
-data class PlannedReminder(val key: String, val occurrence: Appointment, val fireAt: Long)
+data class PlannedReminder(
+    val key: String,
+    val occurrence: Appointment,
+    val minutesBefore: Int,
+    val fireAt: Long,
+)
 
 /**
  * The reminders of [occurrences] that come from [nowMillis] until [horizonMillis], soonest first.
@@ -67,11 +75,12 @@ fun planReminders(
             PlannedReminder(
                 key = "${occurrence.id}@${occurrence.startAt}@$minutes",
                 occurrence = occurrence,
+                minutesBefore = minutes,
                 fireAt = occurrence.startAt - minutes * MILLIS_PER_MINUTE,
             )
           }
         }
-        .filter { it.fireAt in nowMillis..< horizonMillis }
+        .filter { it.fireAt in nowMillis..<horizonMillis }
         .sortedWith(compareBy({ it.fireAt }, { it.key }))
 
 private const val MILLIS_PER_MINUTE = 60_000L

@@ -62,8 +62,8 @@ class AppointmentRemindersTest {
 
     assertEquals(
         listOf(
-            PlannedReminder("a1@${doctor.startAt}@1440", doctor, doctor.startAt - day),
-            PlannedReminder("a1@${doctor.startAt}@60", doctor, doctor.startAt - hour),
+            PlannedReminder("a1@${doctor.startAt}@1440", doctor, 1440, doctor.startAt - day),
+            PlannedReminder("a1@${doctor.startAt}@60", doctor, 60, doctor.startAt - hour),
         ),
         planned,
     )
