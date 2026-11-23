@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -168,7 +169,7 @@ sealed class PatientTab(
       PatientTab(
           MAP_TAB_KEY,
           R.string.navigationTabMap,
-          Icons.Outlined.Map,
+          Icons.Outlined.LocationOn,
           PatientScreen.Map,
       )
 
@@ -183,7 +184,8 @@ sealed class PatientTab(
   companion object {
     /** Tabs shown on patient screens, in bar order. */
     val patientTabs: List<PatientTab>
-      get() = listOf(Home, SeeMedias, Map, Setting)
+      get() =
+          listOf(Home, SeeMedias, Setting) // TODO add the map tab when navigation is implemented
   }
 }
 

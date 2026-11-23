@@ -39,6 +39,7 @@ import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -309,9 +310,14 @@ fun DisplayPatientTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     testTag: String = PatientUtilsTestTags.TEXT_FIELD,
 ) {
-  require(maxChar > 0 && minLines > 0)
+  require(maxChar > 0) { "maxChar must be positive, was $maxChar" }
+  require(minLines > 0) { "minLines must be positive, was $minLines" }
+  require(singleLine || minLines <= maxLines) {
+    "minLines ($minLines) must not exceed maxLines ($maxLines)"
+  }
+
   var isFocused by remember { mutableStateOf(false) }
-  var hasBeenFocused by remember { mutableStateOf(false) }
+  var hasBeenFocused by rememberSaveable { mutableStateOf(false) }
 
   OutlinedTextField(
       value = value,
@@ -329,8 +335,7 @@ fun DisplayPatientTextField(
       placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
       leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
       modifier =
-          modifier
-              .fillMaxWidth()
+          Modifier.fillMaxWidth()
               .border(
                   width = BORDER_THICKNESS_PATIENT,
                   color =
@@ -357,30 +362,28 @@ fun DisplayPatientTextField(
       keyboardActions = keyboardActions,
   )
 
-  Column {
-    if (value.length >= maxChar && hasBeenFocused) {
-      Text(
-          text = pluralStringResource(R.plurals.textFieldMaxCharReached, maxChar, maxChar),
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
-      )
-    }
-    if (!singleLine && value.lines().size >= maxLines && hasBeenFocused) {
-      Text(
-          text = pluralStringResource(R.plurals.textFieldMaxLinesReached, maxLines, maxLines),
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
-      )
-    }
-    val shownError = error ?: emptyErrorMessage?.takeIf { value.isBlank() && hasBeenFocused }
-    if (shownError != null) {
-      Text(
-          text = shownError,
-          modifier = Modifier.testTag(PatientUtilsTestTags.TEXT_FIELD_ERROR),
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
-      )
-    }
+  if (value.length >= maxChar && hasBeenFocused) {
+    Text(
+        text = pluralStringResource(R.plurals.textFieldMaxCharReached, maxChar, maxChar),
+        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodySmall,
+    )
+  }
+  if (!singleLine && value.lines().size >= maxLines && hasBeenFocused) {
+    Text(
+        text = pluralStringResource(R.plurals.textFieldMaxLinesReached, maxLines, maxLines),
+        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodySmall,
+    )
+  }
+  val shownError = error ?: emptyErrorMessage?.takeIf { value.isBlank() && hasBeenFocused }
+  if (shownError != null) {
+    Text(
+        text = shownError,
+        modifier = Modifier.testTag(PatientUtilsTestTags.TEXT_FIELD_ERROR),
+        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodySmall,
+    )
   }
 }
 

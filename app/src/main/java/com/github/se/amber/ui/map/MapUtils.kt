@@ -4,6 +4,7 @@ package com.github.se.amber.ui.map
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -12,12 +13,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -29,14 +32,14 @@ import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
-import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
+import com.github.se.amber.ui.theme.WEIGHT_ONE
 
 object MapTestTags {
-  const val SEARCH = "patient_map_search"
-  const val POSITION_CARD = "patient_map_position_card"
+  const val SEARCH = "map_search"
+  const val POSITION_CARD = "map_position_card"
 }
 
 /** Search field placed over the map. */
@@ -84,33 +87,40 @@ internal fun MapPositionCard(
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
       elevation = CardDefaults.cardElevation(defaultElevation = PATIENT_PADDING_MINI),
   ) {
-    Column(
+    Row(
         modifier =
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(PATIENT_PADDING_SMALL),
-        verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MINI),
+        horizontalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-          text = stringResource(R.string.patientMapOverview),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-      Text(
-          text = stringResource(R.string.patientMapYourPosition),
-          style = MaterialTheme.typography.titleMedium,
-      )
-      Text(
-          text = stringResource(detail),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      Column(
+          modifier = Modifier.weight(WEIGHT_ONE),
+          verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MINI),
+      ) {
+        Text(
+            text = stringResource(R.string.patientMapOverview),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.patientMapYourPosition),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(detail),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
       DisplayPatientButton(
           onClick = onRecenter,
           text = stringResource(R.string.patientMapRecenter),
           textStyle = MaterialTheme.typography.labelLarge,
           buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
-          buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+          fillWidth = false,
+          icon = Icons.Outlined.MyLocation,
       )
     }
   }

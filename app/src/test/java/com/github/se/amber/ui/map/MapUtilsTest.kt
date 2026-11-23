@@ -3,10 +3,12 @@
 package com.github.se.amber.ui.map
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -19,7 +21,10 @@ import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
+import java.util.Locale
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -99,6 +104,26 @@ class MapUtilsTest {
         .onNodeWithText(context.getString(R.string.patientMapRecenter))
         .assertIsDisplayed()
 
+    val recenterButton = composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_WITH_ICON)
+    val positionTitle =
+        composeTestRule.onNodeWithText(context.getString(R.string.patientMapYourPosition))
+    val recenterIcon =
+        composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_ICON, useUnmergedTree = true)
+    val recenterText =
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.patientMapRecenter),
+            useUnmergedTree = true,
+        )
+    recenterIcon.assertIsDisplayed()
+    assertTrue(
+        recenterButton.getUnclippedBoundsInRoot().left >
+            positionTitle.getUnclippedBoundsInRoot().right
+    )
+    assertTrue(
+        recenterIcon.getUnclippedBoundsInRoot().left >=
+            recenterText.getUnclippedBoundsInRoot().right
+    )
+
     val statesAndMessages =
         listOf(
             MediaMapLocationState.Searching to R.string.patientMapSearching,
@@ -120,7 +145,7 @@ class MapUtilsTest {
       previousMessage = message
     }
 
-    composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performClick()
+    recenterButton.performClick()
     assertEquals(1, recenters)
   }
 
@@ -136,15 +161,23 @@ class MapUtilsTest {
       }
     }
 
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.patientMapPermissionNeeded))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.patientMapRecenter))
-        .assertIsDisplayed()
+    val englishConfiguration =
+        Configuration(context.resources.configuration).apply { setLocale(Locale.ENGLISH) }
+    val englishContext = context.createConfigurationContext(englishConfiguration)
+    val keys =
+        listOf(
+            R.string.patientMapSearchHint,
+            R.string.patientMapPermissionNeeded,
+            R.string.patientMapRecenter,
+            R.string.patientMapOverview,
+            R.string.patientMapYourPosition,
+        )
+
+    keys.forEach { id ->
+      val frenchText = context.getString(id)
+      composeTestRule.onNodeWithText(frenchText).assertIsDisplayed()
+      assertNotEquals(englishContext.getString(id), frenchText)
+    }
   }
 
   @Test
