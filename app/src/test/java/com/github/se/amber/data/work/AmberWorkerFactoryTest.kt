@@ -42,6 +42,15 @@ class AmberWorkerFactoryTest {
   }
 
   @Test
+  fun createsTheAppointmentReminderWorker() {
+    val worker =
+        AmberWorkerFactory()
+            .createWorker(context, AppointmentReminderWorker::class.java.name, params)
+
+    assertEquals(AppointmentReminderWorker::class, worker!!::class)
+  }
+
+  @Test
   fun givesNullForAnUnknownWorker() {
     assertNull(AmberWorkerFactory().createWorker(context, "com.example.UnknownWorker", params))
   }

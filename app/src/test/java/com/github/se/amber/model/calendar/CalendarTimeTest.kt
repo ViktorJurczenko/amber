@@ -3,6 +3,7 @@
 package com.github.se.amber.model.calendar
 
 import com.github.se.amber.model.appointment.Appointment
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -24,6 +25,15 @@ class CalendarTimeTest {
   /** @return the epoch milliseconds of this clock time in Zurich, with the offset it really has. */
   private fun zurichMillis(dateTime: LocalDateTime): Long =
       ZonedDateTime.of(dateTime, zurich).toInstant().toEpochMilli()
+
+  @Test
+  fun localDateOfGivesTheDayInTheGivenZone() {
+    // 23:30 in Zurich is already the next day in Tokyo
+    val lateEvening = zurichMillis(LocalDateTime.of(2026, 11, 24, 23, 30))
+
+    assertEquals(LocalDate.of(2026, 11, 24), localDateOf(lateEvening, zurich))
+    assertEquals(LocalDate.of(2026, 11, 25), localDateOf(lateEvening, tokyo))
+  }
 
   @Test
   fun startAndEndAreTheClockTimesInTheGivenZone() {
