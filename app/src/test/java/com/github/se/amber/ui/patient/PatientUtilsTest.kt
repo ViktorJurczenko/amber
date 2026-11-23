@@ -49,6 +49,7 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -703,6 +704,25 @@ class PatientUtilsTest {
   }
 
   @Test
+  fun textField_explicitErrorUpdatesAndClearsWithCallerState() {
+    val firstMessage = context.getString(R.string.patientMapPermissionNeeded)
+    val secondMessage = context.getString(R.string.patientMapLocationOff)
+    val errorMessage = mutableStateOf<String?>(firstMessage)
+    composeTestRule.setContent {
+      AmberAppTheme { DisplayPatientTextField(error = errorMessage.value) }
+    }
+
+    val error = composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD_ERROR)
+    error.assertIsDisplayed().assertTextEquals(firstMessage)
+
+    errorMessage.value = secondMessage
+    error.assertIsDisplayed().assertTextEquals(secondMessage)
+
+    errorMessage.value = null
+    error.assertDoesNotExist()
+  }
+
+  @Test
   fun textField_characterGuidanceAppearsAtThresholdAfterFocus() {
     val value = mutableStateOf("Ada")
     val guidance = context.resources.getQuantityString(R.plurals.textFieldMaxCharReached, 3, 3)
@@ -756,7 +776,52 @@ class PatientUtilsTest {
     assertEquals(1, searches)
   }
 
+  @Test
+  fun textField_rejectsNonPositiveCharacterLimit() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent { AmberAppTheme { DisplayPatientTextField(maxChar = 0) } }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_rejectsNonPositiveMinimumLines() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent { AmberAppTheme { DisplayPatientTextField(minLines = 0) } }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_rejectsMinimumLinesAboveMaximumForMultilineInput() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent {
+        AmberAppTheme { DisplayPatientTextField(minLines = 3, maxLines = 2) }
+      }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_singleLineAllowsMinimumLinesAboveMultilineMaximum() {
+    composeTestRule.setContent {
+      AmberAppTheme { DisplayPatientTextField(singleLine = true, minLines = 3, maxLines = 2) }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).assertIsDisplayed()
+  }
+
   // ---------- Previews ----------
+
+  @Test
+  fun textFieldPreview_showsTheSearchHint() {
+    composeTestRule.setContent { DisplayPatientTextFieldPreview() }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
+        .assertIsDisplayed()
+  }
 
   @Test
   fun preview_showsThePatientButtons() {

@@ -399,7 +399,7 @@ fun DisplayPatientTextField(
 
 @Preview(showBackground = true, name = "Patient text field")
 @Composable
-private fun DisplayPatientTextFieldPreview() {
+internal fun DisplayPatientTextFieldPreview() {
   AmberAppTheme(darkTheme = false) {
     DisplayPatientTextField(placeholder = stringResource(R.string.patientMapSearchHint))
   }
