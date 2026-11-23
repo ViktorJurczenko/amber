@@ -5,11 +5,17 @@ package com.github.se.amber.data.appointment.reminder
 import android.content.Context
 import androidx.work.testing.TestListenableWorkerBuilder
 import com.github.se.amber.data.work.AppointmentReminderWorker
+import com.github.se.amber.model.authentication.AuthRepository
+import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -45,11 +51,21 @@ class AppointmentReminderProviderTest {
 
   @Test
   fun theDefaultPosterIsBuiltFromTheAppRepositoriesAndNeedsASignedInUser() = runTest {
-    val provider = AppointmentReminderProvider()
+    // a fake, so the app-wide auth repository is never built: AuthRepositoryProviderTest checks
+    // how it is built the first time, and it is built only once per test run
+    val signedOut: AuthRepository = mockk { every { currentUser } returns null }
+    mockkObject(AuthRepositoryProvider)
+    every { AuthRepositoryProvider.repository } returns signedOut
+    try {
+      val provider = AppointmentReminderProvider()
 
-    // nobody is signed in here, so it stops before reading any appointment
-    assertFalse(provider.poster.post(DueReminder("c1", "a1", 1_800_000_000_000L, 60, "tag")))
-    assertSame(provider.poster, provider.poster)
+      // nobody is signed in, so it stops before reading any appointment
+      assertFalse(provider.poster.post(DueReminder("c1", "a1", 1_800_000_000_000L, 60, "tag")))
+      assertSame(provider.poster, provider.poster)
+      verify { signedOut.currentUser }
+    } finally {
+      unmockkObject(AuthRepositoryProvider)
+    }
   }
 
   @Test
