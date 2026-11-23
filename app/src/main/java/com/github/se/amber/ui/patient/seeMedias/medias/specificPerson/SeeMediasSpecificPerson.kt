@@ -2,21 +2,13 @@
 
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.se.amber.R
-import com.github.se.amber.model.media.MediaItem
-import com.github.se.amber.ui.media.MediaImage
-import com.github.se.amber.ui.media.aspectRatioOf
-import com.github.se.amber.ui.media.audio.AudioPlaybackState
-import com.github.se.amber.ui.media.audio.DisplayAudioPlayback
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMedias
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasConfig
@@ -69,9 +61,6 @@ fun SeeMediasSpecificPersonScreen(
     onPersonClick: (String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  val playbackStates by viewModel.playbackStates.collectAsStateWithLifecycle()
-  val name by viewModel.personName.collectAsStateWithLifecycle()
-  val personName = name ?: stringResource(R.string.seeMediasSpecificPersonUnknownName)
 
   SeeGeneralMedias(
       uiState = uiState,
@@ -81,31 +70,8 @@ fun SeeMediasSpecificPersonScreen(
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
       onPersonClick = onPersonClick,
-      titleArgs = listOf(personName),
+      titleArgs = listOf(),
   ) { item, circle, modifier ->
-    when (item) {
-      is MediaItem.Audio ->
-          DisplayAudioPlayback(
-              modifier = modifier.testTag(SeeMediasSpecificPersonTestTags.media(item.id)),
-              state =
-                  playbackStates[item.id] ?: AudioPlaybackState.Idle(durationMs = item.durationMs),
-              waveform = item.waveform,
-              onPlayPause = { viewModel.onPlayPause(item) },
-              onRestart = { viewModel.onRestart(item) },
-              onRetry = { viewModel.onPlayPause(item) },
-          )
-      is MediaItem.Picture ->
-          MediaImage(
-              circle = circle,
-              picture = item,
-              modifier =
-                  modifier
-                      .aspectRatioOf(item)
-                      .testTag(SeeMediasSpecificPersonTestTags.media(item.id)),
-              loading = { CircularProgressIndicator() },
-          )
-      // TODO: display the text medias once their screen exists
-      else -> Unit
-    }
+    // TODO implement
   }
 }
