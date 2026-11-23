@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.media
 
@@ -338,6 +339,21 @@ class MediaCardViewModelTest {
 
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals("Alice", viewModel.uiState.value.addedByName)
+  }
+
+  @Test
+  fun load_sameMediaAgain_keepsItsDataWithoutReadingAgain() {
+    val shown = media(shownIds = listOf("p1"))
+    coEvery { circleRepository.getCircle("circle1") } returns
+        Result.success(circleWith("p1" to "Bob"))
+    viewModel.load(shown)
+    val loaded = viewModel.uiState.value
+
+    viewModel.load(shown.copy())
+
+    assertEquals(loaded, viewModel.uiState.value)
+    coVerify(exactly = 1) { profileRepository.getProfile("author") }
+    coVerify(exactly = 1) { circleRepository.getCircle("circle1") }
   }
 
   @Test
