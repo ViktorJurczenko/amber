@@ -173,6 +173,16 @@ class AppointmentReminderPosterTest {
     assertEquals(emptyList<String>(), shown.single().otherNames)
   }
 
+  @Test
+  fun aPersonWhoseProfileCantBeReadIsLeftOut() {
+    save()
+    coEvery { profiles.getProfile(BEN) } returns Result.failure(IllegalStateException("offline"))
+
+    assertTrue(post())
+    // Anna is still named, from the patient's own nickname for her
+    assertEquals(listOf("Annie"), shown.single().otherNames)
+  }
+
   private companion object {
     const val CIRCLE = "c1"
     const val PATIENT = "patient"

@@ -7,14 +7,16 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.Data
 import androidx.work.ListenableWorker.Result
 import androidx.work.testing.TestListenableWorkerBuilder
-import androidx.work.workDataOf
 import com.github.se.amber.data.appointment.reminder.AppointmentReminderPoster
 import com.github.se.amber.data.appointment.reminder.DueReminder
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -57,8 +59,22 @@ class AppointmentReminderWorkerTest {
   }
 
   @Test
-  fun anIncompleteInputFailsWithoutPosting() = runTest {
-    assertEquals(Result.failure(), runWorker(workDataOf("circleId" to "c1")))
+  fun aCancelledJobStaysCancelled() {
+    coEvery { poster.post(any()) } throws CancellationException("stopped")
+
+    assertThrows(CancellationException::class.java) { runBlocking { runWorker() } }
+  }
+
+  @Test
+  fun aMissingOrNegativeValueFailsWithoutPosting() = runTest {
+    val complete = AppointmentReminderWorker.inputData(reminder).keyValueMap
+    val incomplete =
+        complete.keys.map { key -> complete - key } +
+            listOf(complete + ("startAt" to -1L), complete + ("minutesBefore" to -1))
+
+    for (input in incomplete) {
+      assertEquals("$input", Result.failure(), runWorker(Data.Builder().putAll(input).build()))
+    }
     coVerify(exactly = 0) { poster.post(any()) }
   }
 }
