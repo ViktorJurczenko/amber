@@ -1,6 +1,7 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver.upload.audios
 
@@ -777,6 +778,15 @@ class UploadAudioViewModelTest {
   fun playRecordingSwitchesToListening() {
     val vm = recordedViewModel()
     vm.playRecording()
+    assertEquals(AudioRecordingState.LISTENING, vm.uiState.value.recordingState)
+  }
+
+  @Test
+  fun playRecordingAgainWhileListeningDoesNotRestartIt() {
+    val vm = recordedViewModel()
+    vm.playRecording()
+    vm.playRecording()
+    assertEquals(listOf(vm.uiState.value.audioFile), player.played)
     assertEquals(AudioRecordingState.LISTENING, vm.uiState.value.recordingState)
   }
 
