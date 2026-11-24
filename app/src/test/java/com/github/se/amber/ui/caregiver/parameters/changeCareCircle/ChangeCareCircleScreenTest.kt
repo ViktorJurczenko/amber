@@ -238,7 +238,9 @@ class ChangeCareCircleScreenTest {
         .onNodeWithText(context.getString(R.string.changeCareCircleInfo))
         .assertIsDisplayed()
     composeTestRule
-        .onNodeWithContentDescription(context.getString(R.string.changeCareCircleInfoIcon))
+        .onNodeWithContentDescription(
+            context.getString(R.string.displayInformationIconDefaultDescription)
+        )
         .assertIsDisplayed()
   }
 
