@@ -11,6 +11,9 @@ package com.github.se.amber.firestore
 
 import com.github.se.amber.data.invitation.universalInvitationPayload
 import com.github.se.amber.emulator.FirestoreEmulatorClient
+import com.github.se.amber.model.appointment.DEFAULT_REMINDER_MINUTES
+import com.github.se.amber.model.appointment.INVALID_REMINDER_LISTS
+import com.github.se.amber.model.appointment.VALID_REMINDER_LISTS
 import java.net.HttpURLConnection
 import java.net.URL
 import org.junit.Assert.assertEquals
@@ -687,10 +690,8 @@ class FirestoreSecurityRulesEmulatorTest {
   }
 
   /**
-   * The reminder list of an appointment, against the real rules.
-   *
-   * The rules can't loop over a list, so they check each of the 5 places on its own. A bad value at
-   * the first and at the last place shows that no place was left out.
+   * The reminder list of an appointment, against the real rules. The lists are the ones the app's
+   * validation test uses, so the rules and the app are checked on the same inputs.
    */
   @Test
   fun appointments_reminderList_checkedLikeTheApp_enforcedByEmulator() {
@@ -701,35 +702,27 @@ class FirestoreSecurityRulesEmulatorTest {
     fs.adminSet("users/$care", user(care, "CAREGIVER", listOf(circleId), "Ada"))
     fs.adminSet("users/$pat", user(pat, "PATIENT", listOf(circleId), "Pat"))
     val path = "careCircles/$circleId/appointments"
-    val week = 7 * 24 * 60
-
-    // from a caregiver and from the patient, on create and on edit
     fs.assertSucceeds(care, fs.set("$path/a1", appointment("a1", care)))
-    fs.assertSucceeds(pat, fs.set("$path/a2", appointment("a2", pat)))
     val edit = mapOf("updatedBy" to pat, "updatedAt" to START)
-    fs.assertSucceeds(
-        pat,
-        fs.patch("$path/a1", edit + ("reminderMinutesBefore" to listOf(0, 60, 1440, 2880, week))),
-    )
-    fs.assertSucceeds(
-        care,
-        fs.patch(
-            "$path/a2",
-            edit + ("updatedBy" to care) + ("reminderMinutesBefore" to emptyList<Int>()),
-        ),
-    )
-    // the field can't be left out
-    fs.assertFails(care, fs.set("$path/a3", appointment("a3", care) - "reminderMinutesBefore"))
 
-    // too many values, a value out of 0..7 days at the first or the last place, not a list
-    listOf(listOf(1, 2, 3, 4, 5, 6), listOf(-1), listOf(1, 2, 3, 4, week + 1), listOf("60"), 60)
-        .forEach { reminders ->
-          fs.assertFails(
-              care,
-              fs.set("$path/a4", appointment("a4", care) + ("reminderMinutesBefore" to reminders)),
-          )
-          fs.assertFails(pat, fs.patch("$path/a1", edit + ("reminderMinutesBefore" to reminders)))
-        }
+    // Created by a caregiver, then edited by the patient.
+    VALID_REMINDER_LISTS.forEachIndexed { i, reminders ->
+      fs.assertSucceeds(
+          care,
+          fs.set("$path/v$i", appointment("v$i", care) + ("reminderMinutesBefore" to reminders)),
+      )
+      fs.assertSucceeds(pat, fs.patch("$path/a1", edit + ("reminderMinutesBefore" to reminders)))
+    }
+    // Not a list, and not whole numbers, refused too.
+    (INVALID_REMINDER_LISTS + listOf(listOf("60"), 60)).forEach { reminders ->
+      fs.assertFails(
+          care,
+          fs.set("$path/x", appointment("x", care) + ("reminderMinutesBefore" to reminders)),
+      )
+      fs.assertFails(pat, fs.patch("$path/a1", edit + ("reminderMinutesBefore" to reminders)))
+    }
+    // The field can't be left out.
+    fs.assertFails(care, fs.set("$path/x", appointment("x", care) - "reminderMinutesBefore"))
   }
 
   /**
@@ -1057,7 +1050,7 @@ class FirestoreSecurityRulesEmulatorTest {
             "durationMinutes" to 60,
             "location" to null,
             "attendeeIds" to listOf(savedBy),
-            "reminderMinutesBefore" to listOf(24 * 60),
+            "reminderMinutesBefore" to DEFAULT_REMINDER_MINUTES,
             "patientId" to PATIENT,
             "lastEndAt" to START + 60 * 60_000L,
             "createdBy" to savedBy,

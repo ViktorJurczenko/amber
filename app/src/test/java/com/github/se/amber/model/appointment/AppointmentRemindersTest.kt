@@ -13,39 +13,30 @@ import org.junit.Test
 /** Tests who is linked to an appointment, and when its reminders are planned. */
 class AppointmentRemindersTest {
 
-  private val appointment =
-      Appointment(
-          id = "a1",
-          title = "Doctor",
-          startAt = 1_000L,
-          attendeeIds = listOf("ada", "bob"),
-          patientId = "pat",
-      )
-
   @Test
-  fun thePatientIsLinkedEvenWhenNotListed() {
+  fun thePatientAndTheAttendeesAreLinkedButNotTheCreator() {
+    val appointment =
+        Appointment(
+            id = "a1",
+            title = "Doctor",
+            startAt = 1_000L,
+            attendeeIds = listOf("ada", "bob"),
+            patientId = "pat",
+            createdBy = "eve",
+            updatedBy = "eve",
+        )
+
     // The patient always takes part, so they are never in attendeeIds.
     assertTrue(appointment.isLinkedTo("pat"))
     assertTrue(appointment.copy(attendeeIds = emptyList()).isLinkedTo("pat"))
-  }
-
-  @Test
-  fun eachAttendeeIsLinked() {
     assertTrue(appointment.isLinkedTo("ada"))
     assertTrue(appointment.isLinkedTo("bob"))
+    // Creating an appointment doesn't link a caregiver who isn't coming.
+    assertFalse(appointment.isLinkedTo("eve"))
   }
 
-  @Test
-  fun aCaregiverWhoIsNotComingIsNotLinkedEvenAsTheCreator() {
-    val createdByEve = appointment.copy(createdBy = "eve", updatedBy = "eve")
-
-    assertFalse(createdByEve.isLinkedTo("eve"))
-  }
-
-  @Test
-  fun theDefaultIsOneReminderOneDayBefore() {
-    assertEquals(listOf(24 * 60), Appointment().reminderMinutesBefore)
-  }
+  /** The appointment the planner tests start from. */
+  private val base = Appointment(id = "a1", title = "Doctor", patientId = "pat")
 
   private val minute = 1.minutes.inWholeMilliseconds
   private val hour = 1.hours.inWholeMilliseconds
@@ -70,7 +61,7 @@ class AppointmentRemindersTest {
       id: String = "a1",
       savedAgo: Long = 7 * day,
   ) =
-      appointment.copy(
+      base.copy(
           id = id,
           startAt = now + startsIn,
           reminderMinutesBefore = reminders,
@@ -186,7 +177,7 @@ class AppointmentRemindersTest {
     val atTheStart = appointmentIn(startsIn = 1 * hour, reminders = listOf(0))
     // Saved an hour after it started, for example to fix its notes.
     val started =
-        appointment.copy(
+        base.copy(
             startAt = now - hour,
             reminderMinutesBefore = listOf(oneHourBefore),
             updatedAt = now,

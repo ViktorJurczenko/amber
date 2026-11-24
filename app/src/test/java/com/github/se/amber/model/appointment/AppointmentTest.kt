@@ -84,9 +84,13 @@ class AppointmentTest {
   }
 
   @Test
-  fun invalidRemindersAreRefused() {
-    listOf(listOf(1, 2, 3, 4, 5, 6), listOf(-1), listOf(60, 7 * 24 * 60 + 1)).forEach { reminders ->
+  fun remindersAreCheckedOnTheListsSharedWithTheRules() {
+    VALID_REMINDER_LISTS.forEach { reminders ->
+      assertNull("$reminders", valid.copy(reminderMinutesBefore = reminders).validationError())
+    }
+    INVALID_REMINDER_LISTS.forEach { reminders ->
       assertEquals(
+          "$reminders",
           AppointmentValidationError.INVALID_REMINDERS,
           valid.copy(reminderMinutesBefore = reminders).validationError(),
       )

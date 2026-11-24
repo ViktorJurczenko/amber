@@ -57,7 +57,39 @@ class FirebaseInvitationRedemptionRepositoryTest {
     val error = repository.redeemInvitation("valid-code").exceptionOrNull()
 
     val unknown = error as InvitationError.Unknown
-    assertEquals("redeemInvitation returned an invalid response", unknown.source.message)
+    assertEquals(INVALID_RESPONSE, unknown.source.message)
+  }
+
+  @Test
+  fun redeemInvitationRejectsEveryResponseWithoutACircleAndRole() = runBlocking {
+    val malformed =
+        listOf(
+            null,
+            "circle-1",
+            mapOf("circleId" to 1, "role" to "CAREGIVER"),
+            mapOf("circleId" to " ", "role" to "CAREGIVER"),
+            mapOf("circleId" to "circle-1", "role" to 1),
+            mapOf("circleId" to "circle-1"),
+        )
+
+    malformed.forEach { data ->
+      respondWith(data)
+
+      val error = repository.redeemInvitation("valid-code").exceptionOrNull()
+
+      val unknown = error as InvitationError.Unknown
+      assertEquals(data.toString(), INVALID_RESPONSE, unknown.source.message)
+    }
+  }
+
+  @Test
+  fun redeemInvitationMapsAFailureOutsideFunctionsToUnknown() = runBlocking {
+    val failure = IllegalStateException("no connection pool")
+    `when`(callable.call(any())).thenReturn(Tasks.forException(failure))
+
+    val error = repository.redeemInvitation("valid-code").exceptionOrNull()
+
+    assertSame(failure, (error as InvitationError.Unknown).source)
   }
 
   @Test
@@ -233,5 +265,9 @@ class FirebaseInvitationRedemptionRepositoryTest {
     val error = repository.redeemInvitation("valid-code").exceptionOrNull()
 
     assertSame(failure, (error as InvitationError.Unknown).source)
+  }
+
+  private companion object {
+    const val INVALID_RESPONSE = "redeemInvitation returned an invalid response"
   }
 }

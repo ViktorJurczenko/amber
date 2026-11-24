@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication.accountDeletion
 
@@ -445,6 +446,64 @@ class DeleteAccountViewModelTest {
     advanceUntilIdle()
     coVerify(exactly = 2) { deletionRepository.clearLocalData() }
     coVerify(exactly = 1) { authRepository.reauthenticateWithGoogle(credential) }
+  }
+
+  @Test
+  fun missingProfileShowsTheCheckFamiliesError() = runTest {
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(null)
+
+    viewModel.loadWarnings()
+    advanceUntilIdle()
+
+    assertEquals(R.string.deleteAccountCheckFamiliesError, viewModel.uiState.value.errorMessageRes)
+    assertFalse(viewModel.uiState.value.warningsLoaded)
+  }
+
+  @Test
+  fun unexpectedReauthenticationAndDeletionFailuresShowGenericMessages() = runTest {
+    viewModel.loadWarnings()
+    advanceUntilIdle()
+    val credential = stubCredential()
+    coEvery { authRepository.reauthenticateWithGoogle(credential) } returns
+        Result.failure(ReauthenticationError.Unknown(Exception("google")))
+
+    viewModel.deleteAccount(context, credentialManager)
+    advanceUntilIdle()
+    assertEquals(
+        R.string.deleteAccountReauthenticationError,
+        viewModel.uiState.value.errorMessageRes,
+    )
+
+    coEvery { authRepository.reauthenticateWithGoogle(credential) } returns Result.success(Unit)
+    coEvery { deletionRepository.deleteAccount() } returns
+        Result.failure(AccountDeletionError.Unknown(Exception("server")))
+    viewModel.deleteAccount(context, credentialManager)
+    advanceUntilIdle()
+
+    assertEquals(R.string.deleteAccountUnknownError, viewModel.uiState.value.errorMessageRes)
+    assertFalse(viewModel.uiState.value.isDeleting)
+    assertFalse(viewModel.uiState.value.localCleanupNeeded)
+  }
+
+  @Test
+  fun cleanupRetryThatThrowsKeepsTheCleanupMessage() = runTest {
+    viewModel.loadWarnings()
+    advanceUntilIdle()
+    val credential = stubCredential()
+    coEvery { authRepository.reauthenticateWithGoogle(credential) } returns
+        Result.failure(ReauthenticationError.AccountNotFound)
+    coEvery { deletionRepository.clearLocalData() } returns
+        Result.failure(AccountDeletionError.LocalDataNotCleared(Exception("disk")))
+    viewModel.deleteAccount(context, credentialManager)
+    advanceUntilIdle()
+
+    coEvery { deletionRepository.clearLocalData() } throws IllegalStateException("disk")
+    viewModel.deleteAccount(context, credentialManager)
+    advanceUntilIdle()
+
+    assertEquals(R.string.deleteAccountCleanupError, viewModel.uiState.value.errorMessageRes)
+    assertTrue(viewModel.uiState.value.localCleanupNeeded)
+    assertFalse(viewModel.uiState.value.isDeleting)
   }
 
   @Test

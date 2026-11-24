@@ -1,5 +1,6 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.model.validation
 
@@ -70,6 +71,9 @@ class InputValidationTest {
     assertEquals("Family", InputValidation.DESCRIPTION.clean("\uFEFFFam\u2066ily\u200F"))
     assertEquals(InputError.WRONG_FORMAT, rule.check("Fam\u202Eily"))
     assertEquals(InputError.WRONG_FORMAT, rule.check("Fam\u200Bily"))
+    listOf('\u200E', '\u061C', '\u2060').forEach { mark ->
+      assertEquals("Family", rule.clean("Fam${mark}ily"))
+    }
     // The zero-width joiner builds emojis of several people, so it stays
     assertNull(rule.check("Family \uD83D\uDC68\u200D\uD83D\uDC67"))
   }
@@ -140,5 +144,6 @@ class InputValidationTest {
   fun rule_refusesImpossibleLengths() {
     assertThrows(IllegalArgumentException::class.java) { InputRule(maxLength = 0) }
     assertThrows(IllegalArgumentException::class.java) { InputRule(maxLength = 3, minLength = 4) }
+    assertThrows(IllegalArgumentException::class.java) { InputRule(maxLength = 3, minLength = 0) }
   }
 }
