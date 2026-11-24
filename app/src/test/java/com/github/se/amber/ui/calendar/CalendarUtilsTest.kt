@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** Tests [calendarCells]: the layout of a month in a grid; and [calendarIconSize]*/
+/** Tests [calendarCells]: the layout of a month in a grid; and [calendarIconSize] */
 class CalendarUtilsTest {
   // ---------- calendarCells ----------
 
@@ -118,13 +118,13 @@ class CalendarUtilsTest {
     assertEquals(CAREGIVER_ICON_SIZE, calendarIconSize(isPatient = false))
   }
 
-
-  /** Tests [calendarTitleTextStyle] and [calendarBodyTextStyle].
-  *
-  * The theme used here gives a different size to every style. A helper that returns the wrong style
-  * therefore always fails, which would not be the case with the default sizes if two of them were
-  * equal. The tests compare the whole style, not only its size.
-  */
+  /**
+   * Tests [calendarTitleTextStyle] and [calendarBodyTextStyle].
+   *
+   * The theme used here gives a different size to every style. A helper that returns the wrong
+   * style therefore always fails, which would not be the case with the default sizes if two of them
+   * were equal. The tests compare the whole style, not only its size.
+   */
   @RunWith(RobolectricTestRunner::class)
   class CalendarTextStyleTest {
 
@@ -132,20 +132,20 @@ class CalendarUtilsTest {
 
     // Every style the helpers can return has its own size.
     private val testTypography =
-      androidx.compose.material3.Typography(
-        titleLarge = TextStyle(fontSize = 21.sp),
-        headlineMedium = TextStyle(fontSize = 22.sp),
-        bodyMedium = TextStyle(fontSize = 23.sp),
-        bodyLarge = TextStyle(fontSize = 24.sp),
-      )
+        androidx.compose.material3.Typography(
+            titleLarge = TextStyle(fontSize = 21.sp),
+            headlineMedium = TextStyle(fontSize = 22.sp),
+            bodyMedium = TextStyle(fontSize = 23.sp),
+            bodyLarge = TextStyle(fontSize = 24.sp),
+        )
 
     /**
-     * Asserts that [style], read inside [testTypography], is the style [expected] picks in that same
-     * typography.
+     * Asserts that [style], read inside [testTypography], is the style [expected] picks in that
+     * same typography.
      */
     private fun assertStyle(
-      expected: Typography.() -> TextStyle,
-      style: @Composable () -> TextStyle,
+        expected: Typography.() -> TextStyle,
+        style: @Composable () -> TextStyle,
     ) {
       var actual: TextStyle? = null
       var wanted: TextStyle? = null
@@ -193,5 +193,4 @@ class CalendarUtilsTest {
       assertStyle({ bodyLarge }) { calendarBodyTextStyle() }
     }
   }
-
 }

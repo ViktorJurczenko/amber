@@ -43,6 +43,7 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 
 /** No-op [ProfileRepository] used by Compose previews (and preview-driven tests). */
@@ -121,7 +122,10 @@ fun PatientHomeScreen(
               color = MaterialTheme.colorScheme.onBackground,
               style = MaterialTheme.typography.headlineMedium,
           )
-          Calendar(isPatient = true)
+          Calendar(
+              modifier = Modifier.padding(top = PATIENT_PADDING_ENORMOUS),
+              isPatient = true,
+          )
         }
       },
   )

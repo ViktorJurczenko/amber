@@ -163,7 +163,9 @@ internal fun CalendarHeader(
           imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
           contentDescription = stringResource(R.string.calendarPreviousMonth),
           tint = MaterialTheme.colorScheme.secondary,
-          modifier = Modifier.size(calendarIconSize(isPatient)).testTag(CalendarTestTags.PREVIOUS_MONTH_ICON),
+          modifier =
+              Modifier.size(calendarIconSize(isPatient))
+                  .testTag(CalendarTestTags.PREVIOUS_MONTH_ICON),
       )
     }
     IconButton(
@@ -174,7 +176,8 @@ internal fun CalendarHeader(
           imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
           contentDescription = stringResource(R.string.calendarNextMonth),
           tint = MaterialTheme.colorScheme.secondary,
-          modifier = Modifier.size(calendarIconSize(isPatient)).testTag(CalendarTestTags.NEXT_MONTH_ICON),
+          modifier =
+              Modifier.size(calendarIconSize(isPatient)).testTag(CalendarTestTags.NEXT_MONTH_ICON),
       )
     }
   }

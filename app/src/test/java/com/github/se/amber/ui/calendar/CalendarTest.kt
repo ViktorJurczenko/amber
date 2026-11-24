@@ -4,28 +4,28 @@ package com.github.se.amber.ui.calendar
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertWidthIsEqualTo
-import androidx.compose.ui.test.onChild
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.TextUnit
 import com.github.se.amber.R
 import com.github.se.amber.ui.calendar.CalendarTestTags.CALENDAR
 import com.github.se.amber.ui.calendar.CalendarTestTags.MONTH_TITLE
 import com.github.se.amber.ui.calendar.CalendarTestTags.NEXT_MONTH_BUTTON
-import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_BUTTON
 import com.github.se.amber.ui.calendar.CalendarTestTags.NEXT_MONTH_ICON
+import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_BUTTON
 import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_ICON
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
@@ -288,7 +288,11 @@ class CalendarTest {
 
   private fun fontSizeOf(textNode: androidx.compose.ui.test.SemanticsNodeInteraction): TextUnit {
     val results = mutableListOf<TextLayoutResult>()
-    textNode.fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+    textNode
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(results)
     return results.first().layoutInput.style.fontSize
   }
 
@@ -309,12 +313,11 @@ class CalendarTest {
     assertEquals(typography!!.bodyLarge.fontSize, weekdayFontSize())
     assertEquals(typography!!.bodyLarge.fontSize, dayFontSize())
     composeTestRule
-      .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
-      .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
+        .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
+        .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
     composeTestRule
-      .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
-      .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
-
+        .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
+        .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
   }
 
   @Test
@@ -324,11 +327,11 @@ class CalendarTest {
     assertEquals(typography!!.bodyMedium.fontSize, weekdayFontSize())
     assertEquals(typography!!.bodyMedium.fontSize, dayFontSize())
     composeTestRule
-      .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
-      .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
+        .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
+        .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
     composeTestRule
-      .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
-      .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
+        .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
+        .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
   }
 
   // ---------- modifier ----------

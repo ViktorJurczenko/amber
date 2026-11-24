@@ -39,6 +39,7 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 
@@ -123,7 +124,10 @@ fun CaregiverHomeScreen(
               style = MaterialTheme.typography.bodyLarge,
               textAlign = TextAlign.Center,
           )
-          Calendar(isPatient = false)
+          Calendar(
+              modifier = Modifier.padding(top = CAREGIVER_PADDING_ENORMOUS),
+              isPatient = false,
+          )
         }
       },
   )
