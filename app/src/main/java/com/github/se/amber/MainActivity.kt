@@ -296,10 +296,7 @@ fun AmberApp(
                   }
               ),
       ) { backStackEntry ->
-        val personId =
-            backStackEntry.arguments
-                ?.getString(PatientScreen.SeeMediasSpecificPerson.ARG_PERSON_ID)
-                .orEmpty()
+        val personId = navigationActions.personIdFrom(backStackEntry.arguments)
         SeeMediasSpecificPersonScreen(
             personId = personId,
             onBackClick = { navigationActions.goBack() },

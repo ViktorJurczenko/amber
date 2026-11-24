@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.navigation
 
+import android.os.Bundle
 import androidx.navigation.NavHostController
 
 /**
@@ -87,4 +88,12 @@ open class NavigationActions(private val navController: NavHostController) {
     if (personId == shownPersonId) return
     navController.navigate(PatientScreen.SeeMediasSpecificPerson.routeFor(personId))
   }
+
+  /**
+   * Reads the id of the person whose medias are displayed from the navigation [arguments].
+   *
+   * @param arguments The arguments of the back stack entry
+   * @return The person id, or an empty string when it is missing
+   */
+  fun personIdFrom(arguments: Bundle?): String = arguments?.getString(NavArgs.PERSON_ID).orEmpty()
 }

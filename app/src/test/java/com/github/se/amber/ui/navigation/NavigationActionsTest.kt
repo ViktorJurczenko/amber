@@ -4,6 +4,7 @@
 
 package com.github.se.amber.ui.navigation
 
+import android.os.Bundle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
@@ -232,5 +233,24 @@ class NavigationActionsTest {
   @Test
   fun seeMediasSpecificPerson_isNotATopLevelDestination() {
     assertFalse(PatientScreen.SeeMediasSpecificPerson.isTopLevelDestination)
+  }
+
+  @Test
+  fun personIdFrom_readsTheArgument() {
+    val arguments = mockk<Bundle> { every { getString(NavArgs.PERSON_ID) } returns "abc" }
+
+    assertEquals("abc", actions.personIdFrom(arguments))
+  }
+
+  @Test
+  fun personIdFrom_isEmptyWhenTheArgumentIsMissing() {
+    val arguments = mockk<Bundle> { every { getString(NavArgs.PERSON_ID) } returns null }
+
+    assertEquals("", actions.personIdFrom(arguments))
+  }
+
+  @Test
+  fun personIdFrom_isEmptyWithoutArguments() {
+    assertEquals("", actions.personIdFrom(null))
   }
 }
