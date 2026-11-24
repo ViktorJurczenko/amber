@@ -34,10 +34,12 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -499,6 +501,75 @@ class MediaMapViewModelTest {
 
     viewModel.updateSearchQuery("")
     assertEquals(MapPlaceSearchState(), viewModel.placeSearchState.value)
+  }
+
+  @Test
+  fun unchangedQueryDoesNotSearchAgainAndRetryOnlyRunsAfterFailure() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    var calls = 0
+    val repository = PlaceSearchRepository {
+      calls++
+      Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.retryPlaceSearch()
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    viewModel.updateSearchQuery("Lausanne")
+    viewModel.retryPlaceSearch()
+
+    assertEquals(1, calls)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+  }
+
+  @Test
+  fun suggestionMustHaveCoordinatesAndUnnamedSuggestionCanBeSelected() {
+    val scheduler = useStandardDispatcher().scheduler
+    val withoutCoordinates = GeoLocation(placeName = "Unknown place")
+    val unnamed = GeoLocation(lat = 46.52, lng = 6.63)
+    val repository = PlaceSearchRepository { Result.success(listOf(withoutCoordinates, unnamed)) }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    viewModel.selectPlace(withoutCoordinates)
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    assertEquals(2, viewModel.placeSearchState.value.suggestions.size)
+
+    viewModel.selectPlace(unnamed)
+    assertEquals(unnamed, viewModel.placeSearchState.value.selectedPlace)
+    assertEquals("", viewModel.placeSearchState.value.query)
+  }
+
+  @Test
+  fun lateResultForAnOldQueryDoesNotReplaceCurrentSuggestions() {
+    val scheduler = useStandardDispatcher().scheduler
+    val oldPlace = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val newPlace = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    val repository = PlaceSearchRepository { query ->
+      if (query == "Lausanne") {
+        // Simulate a source that returns a response even after its request was cancelled.
+        try {
+          delay(1_000)
+        } catch (_: CancellationException) {}
+        Result.success(listOf(oldPlace))
+      } else {
+        Result.success(listOf(newPlace))
+      }
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceTimeBy(300)
+    scheduler.runCurrent()
+    viewModel.updateSearchQuery("Geneva")
+    scheduler.advanceUntilIdle()
+
+    assertEquals("Geneva", viewModel.placeSearchState.value.query)
+    assertEquals(listOf(newPlace), viewModel.placeSearchState.value.suggestions)
   }
 
   @Test

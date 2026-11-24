@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.map
 
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -10,14 +11,17 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.rule.GrantPermissionRule
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.connectivity.ConnectivityMonitor
 import com.github.se.amber.data.location.LocationUpdate
 import com.github.se.amber.data.location.LocationUpdatesRepository
 import com.github.se.amber.data.profile.ProfileRepository
+import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
@@ -39,11 +43,20 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MapScreenTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+  @get:Rule
+  val locationPermissionRule =
+      GrantPermissionRule.grant(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION,
+      )
 
   private val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
 
   /** The map gets no live profile, GPS or place service during these tests. */
-  private fun createViewModel(): MediaMapViewModel {
+  private fun createViewModel(
+      updates: MutableStateFlow<LocationUpdate> = MutableStateFlow(LocationUpdate.Searching),
+      permissionStatus: () -> Boolean = { true },
+  ): MediaMapViewModel {
     val profiles =
         object : ProfileRepository {
           override suspend fun createProfile(person: Person, role: Role) = Result.success(Unit)
@@ -62,11 +75,11 @@ class MapScreenTest {
         }
     val location =
         object : LocationUpdatesRepository {
-          override fun hasPermission() = true
+          override fun hasPermission() = permissionStatus()
 
           override fun isLocationEnabled() = true
 
-          override fun observeLocation() = flowOf(LocationUpdate.Searching)
+          override fun observeLocation() = updates
         }
     return MediaMapViewModel(
         mediaLocationRepository = { flowOf(emptyList()) },
@@ -121,5 +134,77 @@ class MapScreenTest {
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertTextEquals("Lausanne")
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
     assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+  }
+
+  @Test
+  fun locationStatusRecenterAndKeyboardSearchFollowUserActions() {
+    val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
+    val viewModel = createViewModel(updates)
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+
+    val recenter =
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.patientMapRecenter)
+        )
+    updates.value = LocationUpdate.LocationOff
+    composeTestRule.waitUntil(5_000) {
+      viewModel.locationState.value == MediaMapLocationState.LocationOff
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationOff))
+        .assertIsDisplayed()
+    recenter.performClick()
+
+    val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
+    updates.value = LocationUpdate.Position(lastKnown)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == lastKnown
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
+        .assertIsDisplayed()
+
+    val fresh = DevicePosition(46.53, 6.64)
+    updates.value = LocationUpdate.Position(fresh)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == fresh
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
+        .assertIsDisplayed()
+    recenter.performClick()
+
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performTextInput("Lausanne")
+    composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.suggestions.isNotEmpty() }
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performImeAction()
+    composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.selectedPlace == place }
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  @Test
+  fun missingLocationPermissionKeepsMapVisibleAndRecenterRequestsIt() {
+    var permissionReported = false
+    val viewModel = createViewModel(permissionStatus = { permissionReported })
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapPermissionNeeded))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
+        .performClick()
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapPermissionNeeded))
+        .assertIsDisplayed()
+
+    permissionReported = true
+    viewModel.refreshPermission()
+    composeTestRule.waitUntil(5_000) {
+      viewModel.locationState.value == MediaMapLocationState.Searching
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapSearching))
+        .assertIsDisplayed()
   }
 }

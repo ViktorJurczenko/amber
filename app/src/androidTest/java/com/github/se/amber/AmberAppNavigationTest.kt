@@ -27,6 +27,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.se.amber.ui.authentication.signOut.SignOutTestTags
 import com.github.se.amber.ui.caregiver.parameters.CaregiverParametersTestTags
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags
+import com.github.se.amber.ui.map.MapScreenTestTags
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
@@ -97,6 +98,7 @@ class AmberAppNavigationTest {
     // Patient
     val PATIENT_TAB_HOME = tabTag(PatientTab.Home)
     val PATIENT_TAB_SEE_MEDIAS = tabTag(PatientTab.SeeMedias)
+    val PATIENT_TAB_MAP = tabTag(PatientTab.Map)
     val PATIENT_TAB_PARAMETERS = tabTag(PatientTab.Setting)
     const val PATIENT_PARAMETERS_SIGN_OUT = PatientParameterTestTags.SIGN_OUT_BUTTON
     const val PATIENT_PARAMETERS_DELETE_ACCOUNT = PatientParameterTestTags.DELETE_BUTTON
@@ -532,12 +534,25 @@ class AmberAppNavigationTest {
   // ---------------------------------------------------------------------------------------------
 
   @Test
-  fun patientHome_seeMedias_navigatesToSeeMedias() {
+  fun patientTabs_navigateToSeeMediasMapAndHome() {
     launch(NavGraphs.PATIENT)
 
     click(Tags.PATIENT_TAB_SEE_MEDIAS)
 
     assertRoute(PatientScreen.SeeMedias.route)
+
+    // Grant the real Android permission before Google Maps enables the device location layer.
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+    )
+    click(Tags.PATIENT_TAB_MAP)
+    assertRoute(PatientScreen.Map.route)
+    composeRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertExists()
+
+    click(Tags.PATIENT_TAB_HOME)
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test

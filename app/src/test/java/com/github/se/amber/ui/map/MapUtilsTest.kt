@@ -128,6 +128,18 @@ class MapUtilsTest {
   }
 
   @Test
+  fun suggestionWithoutPlaceNameCanStillBeSelected() {
+    val place = GeoLocation(lat = 46.52, lng = 6.63)
+    var selected = false
+    composeTestRule.setContent {
+      AmberAppTheme { MapPlaceSuggestion(place = place, onClick = { selected = true }) }
+    }
+
+    composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
+    assertTrue(selected)
+  }
+
+  @Test
   fun searchPopup_showsShortEmptyAndFailedStatesWithRetry() {
     val state = mutableStateOf(MapPlaceSearchState(query = "La"))
     var retries = 0
