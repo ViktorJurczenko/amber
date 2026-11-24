@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver.parameters.changeCareCircle
 
@@ -318,6 +319,34 @@ class ChangeCareCircleViewModelTest {
 
     assertEquals(ChangeCareCircleStatus.ERROR, viewModel.uiState.value.status)
     coVerify(exactly = 1) { activeCircleRepository.setActiveCircle("caregiver", "second") }
+  }
+
+  @Test
+  fun failedSelectionAndClearingKeepTheBlockingErrorMessage() {
+    val failObservation = CompletableDeferred<Unit>()
+    val pendingWrite = CompletableDeferred<Unit>()
+    every { activeCircleRepository.activeCircleId(any(), any()) } returns
+        flow {
+          emit("first")
+          failObservation.await()
+          throw IllegalStateException("observation failed")
+        }
+    coEvery { activeCircleRepository.setActiveCircle("caregiver", "second") } coAnswers
+        {
+          pendingWrite.await()
+          throw IllegalStateException("offline")
+        }
+    val viewModel = createViewModel()
+
+    viewModel.changeActiveCareCircle("second")
+    failObservation.complete(Unit)
+    val blockingError = viewModel.uiState.value
+    pendingWrite.complete(Unit)
+    viewModel.clearErrorMsg()
+
+    assertEquals(ChangeCareCircleStatus.ERROR, blockingError.status)
+    assertEquals(R.string.changeCareCircleErrorLoadCircle, blockingError.errorMsgRes)
+    assertEquals(blockingError, viewModel.uiState.value)
   }
 
   @Test

@@ -5,6 +5,7 @@
     <string name="navigationTabUpload">Ajouter</string>
     <string name="navigationTabSetting">Paramètres</string>
     <string name="navigationTabMedias">Médias</string>
+    <string name="navigationTabMap">Carte</string>
     <string name="navigationCancel">Annuler</string>
     <string name="navigationSignOut">Déconnexion</string>
     <string name="navigationBack">Retour</string>
@@ -30,6 +31,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
     <!-- EmailSignIn -->
@@ -162,6 +164,7 @@
     <string name="changeCareCircleCurrent">Cercle de soins actuel&#160;:</string>
     <string name="changeCareCircleAll">Tous les cercles de soins&#160;:</string>
     <string name="changeCareCircleNone">Aucun cercle de soins actif</string>
+    <string name="changeCareCircleInfo">Appuyez sur un cercle de la liste pour accéder à ce cercle de soins.</string>
     <string name="changeCareCircleEmpty">Vous n\'êtes lié à aucun cercle de soins.\nVous pouvez en créer un depuis %1$s &gt; %2$s, ou en rejoindre un depuis %1$s &gt; %3$s.</string>
     <string name="changeCareCircleErrorLoadProfile">Impossible de charger votre profil.</string>
     <string name="changeCareCircleErrorLoadCircle">Impossible de charger vos cercles de soins.</string>
@@ -427,10 +430,30 @@
     <string name="audioPlaybackRetry">Réessayer</string>
     <string name="audioPlaybackError">Cet audio n\'a pas pu être lu.</string>
     <!-- MediaMap -->
+    <string name="patientMapSearchHint">Rechercher un lieu</string>
+    <string name="patientMapOverview">VUE D\'ENSEMBLE</string>
+    <string name="patientMapYourPosition">Votre position</string>
+    <string name="patientMapPermissionNeeded">Autorisez la localisation pour voir votre position</string>
+    <string name="patientMapLocationOff">Activez la localisation pour voir votre position</string>
+    <string name="patientMapSearching">Recherche de votre position…</string>
+    <string name="patientMapLocationUnavailable">Votre position est indisponible</string>
+    <string name="patientMapLastKnown">Dernière position connue</string>
+    <string name="patientMapLocationFound">Position actuelle</string>
+    <string name="patientMapRecenter">Recentrer</string>
     <string name="mediaMapErrorNoProfile">Aucun profil trouvé.</string>
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
+
+    <!-- AddAppointment -->
+    <string name="addAppointmentTitle">Ajouter un événement</string>
+    <string name="addAppointmentTitleLabel">Titre</string>
+    <string name="addAppointmentTitlePlaceholder">Saisissez un titre</string>
+    <string name="addAppointmentNoteLabel">Note - Optionnel</string>
+    <string name="addAppointmentNotePlaceholder">Saisissez une note pour vous ou le patient</string>
+    <string name="addAppointmentAddButton">Ajouter l\'événement</string>
+    <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
+
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Mois précédent</string>
     <string name="calendarNextMonth">Mois suivant</string>

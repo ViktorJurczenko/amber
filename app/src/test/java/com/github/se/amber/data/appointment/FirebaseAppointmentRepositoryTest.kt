@@ -1,4 +1,5 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.appointment
 
@@ -403,6 +404,17 @@ class FirebaseAppointmentRepositoryTest {
     every { document.set(any()) } throws source
 
     assertError(AppointmentError.Unknown(source), repository.addAppointment(circleId, appointment))
+  }
+
+  @Test
+  fun anUpdateThatCannotStartFailsTheCall() = runTest {
+    val source = IllegalArgumentException("Unsupported field value")
+    every { document.update(any<Map<String, Any>>()) } throws source
+
+    assertError(
+        AppointmentError.Unknown(source),
+        repository.updateAppointment(circleId, appointment),
+    )
   }
 
   @Test
