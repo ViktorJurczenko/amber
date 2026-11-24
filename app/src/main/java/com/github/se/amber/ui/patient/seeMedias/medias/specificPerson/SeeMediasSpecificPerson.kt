@@ -3,6 +3,7 @@
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,6 +48,7 @@ private val specificPersonScreenConfig =
  * @param onTabSelected called when a bottom navigation tab is selected.
  * @param onPersonClick called with the id of a related person when its button is clicked.
  */
+@NonRestartableComposable
 @Composable
 fun SeeMediasSpecificPersonScreen(
     personId: String = "",
@@ -69,7 +71,7 @@ fun SeeMediasSpecificPersonScreen(
       onErrorShown = viewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
-      onPersonClick = onPersonClick,
+      onPersonClick = { id -> onPersonClick(id) },
       titleArgs = listOf(),
   ) { _, _, _ ->
     // TODO implement

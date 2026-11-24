@@ -304,9 +304,7 @@ fun AmberApp(
             personId = personId,
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
-            onPersonClick = { id ->
-              navigationActions.navigateToSeeMediasSpecificPerson(id, shownPersonId = personId)
-            },
+            onPersonClick = navigationActions::navigateToSeeMediasSpecificPerson,
         )
       }
       composable(route = PatientScreen.Parameters.route) {
