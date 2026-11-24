@@ -318,8 +318,8 @@ class MediaMapViewModel(
   }
 
   /**
-   * Chooses the recenter action from the current location state; camera motion stays in the UI.
-   * A last-known position can still be used while the device looks for a fresh fix.
+   * Chooses the recenter action from the current location state; camera motion stays in the UI. A
+   * last-known position can still be used while the device looks for a fresh fix.
    *
    * @return The action the screen should perform for the current location state.
    */
@@ -331,8 +331,8 @@ class MediaMapViewModel(
       }
 
   /**
-   * Updates the field and cancels results for text the patient has already changed.
-   * Input is cleaned with [InputValidation.PLACE_QUERY]; short queries do not reach the repository.
+   * Updates the field and cancels results for text the patient has already changed. Input is
+   * cleaned with [InputValidation.PLACE_QUERY]; short queries do not reach the repository.
    *
    * @param query Text entered in the search field.
    */
@@ -368,8 +368,8 @@ class MediaMapViewModel(
   }
 
   /**
-   * Runs only the latest lookup after the patient pauses typing.
-   * The query check also discards a response if the user edited or selected a place in the meantime.
+   * Runs only the latest lookup after the patient pauses typing. The query check also discards a
+   * response if the user edited or selected a place in the meantime.
    *
    * @param query Cleaned search text sent to the place repository.
    */
