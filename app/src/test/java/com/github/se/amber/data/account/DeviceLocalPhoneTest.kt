@@ -1,11 +1,13 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.account
 
 import coil3.ImageLoader
 import coil3.memory.MemoryCache
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.PersonPhotoRepository
 import com.github.se.amber.model.media.MediaRepository
 import io.mockk.coEvery
 import io.mockk.every
@@ -28,6 +30,7 @@ class DeviceLocalPhoneTest {
   @get:Rule val tempFolder = TemporaryFolder()
 
   private val mediaRepository: MediaRepository = mockk(relaxUnitFun = true)
+  private val photoRepository: PersonPhotoRepository = mockk(relaxUnitFun = true)
   private val memoryCache: MemoryCache = mockk(relaxUnitFun = true)
   private lateinit var cacheDir: File
   private lateinit var picked: File
@@ -42,6 +45,11 @@ class DeviceLocalPhoneTest {
   @Before
   fun setUp() {
     coEvery { mediaRepository.clearLocalMedia() } answers { calls += "clearMedia" }
+    coEvery { photoRepository.clearLocalPhotos() } answers
+        {
+          calls += "clearPhotos"
+          Result.success(Unit)
+        }
     every { memoryCache.clear() } answers { calls += "clearMemory" }
     val imageLoader =
         mockk<ImageLoader> { every { memoryCache } returns this@DeviceLocalPhoneTest.memoryCache }
@@ -65,6 +73,7 @@ class DeviceLocalPhoneTest {
             mediaRepository,
             MediaImageMemory(imageLoader),
             cacheDir,
+            photoRepository,
             Dispatchers.Unconfined,
         )
   }
@@ -88,7 +97,7 @@ class DeviceLocalPhoneTest {
     assertTrue(otherFile.exists())
     // only the copies of picked pictures go, not any file with their prefix
     assertTrue(pickedNotAPicture.exists())
-    assertEquals(listOf("clearMedia", "clearMemory"), calls)
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
   }
 
   @Test
@@ -116,7 +125,7 @@ class DeviceLocalPhoneTest {
     assertFalse(pickedMemo.exists())
     assertTrue(stuck.exists())
     assertTrue(otherFile.exists())
-    assertEquals(emptyList<String>(), calls)
+    assertEquals(listOf("clearPhotos"), calls)
   }
 
   @Test
@@ -156,5 +165,39 @@ class DeviceLocalPhoneTest {
     assertEquals("stopped", error?.message)
     assertTrue(error?.suppressed?.isEmpty() == true)
     assertTrue(picked.exists())
+  }
+
+  @Test
+  fun aPhotoClearFailureStillRunsTheLaterSteps() = runBlocking {
+    coEvery { photoRepository.clearLocalPhotos() } answers
+        {
+          calls += "clearPhotos"
+          Result.failure(IOException("Photos left"))
+        }
+
+    phone.clear()
+
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
+    assertFalse(picked.exists())
+    assertFalse(captured.parentFile!!.exists())
+    assertFalse(recorded.exists())
+    assertFalse(pickedMemo.exists())
+    assertTrue(otherFile.exists())
+    assertTrue(pickedNotAPicture.exists())
+  }
+
+  @Test
+  fun aCancelledPhotoClearStopsAtOnce() {
+    coEvery { photoRepository.clearLocalPhotos() } throws CancellationException("stopped")
+
+    val error = runCatching { runBlocking { phone.clear() } }.exceptionOrNull()
+
+    assertTrue(error is CancellationException)
+    assertEquals("stopped", error?.message)
+    assertEquals(listOf("clearMedia"), calls)
+    assertTrue(picked.exists())
+    assertTrue(captured.exists())
+    assertTrue(recorded.exists())
+    assertTrue(pickedMemo.exists())
   }
 }

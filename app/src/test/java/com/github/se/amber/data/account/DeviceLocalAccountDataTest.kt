@@ -1,5 +1,6 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.account
 
@@ -110,6 +111,9 @@ class DeviceLocalAccountDataTest {
             mediaRepository,
             imageMemory,
             cacheDir,
+            mockk(relaxUnitFun = true) {
+              coEvery { clearLocalPhotos() } returns Result.success(Unit)
+            },
             Dispatchers.Unconfined,
         )
     localData =

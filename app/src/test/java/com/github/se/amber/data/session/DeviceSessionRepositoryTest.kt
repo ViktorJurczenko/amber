@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.session
 
@@ -58,6 +59,9 @@ class DeviceSessionRepositoryTest {
                 mediaRepository,
                 MediaImageMemory(imageLoader),
                 cacheDir,
+                mockk(relaxUnitFun = true) {
+                  coEvery { clearLocalPhotos() } returns Result.success(Unit)
+                },
                 Dispatchers.Unconfined,
             ),
             authRepository,
