@@ -22,8 +22,8 @@ import com.github.se.amber.data.location.PlaceSearchRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.location.DevicePosition
-import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.GeoLocation
+import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.NEARBY_EXIT_MARGIN_METERS
 import com.github.se.amber.model.location.NEARBY_MAX_ACCURACY_METERS
 import com.github.se.amber.model.location.isPreciseWithin
@@ -31,8 +31,10 @@ import com.github.se.amber.model.location.nearby
 import com.github.se.amber.model.location.pointOrNull
 import com.github.se.amber.model.validation.InputValidation
 import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,8 +53,6 @@ import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * UI state of the memories map, the same for the patient and the caregiver. The errors are string

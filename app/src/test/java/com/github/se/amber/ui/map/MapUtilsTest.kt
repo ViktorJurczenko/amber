@@ -6,13 +6,13 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -105,7 +105,9 @@ class MapUtilsTest {
     }
 
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
-    composeTestRule.onNodeWithText(context.getString(R.string.locationSearching)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertIsDisplayed()
 
     state.value =
         MapPlaceSearchState(
@@ -113,12 +115,15 @@ class MapUtilsTest {
             suggestions = listOf(lausanne, geneva),
             hasSearched = true,
         )
-    composeTestRule.onNodeWithText(context.getString(R.string.locationSearching)).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertDoesNotExist()
     composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(2)
     composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION)[0].performClick()
     assertEquals(lausanne, selected)
 
-    state.value = MapPlaceSearchState(query = lausanne.placeName.orEmpty(), selectedPlace = lausanne)
+    state.value =
+        MapPlaceSearchState(query = lausanne.placeName.orEmpty(), selectedPlace = lausanne)
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
 
@@ -127,9 +132,7 @@ class MapUtilsTest {
     val state = mutableStateOf(MapPlaceSearchState(query = "La"))
     var retries = 0
     composeTestRule.setContent {
-      AmberAppTheme {
-        MapSearchField(state = state.value, onRetrySearch = { retries++ })
-      }
+      AmberAppTheme { MapSearchField(state = state.value, onRetrySearch = { retries++ }) }
     }
 
     val shortHint =
@@ -245,7 +248,7 @@ class MapUtilsTest {
             R.string.patientMapRecenter,
             R.string.patientMapOverview,
             R.string.patientMapYourPosition,
-            )
+        )
 
     keys.forEach { id ->
       val frenchText = context.getString(id)

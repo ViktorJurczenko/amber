@@ -122,9 +122,7 @@ fun MapScreen(
   LaunchedEffect(placeSearchState.selectedPlace) {
     placeSearchState.selectedPlace?.pointOrNull()?.let { (lat, lng) ->
       centeredOnFreshPosition = true
-      cameraPositionState.animate(
-          CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), SEARCH_ZOOM)
-      )
+      cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), SEARCH_ZOOM))
     }
   }
 

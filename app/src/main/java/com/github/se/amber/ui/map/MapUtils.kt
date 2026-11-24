@@ -31,8 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
@@ -40,14 +40,14 @@ import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
+import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
 import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
+import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
-import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
 object MapTestTags {
@@ -94,7 +94,9 @@ internal fun MapSearchField(
           color = MaterialTheme.colorScheme.surface,
           shadowElevation = PATIENT_PADDING_MINI,
       ) {
-        Column(modifier = Modifier.heightIn(max = TEXT_FIELD_BIG).verticalScroll(rememberScrollState())) {
+        Column(
+            modifier = Modifier.heightIn(max = TEXT_FIELD_BIG).verticalScroll(rememberScrollState())
+        ) {
           when {
             state.query.trim().length < MAP_MIN_PLACE_QUERY_LENGTH ->
                 MapSearchHint(
@@ -107,7 +109,9 @@ internal fun MapSearchField(
             state.isSearching -> MapSearchHint(stringResource(R.string.locationSearching))
             state.searchFailed -> {
               MapSearchHint(stringResource(R.string.patientMapSearchFailed))
-              TextButton(onClick = onRetrySearch) { Text(stringResource(R.string.locationTryAgain)) }
+              TextButton(onClick = onRetrySearch) {
+                Text(stringResource(R.string.locationTryAgain))
+              }
             }
             state.hasSearched && state.suggestions.isEmpty() ->
                 MapSearchHint(stringResource(R.string.patientMapNoPlaceFound))
@@ -143,7 +147,11 @@ internal fun MapPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick: () 
 /** A translated search status inside the suggestion popup. */
 @Composable
 private fun MapSearchHint(text: String = "") {
-  Text(text, modifier = Modifier.padding(PATIENT_PADDING_SMALL), style = MaterialTheme.typography.bodyMedium)
+  Text(
+      text,
+      modifier = Modifier.padding(PATIENT_PADDING_SMALL),
+      style = MaterialTheme.typography.bodyMedium,
+  )
 }
 
 /** Position card that reflects the live GPS state. */

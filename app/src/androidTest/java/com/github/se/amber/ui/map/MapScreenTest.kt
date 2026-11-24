@@ -83,26 +83,18 @@ class MapScreenTest {
     val viewModel = createViewModel()
     var chosenTab: Tab? = null
     composeTestRule.setContent {
-      AmberAppTheme {
-        MapScreen(viewModel = viewModel, onTabSelected = { chosenTab = it })
-      }
+      AmberAppTheme { MapScreen(viewModel = viewModel, onTabSelected = { chosenTab = it }) }
     }
 
-    composeTestRule
-        .onNodeWithTag(MapScreenTestTags.GOOGLE_MAP)
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
 
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.screenTitlePatientMap))
         .assertIsDisplayed()
 
-    composeTestRule
-        .onNodeWithTag(MapTestTags.SEARCH)
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertIsDisplayed()
 
-    composeTestRule
-        .onNodeWithTag(MapTestTags.POSITION_CARD)
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapTestTags.POSITION_CARD).assertIsDisplayed()
 
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Map))
