@@ -103,7 +103,7 @@ fun CreateInvitationScreen(
         .getSystemService(ClipboardManager::class.java)
         ?.setPrimaryClip(
             ClipData.newPlainText(
-                resources.getString(R.string.createInvitationCopyCode, codeToCopy),
+                resources.getString(R.string.createInvitationClipboardLabel),
                 codeToCopy,
             ),
         )

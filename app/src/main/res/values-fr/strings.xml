@@ -195,6 +195,7 @@
     <string name="createInvitationListHeader">Code | Date de création | Statut</string>
     <string name="createInvitationListRow">%1$s | %2$s | %3$s</string>
     <string name="createInvitationCopyCode">Copier le code %1$s</string>
+    <string name="createInvitationClipboardLabel">Code d\'invitation</string>
     <string name="createInvitationCodeCopied">Code copié</string>
     <string name="createInvitationStatusActive">ACTIVE</string>
     <string name="createInvitationStatusExpired">EXPIRÉE</string>
