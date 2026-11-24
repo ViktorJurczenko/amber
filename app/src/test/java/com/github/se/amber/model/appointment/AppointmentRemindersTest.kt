@@ -2,9 +2,11 @@
 
 package com.github.se.amber.model.appointment
 
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -45,25 +47,46 @@ class AppointmentRemindersTest {
     assertEquals(listOf(24 * 60), Appointment().reminderMinutesBefore)
   }
 
-  private val minute = 60_000L
-  private val hour = 60 * minute
-  private val day = 24 * hour
+  private val minute = 1.minutes.inWholeMilliseconds
+  private val hour = 1.hours.inWholeMilliseconds
+  private val day = 1.days.inWholeMilliseconds
   private val now = 100 * day
+  private val horizon = now + 7 * day
 
-  /** An appointment [startsIn] after [now], with [reminders] in minutes before its start. */
-  private fun appointmentIn(startsIn: Long, reminders: List<Int>, id: String = "a1") =
-      appointment.copy(id = id, startAt = now + startsIn, reminderMinutesBefore = reminders)
+  // reminder times, in minutes before the start
+  private val oneHourBefore = 60
+  private val halfAnHourBefore = 30
+  private val twoHoursBefore = 2 * 60
+  private val oneDayBefore = 24 * 60
+  private val twoDaysBefore = 2 * 24 * 60
+
+  /**
+   * An appointment [startsIn] after [now], with [reminders] in minutes before its start. It was
+   * saved [savedAgo] before [now]: a week by default, so the save doesn't move any reminder.
+   */
+  private fun appointmentIn(
+      startsIn: Long,
+      reminders: List<Int>,
+      id: String = "a1",
+      savedAgo: Long = 7 * day,
+  ) =
+      appointment.copy(
+          id = id,
+          startAt = now + startsIn,
+          reminderMinutesBefore = reminders,
+          updatedAt = now - savedAgo,
+      )
 
   @Test
   fun eachReminderComesItsMinutesBeforeTheStart() {
-    val doctor = appointmentIn(startsIn = 3 * day, reminders = listOf(60, 24 * 60))
+    val doctor = appointmentIn(startsIn = 3 * day, reminders = listOf(oneHourBefore, oneDayBefore))
 
-    val planned = planReminders(listOf(doctor), now, now + 7 * day)
+    val planned = planReminders(listOf(doctor), now, horizon)
 
     assertEquals(
         listOf(
-            PlannedReminder("a1@${doctor.startAt}@1440", doctor, 1440, doctor.startAt - day),
-            PlannedReminder("a1@${doctor.startAt}@60", doctor, 60, doctor.startAt - hour),
+            PlannedReminder(doctor, oneDayBefore, doctor.startAt - day),
+            PlannedReminder(doctor, oneHourBefore, doctor.startAt - hour),
         ),
         planned,
     )
@@ -71,71 +94,126 @@ class AppointmentRemindersTest {
 
   @Test
   fun remindersOfSeveralAppointmentsComeSoonestFirst() {
-    val later = appointmentIn(startsIn = 2 * day, reminders = listOf(60), id = "later")
-    val sooner = appointmentIn(startsIn = 1 * day, reminders = listOf(60, 30), id = "sooner")
+    val later = appointmentIn(startsIn = 2 * day, reminders = listOf(oneHourBefore), id = "later")
+    val sooner =
+        appointmentIn(
+            startsIn = 1 * day,
+            reminders = listOf(oneHourBefore, halfAnHourBefore),
+            id = "sooner",
+        )
 
-    val planned = planReminders(listOf(later, sooner), now, now + 7 * day)
+    val planned = planReminders(listOf(later, sooner), now, horizon)
 
     assertEquals(
-        listOf(sooner.startAt - hour, sooner.startAt - 30 * minute, later.startAt - hour),
+        listOf(
+            sooner.startAt - hour,
+            sooner.startAt - halfAnHourBefore * minute,
+            later.startAt - hour,
+        ),
         planned.map { it.fireAt },
     )
   }
 
   @Test
-  fun aReminderThatHasPassedIsLeftOutButOneDueNowIsKept() {
-    // Starts in 2 hours: 1 day before has passed, 2 hours before is right now.
-    val soon = appointmentIn(startsIn = 2 * hour, reminders = listOf(24 * 60, 120, 60))
+  fun remindersAtTheSameTimeAreSortedByAppointmentThenByStart() {
+    val b = appointmentIn(startsIn = 1 * day, reminders = listOf(oneHourBefore), id = "b")
+    val a = appointmentIn(startsIn = 1 * day, reminders = listOf(oneHourBefore), id = "a")
+    // Two days of one repeating appointment: tomorrow's start and the day after's "1 day before"
+    // come at the same time.
+    val tomorrow =
+        appointmentIn(startsIn = 1 * day, reminders = listOf(0, oneDayBefore), id = "series")
+    val dayAfter = tomorrow.copy(startAt = tomorrow.startAt + day)
 
-    val planned = planReminders(listOf(soon), now, now + 7 * day)
+    val byAppointment = planReminders(listOf(b, a), now, horizon)
+    val byStart = planReminders(listOf(dayAfter, tomorrow), now, now + day)
 
-    assertEquals(listOf(now, now + hour), planned.map { it.fireAt })
+    assertEquals(listOf("a", "b"), byAppointment.map { it.occurrence.id })
+    assertEquals(listOf(tomorrow.startAt, dayAfter.startAt), byStart.map { it.occurrence.startAt })
   }
 
   @Test
-  fun aReminderAtOrAfterTheHorizonIsLeftOut() {
-    // 1 day before falls on the horizon, 1 hour before after it.
-    val farAway = appointmentIn(startsIn = 8 * day, reminders = listOf(24 * 60, 60))
+  fun onlyTheRemindersAfterTheStartOfThePeriodAndUntilItsEndAreGiven() {
+    // 2 hours before is the start of the period, 1 hour before its end, 30 minutes before is after.
+    val soon =
+        appointmentIn(
+            startsIn = 2 * hour,
+            reminders = listOf(twoHoursBefore, oneHourBefore, halfAnHourBefore),
+        )
 
-    assertEquals(emptyList<PlannedReminder>(), planReminders(listOf(farAway), now, now + 7 * day))
+    val planned = planReminders(listOf(soon), afterMillis = now, untilMillis = now + hour)
+
+    assertEquals(listOf(oneHourBefore), planned.map { it.minutesBefore })
+  }
+
+  @Test
+  fun aReminderWhoseTimePassedBeforeTheSaveComesAtTheSave() {
+    // Saved at 20:00 for 9:00 the next day: 1 day before was 9:00 that morning.
+    val savedLate =
+        appointmentIn(
+            startsIn = 13 * hour,
+            reminders = listOf(oneDayBefore, oneHourBefore),
+            savedAgo = 0,
+        )
+
+    val planned = planReminders(listOf(savedLate), now - minute, horizon)
+
+    assertEquals(
+        listOf(
+            PlannedReminder(savedLate, oneDayBefore, now),
+            PlannedReminder(savedLate, oneHourBefore, savedLate.startAt - hour),
+        ),
+        planned,
+    )
+  }
+
+  @Test
+  fun remindersMovedToTheSaveGiveOneTheClosestToTheStart() {
+    val savedLate =
+        appointmentIn(
+            startsIn = 13 * hour,
+            reminders = listOf(twoDaysBefore, oneDayBefore),
+            savedAgo = 0,
+        )
+
+    val reminder = planReminders(listOf(savedLate), now - minute, horizon).single()
+
+    assertEquals(oneDayBefore, reminder.minutesBefore)
+    assertEquals(now, reminder.fireAt)
+  }
+
+  @Test
+  fun aReminderComesAtTheStartAtTheLatest() {
+    val atTheStart = appointmentIn(startsIn = 1 * hour, reminders = listOf(0))
+    // Saved an hour after it started, for example to fix its notes.
+    val started =
+        appointment.copy(
+            startAt = now - hour,
+            reminderMinutesBefore = listOf(oneHourBefore),
+            updatedAt = now,
+        )
+
+    val reminder = planReminders(listOf(atTheStart), now, horizon).single()
+
+    assertEquals(atTheStart.startAt, reminder.fireAt)
+    assertEquals(emptyList<PlannedReminder>(), planReminders(listOf(started), now - day, horizon))
   }
 
   @Test
   fun noReminderIsPlannedWithoutReminderTimesOrAppointments() {
     val silent = appointmentIn(startsIn = 1 * day, reminders = emptyList())
 
-    assertEquals(emptyList<PlannedReminder>(), planReminders(listOf(silent), now, now + 7 * day))
-    assertEquals(emptyList<PlannedReminder>(), planReminders(emptyList(), now, now + 7 * day))
+    assertEquals(emptyList<PlannedReminder>(), planReminders(listOf(silent), now, horizon))
+    assertEquals(emptyList<PlannedReminder>(), planReminders(emptyList(), now, horizon))
   }
 
   @Test
   fun aTimeListedTwiceGivesOneReminder() {
-    val doubled = appointmentIn(startsIn = 1 * day, reminders = listOf(60, 60))
+    val doubled =
+        appointmentIn(startsIn = 1 * day, reminders = listOf(oneHourBefore, oneHourBefore))
 
-    assertEquals(1, planReminders(listOf(doubled), now, now + 7 * day).size)
-  }
+    val reminder = planReminders(listOf(doubled), now, horizon).single()
 
-  @Test
-  fun theKeyStaysTheSameWhenNothingChanges() {
-    val doctor = appointmentIn(startsIn = 3 * day, reminders = listOf(60))
-    // An edit that keeps the start and the reminder time, planned again an hour later.
-    val renamed = doctor.copy(title = "Dentist", notes = "Bring the X-rays")
-
-    val first = planReminders(listOf(doctor), now, now + 7 * day).single()
-    val second = planReminders(listOf(renamed), now + hour, now + hour + 7 * day).single()
-
-    assertEquals("a1@${doctor.startAt}@60", first.key)
-    assertEquals(first.key, second.key)
-  }
-
-  @Test
-  fun theKeyChangesWhenTheAppointmentMoves() {
-    val doctor = appointmentIn(startsIn = 3 * day, reminders = listOf(60))
-    val moved = doctor.copy(startAt = doctor.startAt + hour)
-
-    val before = planReminders(listOf(doctor), now, now + 7 * day).single()
-    val after = planReminders(listOf(moved), now, now + 7 * day).single()
-
-    assertNotEquals(before.key, after.key)
+    assertEquals(oneHourBefore, reminder.minutesBefore)
+    assertEquals(doubled.startAt - hour, reminder.fireAt)
   }
 }
