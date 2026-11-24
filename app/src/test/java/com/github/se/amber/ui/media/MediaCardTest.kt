@@ -142,7 +142,7 @@ class MediaCardTest {
           shownIds = shownIds,
       )
 
-  private fun text(description: String?) =
+  private fun text(description: String) =
       MediaItem.Text(id = "m1", authorId = "author", description = description)
 
   /** Clicks the toggle button. Set [expanded] to true if the card is currently expanded. */
@@ -364,18 +364,6 @@ class MediaCardTest {
 
     composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
     composeTestRule.onNodeWithTag(MediaCardTestTags.addedBy("m1")).assertIsDisplayed()
-  }
-
-  @Test
-  fun expanded_nullDescription_hidesDescriptionButKeepsAuthor() {
-    setCard(text(description = null))
-
-    toggle()
-
-    composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
-    composeTestRule
-        .onNodeWithTag(MediaCardTestTags.addedBy("m1"))
-        .assertTextEquals(string(R.string.mediaCardAddedBy, "Alice"))
   }
 
   // ---------- related persons ----------
