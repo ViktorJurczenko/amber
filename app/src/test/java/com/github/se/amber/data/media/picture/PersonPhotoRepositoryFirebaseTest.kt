@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -27,9 +28,16 @@ import com.google.firebase.firestore.Transaction
 import com.google.firebase.storage.StorageException
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
 import io.mockk.slot
+import io.mockk.unmockkConstructor
+import io.mockk.unmockkStatic
 import java.io.File
 import java.io.IOException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +49,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -90,6 +99,7 @@ class PersonPhotoRepositoryFirebaseTest {
     writes.clear()
     duringWrite = {}
     fileStorage.downloadError = null
+    fileStorage.deleteError = null
     fileStorage.onUpload = {}
     every { firestore.collection(CARE_CIRCLES) } returns circles
     every { circles.document(CIRCLE_ID) } returns circleDocument
@@ -441,6 +451,362 @@ class PersonPhotoRepositoryFirebaseTest {
     assertTrue(pendingPhoto.exists())
   }
 
+  @Test
+  fun writePreparedJpegRejectsAnUnusablePhoto() {
+    val text = File(tmp.root, "notes.txt").apply { writeText("hello") }
+    assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
+      writePreparedJpeg(text, File(tmp.root, "out.jpg"))
+    }
+
+    val photo = picture()
+    val sameFile =
+        assertThrows(IllegalArgumentException::class.java) { writePreparedJpeg(photo, photo) }
+    assertEquals("A prepared photo is written to a new file", sameFile.message)
+
+    val noParent =
+        assertThrows(IOException::class.java) { writePreparedJpeg(picture(), File("prepared.jpg")) }
+    assertTrue(noParent.message.orEmpty().contains("has no directory"))
+
+    val parentFile = File(tmp.root, "parent-file").apply { writeBytes(byteArrayOf(1)) }
+    val blocked =
+        assertThrows(IOException::class.java) {
+          writePreparedJpeg(picture(), File(parentFile, "photo.jpg"))
+        }
+    assertTrue(blocked.message.orEmpty().contains("Could not create"))
+
+    val created = File(tmp.root, "new-dir/photo.jpg")
+    writePreparedJpeg(picture(), created)
+    assertTrue(created.isFile)
+    assertTrue(created.parentFile!!.isDirectory)
+  }
+
+  @Test
+  fun writePreparedJpegSubsamplesAVeryWidePhotoAndScalesALandscapePhoto() {
+    val subsampled = File(tmp.root, "subsampled.jpg")
+    writePreparedJpeg(picture(width = 2048, height = 32), subsampled)
+    val reduced = decode(subsampled)
+    try {
+      assertEquals(MAX_SIDE, reduced.width)
+      assertTrue(reduced.height < 32)
+    } finally {
+      reduced.recycle()
+    }
+
+    val landscape = File(tmp.root, "landscape.jpg")
+    writePreparedJpeg(picture(width = 1500, height = 400), landscape)
+    val fitted = decode(landscape)
+    try {
+      assertEquals(MAX_SIDE, fitted.width)
+      assertEquals((400L * MAX_SIDE / 1500).toInt(), fitted.height)
+    } finally {
+      fitted.recycle()
+    }
+  }
+
+  @Test
+  fun getPhotoFileRejectsACircleWithNoBucket() = runTest {
+    val result = repository().getPhotoFile(circle.copy(storageBucket = ""), OLD_PATH)
+
+    assertSame(PersonPhotoError.NoStorageBucket, result.exceptionOrNull())
+    assertEquals(emptyList<String>(), events)
+  }
+
+  @Test
+  fun uploadPendingPhotoFailsWhenSignedOutOrTheUploadFailsAndKeepsTheFile() = runTest {
+    val signedOut = repository(signedInAs(null))
+    assertTrue(signedOut.savePendingPhoto(picture()).isSuccess)
+
+    val notSignedIn = signedOut.uploadPendingPhoto(circle)
+
+    assertSame(PersonPhotoError.NotAuthenticated, notSignedIn.exceptionOrNull())
+    assertTrue(pendingPhoto.isFile)
+    val kept = pendingPhoto.readBytes()
+
+    val repo = repository()
+    fileStorage.onUpload = { throw IOException("offline") }
+    val failed = repo.uploadPendingPhoto(circle)
+
+    assertTrue(failed.exceptionOrNull() is PersonPhotoError.Unknown)
+    assertArrayEquals(kept, pendingPhoto.readBytes())
+  }
+
+  @Test
+  fun setPhotoDoesNotDeleteWhenThePreviousPathIsTheNewPath() = runTest {
+    val path = "careCircles/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.jpg"
+    photos[PERSON] = path
+
+    val result = repository().setPhoto(circle, PERSON, picture())
+
+    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+    assertEquals(listOf("upload $BUCKET:$path", "write $path"), events)
+    assertEquals(path, photos[PERSON])
+  }
+
+  @Test
+  fun setPhotoSucceedsWhenTheCacheCannotKeepThePhoto() = runTest {
+    val blocked = File(tmp.root, "not-a-directory").apply { writeBytes(byteArrayOf(1)) }
+
+    val result = repository(directory = blocked).setPhoto(circle, PERSON, picture())
+
+    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+    assertEquals(1, writes.size)
+  }
+
+  @Test
+  fun setPhotoUsesAFirestoreIdWhenNoneIsGiven() = runTest {
+    val generated = mockk<DocumentReference>()
+    every { generated.id } returns PHOTO_ID
+    every { circles.document() } returns generated
+    val repo =
+        PersonPhotoRepositoryFirebase(
+            fileStorage,
+            MediaFileCache(cacheDir, ioDispatcher = StandardTestDispatcher(testScheduler)),
+            firestore,
+            signedInAs(UID),
+            pendingPhoto,
+        )
+
+    val result = repo.setPhoto(circle, PERSON, picture())
+
+    val path = "careCircles/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.jpg"
+    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+    assertEquals(listOf("upload $BUCKET:$path", "write $path"), events)
+  }
+
+  @Test
+  fun setPhotoTreatsANonStringPhotoEntryAsMissing() = runTest {
+    var stored: Any? = "nope"
+    every { snapshot.get(any<String>()) } answers
+        {
+          if (firstArg<String>() == "personPhotos") stored else null
+        }
+    val repo = repository()
+
+    assertTrue(repo.setPhoto(circle, PERSON, picture()).isSuccess)
+    assertTrue(events.none { it.startsWith("delete") })
+
+    stored = mapOf(PERSON to 1)
+    events.clear()
+
+    assertTrue(repo.setPhoto(circle, PERSON, picture()).isSuccess)
+    assertTrue(events.none { it.startsWith("delete") })
+  }
+
+  @Test
+  fun setPhotoReturnsTheMappedStorageAndFirestoreErrors() = runTest {
+    val repo = repository()
+    val firestoreFailures =
+        listOf(
+            FirebaseFirestoreException.Code.PERMISSION_DENIED to PersonPhotoError.PermissionDenied,
+            FirebaseFirestoreException.Code.UNAUTHENTICATED to PersonPhotoError.NotAuthenticated,
+            FirebaseFirestoreException.Code.INVALID_ARGUMENT to null,
+        )
+    for ((code, expected) in firestoreFailures) {
+      val failure = FirebaseFirestoreException(code.name, code)
+      every { firestore.runTransaction<Any?>(any()) } throws failure
+
+      val result = repo.setPhoto(circle, PERSON, picture())
+
+      if (expected == null) {
+        val error = result.exceptionOrNull()
+        assertTrue(error is PersonPhotoError.Unknown)
+        assertSame(failure, (error as PersonPhotoError.Unknown).source)
+      } else {
+        assertSame(expected, result.exceptionOrNull())
+      }
+    }
+
+    fileStorage.downloadError = storageError(403)
+    assertSame(
+        PersonPhotoError.PermissionDenied,
+        repo.getPhotoFile(circle, OLD_PATH).exceptionOrNull(),
+    )
+
+    val storageFailures =
+        listOf(
+            storageError(401) to PersonPhotoError.NotAuthenticated,
+            storageError(RETRY_LIMIT_HTTP) to PersonPhotoError.Network,
+            storageError(500) to null,
+        )
+    for ((failure, expected) in storageFailures) {
+      fileStorage.onUpload = { throw failure }
+      val result = repo.setPhoto(circle, PERSON, picture())
+      if (expected == null) {
+        val error = result.exceptionOrNull()
+        assertTrue(error is PersonPhotoError.Unknown)
+        assertSame(failure, (error as PersonPhotoError.Unknown).source)
+      } else {
+        assertSame(expected, result.exceptionOrNull())
+      }
+    }
+  }
+
+  @Test
+  fun setPhotoMapsConnectionFailuresToNetwork() = runTest {
+    val repo = repository()
+    val failures =
+        listOf(
+            UnknownHostException("down"),
+            SocketException("reset"),
+            SocketTimeoutException("slow"),
+            requireNotNull(
+                StorageException.fromExceptionAndHttpCode(UnknownHostException("down"), 500)
+            ),
+        )
+    for (failure in failures) {
+      fileStorage.onUpload = { throw failure }
+
+      val result = repo.setPhoto(circle, PERSON, picture())
+
+      assertSame(failure.toString(), PersonPhotoError.Network, result.exceptionOrNull())
+    }
+  }
+
+  @Test
+  fun aRefusedUploadWhoseProbeFailsForAnotherReasonIsThatFailure() = runTest {
+    val missing = IOException("missing")
+    fileStorage.downloadError = missing
+    fileStorage.onUpload = { throw storageError(403) }
+    val repo = repository()
+
+    val other = repo.setPhoto(circle, PERSON, picture())
+
+    val error = other.exceptionOrNull()
+    assertTrue(error is PersonPhotoError.Unknown)
+    assertSame(missing, (error as PersonPhotoError.Unknown).source)
+    assertTrue(writes.isEmpty())
+
+    fileStorage.downloadError = UnknownHostException("down")
+    assertSame(PersonPhotoError.Network, repo.setPhoto(circle, PERSON, picture()).exceptionOrNull())
+
+    fileStorage.downloadError = storageError(401)
+    assertSame(
+        PersonPhotoError.PermissionDenied,
+        repo.setPhoto(circle, PERSON, picture()).exceptionOrNull(),
+    )
+
+    fileStorage.downloadError = storageError(403)
+    assertSame(
+        PersonPhotoError.PermissionDenied,
+        repo.setPhoto(circle, PERSON, picture()).exceptionOrNull(),
+    )
+  }
+
+  @Test
+  fun clearLocalPhotosSucceedsWhenNothingIsPending() = runTest {
+    val result = repository().clearLocalPhotos()
+
+    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+    assertFalse(pendingPhoto.exists())
+  }
+
+  @Test
+  fun anUnreadableExifOrientationIsKeptUpright() {
+    val source = picture()
+    mockkConstructor(ExifInterface::class)
+    try {
+      every { anyConstructed<ExifInterface>().rotationDegrees } throws IOException("unreadable")
+      val prepared = File(tmp.root, "upright.jpg")
+      writePreparedJpeg(source, prepared)
+      val decoded = decode(prepared)
+      try {
+        assertEquals(sourceWidth(source), decoded.width)
+        assertTrue(decoded.height > 0)
+      } finally {
+        decoded.recycle()
+      }
+    } finally {
+      unmockkConstructor(ExifInterface::class)
+    }
+  }
+
+  @Test
+  fun setPhotoReturnsAFailureWhenThePreparedFileCannotBeCreated() = runTest {
+    mockkStatic(File::class)
+    try {
+      every { File.createTempFile(any<String>(), any<String>()) } throws IOException("full")
+      val result = repository().setPhoto(circle, PERSON, picture())
+      val error = result.exceptionOrNull()
+      assertTrue(error is PersonPhotoError.Unknown)
+      assertTrue((error as PersonPhotoError.Unknown).source is IOException)
+      assertEquals(emptyList<String>(), events)
+    } finally {
+      unmockkStatic(File::class)
+    }
+  }
+
+  @Test
+  fun setPhotoKeepsTheWriteFailureWhenDeletingTheNewFileFails() = runTest {
+    val stuck = IOException("stuck")
+    fileStorage.deleteError = stuck
+    val failure = FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+    every { firestore.runTransaction<Any?>(any()) } throws failure
+
+    val result = repository().setPhoto(circle, PERSON, picture())
+
+    assertSame(PersonPhotoError.Network, result.exceptionOrNull())
+    assertTrue(writes.isEmpty())
+  }
+
+  @Test
+  fun cancellationsAreRethrown() = runTest {
+    mockkStatic(File::class)
+    try {
+      every { File.createTempFile(any<String>(), any<String>()) } throws
+          CancellationException("stopped")
+      val creating = runCatching {
+        repository().setPhoto(circle, PERSON, picture())
+      }
+          .exceptionOrNull()
+      assertTrue(creating is CancellationException)
+      assertEquals("stopped", creating?.message)
+    } finally {
+      unmockkStatic(File::class)
+    }
+
+    every { firestore.runTransaction<Any?>(any()) } throws CancellationException("stopped")
+    val writing = runCatching { repository().setPhoto(circle, PERSON, picture()) }.exceptionOrNull()
+    assertTrue(writing is CancellationException)
+
+    restoreTransaction()
+    fileStorage.onUpload = { throw CancellationException("stopped") }
+    val uploading = runCatching {
+      repository().setPhoto(circle, PERSON, picture())
+    }
+        .exceptionOrNull()
+    assertTrue(uploading is CancellationException)
+
+    fileStorage.onUpload = { throw storageError(403) }
+    fileStorage.downloadError = CancellationException("stopped")
+    val probing = runCatching { repository().setPhoto(circle, PERSON, picture()) }.exceptionOrNull()
+    assertTrue(probing is CancellationException)
+
+    fileStorage.downloadError = null
+    fileStorage.onUpload = {}
+    photos[PERSON] = OLD_PATH
+    fileStorage.deleteError = CancellationException("stopped")
+    val deleting = runCatching {
+      repository().setPhoto(circle, PERSON, picture())
+    }
+        .exceptionOrNull()
+    assertTrue(deleting is CancellationException)
+
+    fileStorage.deleteError = null
+    photos.clear()
+    val dispatcher =
+        object : CoroutineDispatcher() {
+          override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
+            context[Job]?.cancel(CancellationException("stopped"))
+            block.run()
+          }
+        }
+    val caching = runCatching {
+      repository(cacheDispatcher = dispatcher).setPhoto(circle, PERSON, picture())
+    }
+        .exceptionOrNull()
+    assertTrue(caching is CancellationException)
+  }
+
   private fun TestScope.repository(
       authRepository: AuthRepository = signedInAs(UID),
       directory: File = cacheDir,
@@ -458,6 +824,24 @@ class PersonPhotoRepositoryFirebaseTest {
   /** A signed-in user with [uid], or nobody when [uid] is null. */
   private fun signedInAs(uid: String?): AuthRepository = mockk {
     every { currentUser } returns uid?.let { AuthUser(it) }
+  }
+
+  /** Puts back the transaction stub after a test replaced it. */
+  private fun restoreTransaction() {
+    every { firestore.runTransaction<Any?>(any()) } answers
+        {
+          try {
+            Tasks.forResult(firstArg<Transaction.Function<Any?>>().apply(transaction))
+          } catch (e: Exception) {
+            Tasks.forException(e)
+          }
+        }
+  }
+
+  private fun sourceWidth(file: File): Int {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    return bounds.outWidth
   }
 
   private fun recordWrite(field: FieldPath, path: String) {
@@ -540,6 +924,12 @@ class PersonPhotoRepositoryFirebaseTest {
   private class PhotoStorage(private val files: FakeMediaFileStorage) : MediaFileStorage by files {
     var downloadError: Exception? = null
 
+    var deleteError: Exception?
+      get() = files.deleteError
+      set(value) {
+        files.deleteError = value
+      }
+
     var onUpload: suspend (File) -> Unit
       get() = files.onUpload
       set(value) {
@@ -573,5 +963,8 @@ class PersonPhotoRepositoryFirebaseTest {
     const val WIDE = 1200
     const val TALL = 600
     const val MAX_SIDE = 1024
+
+    /** HTTP code [StorageException] maps to a retry-limit failure. */
+    const val RETRY_LIMIT_HTTP = -2
   }
 }
