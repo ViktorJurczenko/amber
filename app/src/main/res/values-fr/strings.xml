@@ -454,4 +454,13 @@
     <string name="addAppointmentNotePlaceholder">Saisissez une note pour vous ou le patient</string>
     <string name="addAppointmentAddButton">Ajouter l\'événement</string>
     <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
+    <string name="addAppointmentErrorNotSignedIn">Connectez-vous pour ajouter un événement</string>
+    <string name="addAppointmentErrorInvalidCircle">Le cercle de soins est invalide</string>
+    <string name="addAppointmentErrorInvalidId">L\'identifiant de l\'événement est invalide</string>
+    <string name="addAppointmentErrorMissingStart">L\'événement doit avoir une date de début</string>
+    <string name="addAppointmentErrorInvalidDuration">L\'événement doit durer entre 1 minute et 24 heures</string>
+    <string name="addAppointmentErrorNotFound">Cet événement n\'existe plus</string>
+    <string name="addAppointmentErrorPermissionDenied">Vous n\'avez pas la permission d\'ajouter un événement</string>
+    <string name="addAppointmentErrorNoCircle">Aucun cercle de soins trouvé.</string>
+    <string name="addAppointmentErrorAdd">Impossible d\'ajouter l\'événement</string>
 </resources>
