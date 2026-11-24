@@ -814,18 +814,18 @@ class PatientUtilsTest {
   // ---------- Previews ----------
 
   @Test
-  fun textFieldPreview_showsTheSearchHint() {
-    composeTestRule.setContent { DisplayPatientTextFieldPreview() }
+  fun previews_showTheTextFieldHintAndPatientButtons() {
+    composeTestRule.setContent {
+      Column {
+        DisplayPatientTextFieldPreview()
+        DisplayPatientButtonsPreview()
+      }
+    }
 
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).assertIsDisplayed()
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
-  }
-
-  @Test
-  fun preview_showsThePatientButtons() {
-    composeTestRule.setContent { DisplayPatientButtonsPreview() }
 
     // The labeled button takes a width fraction inside a weighted row, so it is composed but has
     // no size in this unbounded test. Existence still runs the preview.
