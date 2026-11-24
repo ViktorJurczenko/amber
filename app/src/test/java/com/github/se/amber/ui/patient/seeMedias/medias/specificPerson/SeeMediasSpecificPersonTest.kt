@@ -295,25 +295,25 @@ class SeeMediasSpecificPersonScreenTest {
     assertEquals("p1", clickedId)
   }
 
-    @Test
-    fun clicking_the_person_already_shown_does_not_call_onPersonClick() {
-        val shownPerson =
-            CareCircle(
-                id = "circle1",
-                people = mapOf("person1" to Person(id = "person1", firstName = "Eva")),
-            )
-        coEvery { circleRepository.getCircle("circle1") } returns Result.success(shownPerson)
-        val media = MediaItem.Picture(id = "m2", shownIds = listOf("person1"))
-        var clickedId: String? = null
-        setContent(
-            state = SeeGeneralMediasUIState.Content(profile, shownPerson, listOf<MediaItem>(media)),
-            onPersonClick = { clickedId = it },
+  @Test
+  fun clicking_the_person_already_shown_does_not_call_onPersonClick() {
+    val shownPerson =
+        CareCircle(
+            id = "circle1",
+            people = mapOf("person1" to Person(id = "person1", firstName = "Eva")),
         )
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(shownPerson)
+    val media = MediaItem.Picture(id = "m2", shownIds = listOf("person1"))
+    var clickedId: String? = null
+    setContent(
+        state = SeeGeneralMediasUIState.Content(profile, shownPerson, listOf<MediaItem>(media)),
+        onPersonClick = { clickedId = it },
+    )
 
-        clickRelatedPerson("m2")
+    clickRelatedPerson("m2")
 
-        assertNull(clickedId)
-    }
+    assertNull(clickedId)
+  }
 
   @Test
   fun default_callbacks_do_nothing_and_keep_the_screen_displayed() {
@@ -324,9 +324,7 @@ class SeeMediasSpecificPersonScreenTest {
         )
     composeTestRule.setContent {
       CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
-        AmberAppTheme(dynamicColor = false) {
-          SeeMediasSpecificPersonScreen(viewModel = viewModel)
-        }
+        AmberAppTheme(dynamicColor = false) { SeeMediasSpecificPersonScreen(viewModel = viewModel) }
       }
     }
 

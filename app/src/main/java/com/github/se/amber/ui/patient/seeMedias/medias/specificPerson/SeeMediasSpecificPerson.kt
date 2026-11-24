@@ -3,7 +3,6 @@
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
