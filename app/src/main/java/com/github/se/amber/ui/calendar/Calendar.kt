@@ -209,8 +209,8 @@ internal fun CalendarDays(
             // A null cell is an empty cell of the grid. It shows nothing and is not clickable,
             // but it still takes its place so that the other days stay in the right column.
             // This covers two situations:
-            // 1. before the first day of the month
-            // 2. after the last one, to fill the first and the last week.
+            // 1. before the first day of the month, to fill the empty day before
+            // 2. after the last one, to fill the empty day after
             if (day != null) {
               CalendarDay(
                   day = day,
