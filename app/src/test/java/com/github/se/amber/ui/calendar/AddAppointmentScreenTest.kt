@@ -125,7 +125,22 @@ class AddAppointmentScreenTest {
   }
 
   @Test
-  fun screenIsLeftOnlyOnceTheAddedEventArrives() {
+  fun onAddEventIsCalledOnlyOnceTheAddedEventArrives() {
+    var addEventCalls = 0
+    val events = MutableSharedFlow<AddAppointmentEvent>(extraBufferCapacity = 1)
+    val viewModel = viewModel()
+    every { viewModel.events } returns events
+    showScreen(viewModel, onAddEvent = { addEventCalls++ })
+
+    composeTestRule.waitForIdle()
+    assertEquals(0, addEventCalls)
+    events.tryEmit(AddAppointmentEvent.Added)
+    composeTestRule.waitForIdle()
+    assertEquals(1, addEventCalls)
+  }
+
+  @Test
+  fun theAddedEventDoesNotCallGoBack() {
     var wentBack = false
     val events = MutableSharedFlow<AddAppointmentEvent>(extraBufferCapacity = 1)
     val viewModel = viewModel()
@@ -133,10 +148,25 @@ class AddAppointmentScreenTest {
     showScreen(viewModel, goBack = { wentBack = true })
 
     composeTestRule.waitForIdle()
-    assertFalse(wentBack)
     events.tryEmit(AddAppointmentEvent.Added)
     composeTestRule.waitForIdle()
-    assertTrue(wentBack)
+    assertFalse(wentBack)
+  }
+
+  @Test
+  fun aFailedAddShowsTheErrorAndDoesNotCallOnAddEventNorGoBack() {
+    ShadowToast.reset()
+    var addEventCalled = false
+    var wentBack = false
+    val viewModel =
+        viewModel(AddAppointmentUIState(errorMsgRes = R.string.addAppointmentErrorPermissionDenied))
+    showScreen(viewModel, goBack = { wentBack = true }, onAddEvent = { addEventCalled = true })
+    composeTestRule.waitForIdle()
+    assertEquals(
+        string(R.string.addAppointmentErrorPermissionDenied),
+        ShadowToast.getTextOfLatestToast(),
+    )
+    assertFalse(addEventCalled || wentBack)
   }
 
   @Test
@@ -190,9 +220,15 @@ class AddAppointmentScreenTest {
   private fun showScreen(
       viewModel: AddAppointmentViewModel = viewModel(),
       goBack: () -> Unit = {},
+      onAddEvent: () -> Unit = {},
   ) {
     composeTestRule.setContent {
-      AddAppointmentScreen(viewModel = viewModel, date = day, goBack = goBack)
+      AddAppointmentScreen(
+          viewModel = viewModel,
+          date = day,
+          goBack = goBack,
+          onAddEvent = onAddEvent,
+      )
     }
   }
 
