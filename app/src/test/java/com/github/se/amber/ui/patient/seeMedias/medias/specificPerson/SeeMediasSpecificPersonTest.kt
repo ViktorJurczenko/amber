@@ -47,6 +47,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -294,6 +295,26 @@ class SeeMediasSpecificPersonScreenTest {
     assertEquals("p1", clickedId)
   }
 
+    @Test
+    fun clicking_the_person_already_shown_does_not_call_onPersonClick() {
+        val shownPerson =
+            CareCircle(
+                id = "circle1",
+                people = mapOf("person1" to Person(id = "person1", firstName = "Eva")),
+            )
+        coEvery { circleRepository.getCircle("circle1") } returns Result.success(shownPerson)
+        val media = MediaItem.Picture(id = "m2", shownIds = listOf("person1"))
+        var clickedId: String? = null
+        setContent(
+            state = SeeGeneralMediasUIState.Content(profile, shownPerson, listOf<MediaItem>(media)),
+            onPersonClick = { clickedId = it },
+        )
+
+        clickRelatedPerson("m2")
+
+        assertNull(clickedId)
+    }
+
   @Test
   fun default_callbacks_do_nothing_and_keep_the_screen_displayed() {
     val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
@@ -304,7 +325,7 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule.setContent {
       CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
         AmberAppTheme(dynamicColor = false) {
-          SeeMediasSpecificPersonScreen(personId = "person1", viewModel = viewModel)
+          SeeMediasSpecificPersonScreen(viewModel = viewModel)
         }
       }
     }

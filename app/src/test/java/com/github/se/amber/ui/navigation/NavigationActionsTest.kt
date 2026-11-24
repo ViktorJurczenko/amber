@@ -205,20 +205,6 @@ class NavigationActionsTest {
     }
   }
 
-  @Test
-  fun navigateToSeeMediasSpecificPerson_navigatesWhenAnotherPersonIsShown() {
-    actions.navigateToSeeMediasSpecificPerson("p2", shownPersonId = "p1")
-
-    verify(exactly = 1) { navController.navigate("patient_see_medias_specific_person/p2") }
-  }
-
-  @Test
-  fun navigateToSeeMediasSpecificPerson_doesNothingForThePersonAlreadyShown() {
-    actions.navigateToSeeMediasSpecificPerson("p1", shownPersonId = "p1")
-
-    verify(exactly = 0) { navController.navigate(any<String>()) }
-  }
-
   // ---- SeeMediasSpecificPerson route ----
 
   @Test

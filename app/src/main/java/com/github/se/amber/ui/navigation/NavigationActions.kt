@@ -85,7 +85,6 @@ open class NavigationActions(private val navController: NavHostController) {
    *   that same person would only stack a duplicate screen, so nothing happens
    */
   open fun navigateToSeeMediasSpecificPerson(personId: String, shownPersonId: String? = null) {
-    if (personId == shownPersonId) return
     navController.navigate(PatientScreen.SeeMediasSpecificPerson.routeFor(personId))
   }
 

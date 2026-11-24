@@ -48,7 +48,6 @@ private val specificPersonScreenConfig =
  * @param onTabSelected called when a bottom navigation tab is selected.
  * @param onPersonClick called with the id of a related person when its button is clicked.
  */
-@NonRestartableComposable
 @Composable
 fun SeeMediasSpecificPersonScreen(
     personId: String = "",
@@ -71,7 +70,7 @@ fun SeeMediasSpecificPersonScreen(
       onErrorShown = viewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
-      onPersonClick = { id -> onPersonClick(id) },
+      onPersonClick = { id -> if (id != personId) onPersonClick(id) },
       titleArgs = listOf(),
   ) { _, _, _ ->
     // TODO implement
