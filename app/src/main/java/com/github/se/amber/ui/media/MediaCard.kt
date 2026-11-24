@@ -166,9 +166,10 @@ fun MediaCard(
                   verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
                   modifier = Modifier.fillMaxWidth(),
               ) {
-                if (!media.description.isNullOrBlank()) {
+                val description = media.description
+                if (!description.isNullOrBlank()) {
                   Text(
-                      text = media.description,
+                      text = description,
                       modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
                   )
                 }

@@ -17,6 +17,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
@@ -28,6 +34,7 @@ import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
 import io.mockk.coEvery
 import io.mockk.every
@@ -135,6 +142,9 @@ class MediaCardTest {
           shownIds = shownIds,
       )
 
+  private fun text(description: String?) =
+      MediaItem.Text(id = "m1", authorId = "author", description = description)
+
   /** Clicks the toggle button. Set [expanded] to true if the card is currently expanded. */
   private fun toggle(id: String = "m1", expanded: Boolean = false) {
     val tag =
@@ -143,6 +153,20 @@ class MediaCardTest {
     composeTestRule.onNodeWithTag(tag).performClick()
     composeTestRule.waitForIdle()
   }
+
+  /**
+   * Lets MediaCard use its default `viewModel(key = media.id)` without touching Firebase: the
+   * default factory of this owner returns [viewModel].
+   */
+  private fun viewModelOwner(viewModel: MediaCardViewModel) =
+      object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+        override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory =
+            object : ViewModelProvider.Factory {
+              @Suppress("UNCHECKED_CAST")
+              override fun <T : ViewModel> create(modelClass: Class<T>): T = viewModel as T
+            }
+      }
 
   // ---------- toggle ----------
 
@@ -342,6 +366,18 @@ class MediaCardTest {
     composeTestRule.onNodeWithTag(MediaCardTestTags.addedBy("m1")).assertIsDisplayed()
   }
 
+  @Test
+  fun expanded_nullDescription_hidesDescriptionButKeepsAuthor() {
+    setCard(text(description = null))
+
+    toggle()
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.addedBy("m1"))
+        .assertTextEquals(string(R.string.mediaCardAddedBy, "Alice"))
+  }
+
   // ---------- related persons ----------
 
   @Test
@@ -508,5 +544,54 @@ class MediaCardTest {
     composeTestRule
         .onNodeWithTag(MediaCardTestTags.addedBy("m1"))
         .assertTextEquals("Ajouté par Alice")
+  }
+
+  // ---------- default parameters ----------
+
+  @Test
+  fun mediaCard_withAllDefaultParameters_isDisplayed() {
+    val owner =
+        viewModelOwner(
+            MediaCardViewModel(profileRepository, circleRepository, activeCircleRepository)
+        )
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
+        AmberAppTheme(dynamicColor = false) { MediaCard() }
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(MediaCardTestTags.toggleButtonTextShow(MediaItem.Picture().id))
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun mediaCard_withDefaultModifierTagViewModelAndOnPersonClick_staysUsable() {
+    coEvery { profileRepository.getCurrentProfile() } returns
+        Result.success(userProfile("me", "Patient", listOf("circle1")))
+    coEvery { circleRepository.getCircle("circle1") } returns
+        Result.success(
+            CareCircle(
+                id = "circle1",
+                people = mapOf("p1" to Person(id = "p1", firstName = "Bob")),
+            )
+        )
+    val owner =
+        viewModelOwner(
+            MediaCardViewModel(profileRepository, circleRepository, activeCircleRepository)
+        )
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
+        AmberAppTheme(dynamicColor = false) { MediaCard(media = picture(shownIds = listOf("p1"))) }
+      }
+    }
+    toggle()
+
+    // default onPersonClick = {}: clicking must simply not crash
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("m1", 0)).performClick()
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("m1", 0)).assertIsDisplayed()
   }
 }
