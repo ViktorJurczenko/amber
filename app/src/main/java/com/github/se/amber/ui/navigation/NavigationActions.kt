@@ -80,8 +80,11 @@ open class NavigationActions(private val navController: NavHostController) {
    * Navigate to the screen showing the medias related to a given person.
    *
    * @param personId The id of the person whose medias are displayed
+   * @param shownPersonId The id of the person whose medias are already on screen, if any: clicking
+   *   that same person would only stack a duplicate screen, so nothing happens
    */
-  open fun navigateToSeeMediasSpecificPerson(personId: String) {
+  open fun navigateToSeeMediasSpecificPerson(personId: String, shownPersonId: String? = null) {
+    if (personId == shownPersonId) return
     navController.navigate(PatientScreen.SeeMediasSpecificPerson.routeFor(personId))
   }
 }

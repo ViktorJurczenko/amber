@@ -3,18 +3,31 @@
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
+import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.CareCircleRepository
+import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.media.MediaCardTestTags
+import com.github.se.amber.ui.media.MediaCardViewModel
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -22,12 +35,20 @@ import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasUIState
 import com.github.se.amber.ui.theme.AmberAppTheme
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +66,52 @@ class SeeMediasSpecificPersonScreenTest {
   private val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
   private val circle = CareCircle(id = "circle1")
 
+  private val profileRepository = mockk<ProfileRepository>()
+  private val circleRepository = mockk<CareCircleRepository>()
+  private val activeCircleRepository = mockk<ActiveCircleRepository>()
+
+  private val circleWithPerson =
+      CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+  private val picture = MediaItem.Picture(id = "m1", shownIds = listOf("p1"))
+
+  // MediaCard builds its own ViewModel: give it one made with mocks
+  private val mediaCardOwner =
+      object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+        override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory =
+            object : ViewModelProvider.Factory {
+              @Suppress("UNCHECKED_CAST")
+              override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                  MediaCardViewModel(profileRepository, circleRepository, activeCircleRepository)
+                      as T
+            }
+      }
+
+  @Before
+  fun setUp() {
+    Dispatchers.setMain(UnconfinedTestDispatcher())
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+  }
+
+  @After
+  fun tearDown() {
+    Dispatchers.resetMain()
+  }
+
+  private fun clickRelatedPerson(mediaId: String) {
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow(mediaId)).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem(mediaId, 0))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem(mediaId, 0)).performClick()
+  }
+
   /** Text of [id] in the current test language, with [args] for its placeholders. */
   private fun string(id: Int, vararg args: Any): String =
       ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
@@ -58,14 +125,16 @@ class SeeMediasSpecificPersonScreenTest {
     val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
     every { viewModel.uiState } returns MutableStateFlow(state)
     composeTestRule.setContent {
-      AmberAppTheme(dynamicColor = false) {
-        SeeMediasSpecificPersonScreen(
-            personId = "person1",
-            viewModel = viewModel,
-            onBackClick = onBackClick,
-            onTabSelected = onTabSelected,
-            onPersonClick = onPersonClick,
-        )
+      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+        AmberAppTheme(dynamicColor = false) {
+          SeeMediasSpecificPersonScreen(
+              personId = "person1",
+              viewModel = viewModel,
+              onBackClick = onBackClick,
+              onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
+          )
+        }
       }
     }
     return viewModel
@@ -190,5 +259,62 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule
         .onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS)
         .assertTextEquals(string(R.string.seeMediasSpecificPersonEmpty))
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Content
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  fun content_shows_a_card_for_each_media_and_hides_the_other_states() {
+    setContent(
+        state =
+            SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf<MediaItem>(picture))
+    )
+
+    composeTestRule
+        .onNodeWithTag(SeeMediasSpecificPersonTestTags.mediaCard("m1"))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.LOADING).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.ERROR).assertDoesNotExist()
+  }
+
+  @Test
+  fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+    var clickedId: String? = null
+    setContent(
+        state =
+            SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf<MediaItem>(picture)),
+        onPersonClick = { clickedId = it },
+    )
+
+    clickRelatedPerson("m1")
+
+    assertEquals("p1", clickedId)
+  }
+
+  @Test
+  fun default_callbacks_do_nothing_and_keep_the_screen_displayed() {
+    val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
+    every { viewModel.uiState } returns
+        MutableStateFlow(
+            SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf<MediaItem>(picture))
+        )
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+        AmberAppTheme(dynamicColor = false) {
+          SeeMediasSpecificPersonScreen(personId = "person1", viewModel = viewModel)
+        }
+      }
+    }
+
+    clickRelatedPerson("m1")
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
+        .performClick()
+
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE).assertIsDisplayed()
   }
 }

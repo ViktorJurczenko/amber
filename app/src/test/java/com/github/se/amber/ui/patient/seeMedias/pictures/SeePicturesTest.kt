@@ -322,6 +322,42 @@ class SeePicturesScreenTest {
   }
 
   @Test
+  fun default_callbacks_do_nothing_and_keep_the_screen_displayed() {
+    coEvery { circleRepository.getCircle("circle1") } returns
+        Result.success(
+            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+        )
+    coEvery { mediaRepository.observeApprovedMedia("circle1") } returns
+        flowOf(
+            listOf(MediaItem.Picture(id = "1", width = 400, height = 300, shownIds = listOf("p1")))
+        )
+    val viewModel = SeePicturesViewModel(mediaRepository, circleRepository, profileRepository)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+        AmberAppTheme(dynamicColor = false) {
+          SeePicturesScreen(pictureViewModel = viewModel) // all callbacks left to their default
+        }
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("1")).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem("1", 0))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("1", 0)).performClick()
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
+        .performClick()
+
+    composeTestRule.onNodeWithTag(SeePicturesTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
   @Config(qualifiers = "fr")
   fun screenIsShownInFrench() {
     coEvery { profileRepository.getCurrentProfile() } returns Result.failure(Exception("boom"))
