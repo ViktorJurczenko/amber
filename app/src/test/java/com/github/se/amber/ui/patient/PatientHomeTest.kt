@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -21,6 +22,7 @@ import com.github.se.amber.R
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.calendar.CalendarTestTags
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -295,5 +297,11 @@ class PatientHomeScreenTest {
     composeTestRule
         .onNodeWithTag(PatientHomeTestTags.GREETINGS)
         .assertTextEquals("Bonjour Alice\u00A0!")
+  }
+
+  @Test
+  fun displaysTheCalendar() {
+    setScreen()
+    composeTestRule.onNodeWithTag(CalendarTestTags.CALENDAR).assertIsDisplayed()
   }
 }
