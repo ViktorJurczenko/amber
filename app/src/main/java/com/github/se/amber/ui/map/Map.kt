@@ -48,6 +48,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
+/** Stable tag used by UI tests to locate the Google Maps view. */
 object MapScreenTestTags {
   const val GOOGLE_MAP = "map_google_map"
 }
@@ -57,7 +58,16 @@ private const val INITIAL_LONGITUDE = 6.6323
 private const val INITIAL_ZOOM = 14f
 private const val SEARCH_ZOOM = 16f
 
-/** Patient map centered on the first available device position; media pins come later. */
+/**
+ * Patient map centered on the first available device position.
+ *
+ * The ViewModel supplies location and place search state. This composable handles Android's
+ * permission launcher and Google Maps camera.
+ *
+ * @param modifier modifier applied to the screen
+ * @param onTabSelected Called when the user selects a patient navigation tab.
+ * @param viewModel Handles location, place search, and recenter actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -90,6 +100,7 @@ fun MapScreen(
         )
   }
 
+  // Check permissions when this screen enters composition, not on every recomposition.
   LaunchedEffect(Unit) {
     viewModel.refreshPermission()
     if (viewModel.locationState.value == MediaMapLocationState.NoPermission) {
@@ -104,6 +115,8 @@ fun MapScreen(
   }
 
   // When a fresh GPS position arrives, map centers it again to correct it
+  // A last-known fix can center the map immediately; a fresh fix replaces it once. After that,
+  // automatic camera moves stop so location updates do not override the user's map gestures
   LaunchedEffect(userPosition) { // Runs when the reported position changes
     // If there is a position and the user has not centered on a fresh one yet
     if (userPosition != null && !centeredOnFreshPosition) {
@@ -119,6 +132,7 @@ fun MapScreen(
   }
 
   // A chosen suggestion takes priority over the initial GPS centering
+  // Marking the initial centering complete keeps later GPS updates from moving the selected place
   LaunchedEffect(placeSearchState.selectedPlace) {
     placeSearchState.selectedPlace?.pointOrNull()?.let { (lat, lng) ->
       centeredOnFreshPosition = true
@@ -148,6 +162,7 @@ fun MapScreen(
           onMapClick = { focusManager.clearFocus() },
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
+          // Reserve space for the position card so Google's zoom controls stay accessible.
           contentPadding =
               PaddingValues(
                   end = PATIENT_PADDING_MINI,
@@ -179,6 +194,7 @@ fun MapScreen(
           locationState = locationState,
           onRecenter = {
             focusManager.clearFocus()
+            // The ViewModel chooses an action; the UI performs the permission or camera API call
             when (val action = viewModel.recenter()) {
               // Ask for permission
               MapRecenterAction.RequestPermission ->

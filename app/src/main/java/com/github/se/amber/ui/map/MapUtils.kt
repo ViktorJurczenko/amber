@@ -50,6 +50,7 @@ import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
+/** Stable identifiers for the search controls and position card in UI tests. */
 object MapTestTags {
   const val SEARCH = "map_search"
   const val SEARCH_POPUP = "map_search_popup"
@@ -57,7 +58,19 @@ object MapTestTags {
   const val POSITION_CARD = "map_position_card"
 }
 
-/** Search field and floating suggestions placed over the map. */
+/**
+ * Search field and floating suggestions placed over the map.
+ *
+ * The parent owns [state] and handles every event. The popup appears for a nonblank query until a
+ * place is selected; it shows query guidance, loading, failure, empty, or suggestion content.
+ *
+ * @param modifier Positions the search field and popup over the map.
+ * @param state Current query, suggestions, selection, and search status supplied by the ViewModel.
+ * @param onQueryChange Called whenever the user edits the search text.
+ * @param onSuggestionClick Called with the place the user taps in the popup.
+ * @param onRetrySearch Called when the user retries a failed place search.
+ * @param onSearch Called when the user presses Search on the keyboard.
+ */
 @Composable
 internal fun MapSearchField(
     modifier: Modifier = Modifier,
@@ -127,7 +140,14 @@ internal fun MapSearchField(
   }
 }
 
-/** One tappable place returned by the search repository. */
+/**
+ * One tappable place returned by the search repository.
+ *
+ * [onClick] leaves selection and camera movement to the parent screen.
+ *
+ * @param place Suggestion whose name is shown in the row.
+ * @param onClick Called when the user taps this suggestion.
+ */
 @Composable
 internal fun MapPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick: () -> Unit = {}) {
   Row(
@@ -144,7 +164,11 @@ internal fun MapPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick: () 
   }
 }
 
-/** A translated search status inside the suggestion popup. */
+/**
+ * A translated search status inside the suggestion popup.
+ *
+ * @param text Localized hint, loading message, failure, or empty result message.
+ */
 @Composable
 private fun MapSearchHint(text: String = "") {
   Text(
@@ -154,7 +178,16 @@ private fun MapSearchHint(text: String = "") {
   )
 }
 
-/** Position card that reflects the live GPS state. */
+/**
+ * Position card that reflects the live GPS state.
+ *
+ * [locationState] selects the translated status text. The parent handles [onRecenter], including
+ * permission requests and camera movement, so this component only renders state and user input.
+ *
+ * @param modifier Positions the card at the bottom of the map.
+ * @param locationState Current permission, GPS, or position state supplied by the ViewModel.
+ * @param onRecenter Called when the user taps the recenter button.
+ */
 @Composable
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
@@ -217,12 +250,14 @@ internal fun MapPositionCard(
   }
 }
 
+/** Preview of the search field with its default empty query. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapSearchFieldPreview() {
   AmberAppTheme { MapSearchField() }
 }
 
+/** Preview of the position card while the device is searching for a location. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapPositionCardPreview() {
