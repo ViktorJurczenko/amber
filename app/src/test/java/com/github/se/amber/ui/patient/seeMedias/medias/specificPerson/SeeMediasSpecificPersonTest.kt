@@ -336,4 +336,32 @@ class SeeMediasSpecificPersonScreenTest {
 
     composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE).assertIsDisplayed()
   }
+
+  @Test
+  fun default_view_model_is_the_one_stored_under_the_person_id() {
+    val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
+    every { viewModel.uiState } returns
+        MutableStateFlow(SeeGeneralMediasUIState.Empty(profile, circle))
+
+    val owner =
+        object : ViewModelStoreOwner {
+          override val viewModelStore = ViewModelStore()
+        }
+    // Pre-fill the store under the key the screen uses ("person1")
+    ViewModelProvider(
+        owner.viewModelStore,
+        object : ViewModelProvider.Factory {
+          @Suppress("UNCHECKED_CAST")
+          override fun <T : ViewModel> create(modelClass: Class<T>): T = viewModel as T
+        },
+    )["person1", SeeMediasSpecificPersonViewModel::class.java]
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
+        AmberAppTheme(dynamicColor = false) { SeeMediasSpecificPersonScreen(personId = "person1") }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS).assertIsDisplayed()
+  }
 }
