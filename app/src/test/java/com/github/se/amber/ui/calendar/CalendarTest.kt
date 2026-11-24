@@ -6,7 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.onChild
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -18,7 +25,11 @@ import com.github.se.amber.ui.calendar.CalendarTestTags.CALENDAR
 import com.github.se.amber.ui.calendar.CalendarTestTags.MONTH_TITLE
 import com.github.se.amber.ui.calendar.CalendarTestTags.NEXT_MONTH_BUTTON
 import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_BUTTON
+import com.github.se.amber.ui.calendar.CalendarTestTags.NEXT_MONTH_ICON
+import com.github.se.amber.ui.calendar.CalendarTestTags.PREVIOUS_MONTH_ICON
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
+import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
@@ -248,6 +259,76 @@ class CalendarTest {
   fun previewDisplaysTheCalendar() {
     composeTestRule.setContent { CalendarPreview() }
     composeTestRule.onNodeWithTag(CALENDAR).assertIsDisplayed()
+  }
+
+  // ---------- sizes of the patient and of the caregiver ----------
+
+  // The typography of the theme, read inside the composition to compare it with what is drawn.
+  private var typography: Typography? = null
+
+  private fun launchParts(isPatient: Boolean?) {
+    composeTestRule.setContent {
+      AmberAppTheme {
+        typography = MaterialTheme.typography
+        Column {
+          // null: the parameter is not given, to test the default.
+          if (isPatient == null) {
+            CalendarHeader()
+            CalendarWeekdays()
+            CalendarDays()
+          } else {
+            CalendarHeader(isPatient = isPatient)
+            CalendarWeekdays(isPatient = isPatient)
+            CalendarDays(isPatient = isPatient)
+          }
+        }
+      }
+    }
+  }
+
+  private fun fontSizeOf(textNode: androidx.compose.ui.test.SemanticsNodeInteraction): TextUnit {
+    val results = mutableListOf<TextLayoutResult>()
+    textNode.fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+    return results.first().layoutInput.style.fontSize
+  }
+
+  private fun titleFontSize() = fontSizeOf(composeTestRule.onNodeWithTag(MONTH_TITLE))
+
+  private fun weekdayFontSize() =
+      fontSizeOf(composeTestRule.onNodeWithTag(CalendarTestTags.weekday(0)))
+
+  private fun dayFontSize() =
+      fontSizeOf(
+          composeTestRule.onNodeWithTag(CalendarTestTags.day(1), useUnmergedTree = true).onChild()
+      )
+
+  @Test
+  fun partsAreDrawnForAPatientByDefault_andPatientTitleUsesTheLargeTitle_body_andIconStyle() {
+    launchParts(isPatient = null)
+    assertEquals(typography!!.headlineMedium.fontSize, titleFontSize())
+    assertEquals(typography!!.bodyLarge.fontSize, weekdayFontSize())
+    assertEquals(typography!!.bodyLarge.fontSize, dayFontSize())
+    composeTestRule
+      .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
+      .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
+    composeTestRule
+      .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
+      .assertWidthIsEqualTo(PATIENT_ICON_SIZE)
+
+  }
+
+  @Test
+  fun caregiverTitleUsesTheStandardTitle_body_andIconStyle() {
+    launchParts(isPatient = false)
+    assertEquals(typography!!.titleLarge.fontSize, titleFontSize())
+    assertEquals(typography!!.bodyMedium.fontSize, weekdayFontSize())
+    assertEquals(typography!!.bodyMedium.fontSize, dayFontSize())
+    composeTestRule
+      .onNodeWithTag(PREVIOUS_MONTH_ICON, useUnmergedTree = true)
+      .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
+    composeTestRule
+      .onNodeWithTag(NEXT_MONTH_ICON, useUnmergedTree = true)
+      .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
   }
 
   // ---------- modifier ----------

@@ -2,13 +2,25 @@
 
 package com.github.se.amber.ui.calendar
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
+import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
+import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.DayOfWeek
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
-/** Tests [calendarCells]: the layout of a month in a grid. */
+/** Tests [calendarCells]: the layout of a month in a grid; and [calendarIconSize]*/
 class CalendarUtilsTest {
+  // ---------- calendarCells ----------
 
   // November 2026 has 30 days and starts on a Sunday.
   private val november = YearMonth.of(2026, 11)
@@ -88,4 +100,98 @@ class CalendarUtilsTest {
   fun withoutParametersUsesBothDefaults() {
     assertEquals(calendarCells(YearMonth.now(), DayOfWeek.MONDAY), calendarCells())
   }
+
+  // ---------- calendarIconSize ----------
+
+  @Test
+  fun iconSizeIsThePatientOneByDefault() {
+    assertEquals(PATIENT_ICON_SIZE, calendarIconSize())
+  }
+
+  @Test
+  fun iconSizeOfAPatientIsThePatientIconSize() {
+    assertEquals(PATIENT_ICON_SIZE, calendarIconSize(isPatient = true))
+  }
+
+  @Test
+  fun iconSizeOfACaregiverIsTheCaregiverIconSize() {
+    assertEquals(CAREGIVER_ICON_SIZE, calendarIconSize(isPatient = false))
+  }
+
+
+  /** Tests [calendarTitleTextStyle] and [calendarBodyTextStyle].
+  *
+  * The theme used here gives a different size to every style. A helper that returns the wrong style
+  * therefore always fails, which would not be the case with the default sizes if two of them were
+  * equal. The tests compare the whole style, not only its size.
+  */
+  @RunWith(RobolectricTestRunner::class)
+  class CalendarTextStyleTest {
+
+    @get:Rule val composeTestRule = createComposeRule()
+
+    // Every style the helpers can return has its own size.
+    private val testTypography =
+      androidx.compose.material3.Typography(
+        titleLarge = TextStyle(fontSize = 21.sp),
+        headlineMedium = TextStyle(fontSize = 22.sp),
+        bodyMedium = TextStyle(fontSize = 23.sp),
+        bodyLarge = TextStyle(fontSize = 24.sp),
+      )
+
+    /**
+     * Asserts that [style], read inside [testTypography], is the style [expected] picks in that same
+     * typography.
+     */
+    private fun assertStyle(
+      expected: Typography.() -> TextStyle,
+      style: @Composable () -> TextStyle,
+    ) {
+      var actual: TextStyle? = null
+      var wanted: TextStyle? = null
+      composeTestRule.setContent {
+        MaterialTheme(typography = testTypography) {
+          actual = style()
+          wanted = MaterialTheme.typography.expected()
+        }
+      }
+      composeTestRule.waitForIdle()
+      assertEquals(wanted, actual)
+    }
+
+    // ---------- calendarTitleTextStyle ----------
+
+    @Test
+    fun titleStyleOfAPatientIsHeadlineMedium() {
+      assertStyle({ headlineMedium }) { calendarTitleTextStyle(isPatient = true) }
+    }
+
+    @Test
+    fun titleStyleOfACaregiverIsTitleLarge() {
+      assertStyle({ titleLarge }) { calendarTitleTextStyle(isPatient = false) }
+    }
+
+    @Test
+    fun titleStyleIsThePatientOneByDefault() {
+      assertStyle({ headlineMedium }) { calendarTitleTextStyle() }
+    }
+
+    // ---------- calendarBodyTextStyle ----------
+
+    @Test
+    fun bodyStyleOfAPatientIsBodyLarge() {
+      assertStyle({ bodyLarge }) { calendarBodyTextStyle(isPatient = true) }
+    }
+
+    @Test
+    fun bodyStyleOfACaregiverIsBodyMedium() {
+      assertStyle({ bodyMedium }) { calendarBodyTextStyle(isPatient = false) }
+    }
+
+    @Test
+    fun bodyStyleIsThePatientOneByDefault() {
+      assertStyle({ bodyLarge }) { calendarBodyTextStyle() }
+    }
+  }
+
 }
