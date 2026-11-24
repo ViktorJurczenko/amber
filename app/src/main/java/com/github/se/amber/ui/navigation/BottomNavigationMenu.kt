@@ -185,7 +185,7 @@ sealed class PatientTab(
     /** Tabs shown on patient screens, in bar order. */
     val patientTabs: List<PatientTab>
       get() =
-          listOf(Home, SeeMedias, Setting) // TODO add the map tab when navigation is implemented
+          listOf(Home, SeeMedias, Map, Setting)
   }
 }
 

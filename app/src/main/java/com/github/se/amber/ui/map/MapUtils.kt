@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.map
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +54,11 @@ internal fun MapSearchField(
   DisplayPatientTextField(
       value = query,
       onValueChange = onQueryChange,
-      modifier = modifier,
+      modifier =
+          modifier.background(
+              color = MaterialTheme.colorScheme.surface,
+              shape = RoundedCornerShape(ROUND_CORNER),
+          ),
       placeholder = stringResource(R.string.patientMapSearchHint),
       leadingIcon = Icons.Outlined.Search,
       maxChar = MAX_CHAR_PLACE_SEARCH,

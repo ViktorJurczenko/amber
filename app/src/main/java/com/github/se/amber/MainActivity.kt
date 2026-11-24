@@ -43,6 +43,7 @@ import com.github.se.amber.ui.caregiver.upload.UploadScreen
 import com.github.se.amber.ui.caregiver.upload.audios.UploadAudioScreen
 import com.github.se.amber.ui.caregiver.upload.pictures.UploadPictureScreen
 import com.github.se.amber.ui.caregiver.upload.text.UploadTextScreen
+import com.github.se.amber.ui.map.MapScreen
 import com.github.se.amber.ui.media.LocalMediaRetrySignal
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.CaregiverScreen
@@ -269,6 +270,9 @@ fun AmberApp(
             onSeeAudioClick = { navigationActions.navigateTo(PatientScreen.SeeAudios) },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
         )
+      }
+      composable(route = PatientScreen.Map.route) {
+        MapScreen(onTabSelected = { tab -> navigationActions.navigateToTab(tab) })
       }
       composable(route = PatientScreen.SeePictures.route) {
         SeePicturesScreen(
