@@ -224,8 +224,12 @@ class CreateInvitationScreenTest {
     setScreen(viewModel)
     ShadowToast.reset()
     val clipboard =
-        ApplicationProvider.getApplicationContext<Context>()
-            .getSystemService(ClipboardManager::class.java)!!
+        checkNotNull(
+            ApplicationProvider.getApplicationContext<Context>()
+                .getSystemService(ClipboardManager::class.java)
+        ) {
+          "No clipboard service"
+        }
     val copySecond = composeTestRule.onNodeWithTag(CreateInvitationTestTags.copyCode("SECOND12"))
 
     composeTestRule.onNodeWithTag(CreateInvitationTestTags.copyCode("FIRST123")).assertIsDisplayed()
@@ -235,6 +239,10 @@ class CreateInvitationScreenTest {
     composeTestRule.waitForIdle()
 
     assertEquals("SECOND12", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+    assertEquals(
+        string(R.string.createInvitationClipboardLabel),
+        clipboard.primaryClip?.description?.label?.toString(),
+    )
     assertEquals(string(R.string.createInvitationCodeCopied), ShadowToast.getTextOfLatestToast())
     assertEquals(1, ShadowToast.shownToastCount())
 
@@ -244,6 +252,10 @@ class CreateInvitationScreenTest {
 
     assertEquals(2, ShadowToast.shownToastCount())
     assertEquals("SECOND12", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+    assertEquals(
+        string(R.string.createInvitationClipboardLabel),
+        clipboard.primaryClip?.description?.label?.toString(),
+    )
     assertEquals(string(R.string.createInvitationCodeCopied), ShadowToast.getTextOfLatestToast())
   }
 
