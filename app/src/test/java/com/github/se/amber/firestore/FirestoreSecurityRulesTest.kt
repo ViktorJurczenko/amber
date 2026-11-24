@@ -9,6 +9,8 @@ package com.github.se.amber.firestore
 
 import com.github.se.amber.data.media.toMap
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.appointment.INVALID_REMINDER_LISTS
+import com.github.se.amber.model.appointment.VALID_REMINDER_LISTS
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.circle.Invitation
 import com.github.se.amber.model.location.Place
@@ -671,7 +673,14 @@ class FirestoreSecurityRulesTest {
             circleIds = listOf("c9"),
         ),
     )
-    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "pat"), createdBy = "care"))
+    db.putCircle(
+        CareCircle(
+            id = "c1",
+            patientId = "pat",
+            memberIds = listOf("care", "pat"),
+            createdBy = "care",
+        )
+    )
 
     val picture =
         MediaItem.Picture(
@@ -820,7 +829,9 @@ class FirestoreSecurityRulesTest {
     db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
     db.putUser(UserProfile(uid = "care2", role = Role.CAREGIVER, circleIds = listOf("c1")))
     db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
-    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "care2", "pat")))
+    db.putCircle(
+        CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "care2", "pat"))
+    )
     val created = storedAppointment("care")
     val care = db.rulesFor("care")
     val care2 = db.rulesFor("care2")
@@ -881,6 +892,72 @@ class FirestoreSecurityRulesTest {
   }
 
   /**
+   * The reminder list of an appointment. The lists are the ones the app's validation test uses, so
+   * the rules and the app are checked on the same inputs.
+   */
+  @Test
+  fun appointments_reminderList_checkedLikeTheApp_enforcedByFakeStore() {
+    val db = FakeFirestore()
+    db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
+    db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+    val care = db.rulesFor("care")
+    val pat = db.rulesFor("pat")
+    val created = storedAppointment("care")
+    val edit = mapOf("updatedBy" to "pat")
+
+    // Created by a caregiver, then edited by the patient.
+    VALID_REMINDER_LISTS.forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertTrue("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertTrue("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
+    }
+    // Not a list, and not whole numbers, refused too.
+    (INVALID_REMINDER_LISTS + listOf(listOf("60"), listOf(60.5), 60, null)).forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertFalse("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertFalse("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
+    }
+    // The field can't be left out.
+    assertFalse(care.canCreateAppointment("c1", "a1", created - "reminderMinutesBefore"))
+  }
+
+  /**
+   * The patient of an appointment: copied from the circle on create, then never changed. A circle
+   * without a patient can't have appointments.
+   */
+  @Test
+  fun appointments_patientIsTheCirclesAndNeverChanges_enforcedByFakeStore() {
+    val db = FakeFirestore()
+    db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
+    db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+    val care = db.rulesFor("care")
+    val created = storedAppointment("care")
+
+    assertTrue(care.canCreateAppointment("c1", "a1", created))
+    // another member, nobody, or no field at all
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "care")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created - "patientId"))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to null)))
+    // a circle whose patient hasn't joined yet, even with a matching ""
+    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "pat")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+
+    // An edit keeps it, from a caregiver and from the patient
+    val edited = created + ("title" to "Dentist")
+    assertTrue(care.canUpdateAppointment("c1", "a1", created, edited))
+    assertTrue(
+        db.rulesFor("pat")
+            .canUpdateAppointment("c1", "a1", created, edited + ("updatedBy" to "pat"))
+    )
+    assertFalse(care.canUpdateAppointment("c1", "a1", created, edited + ("patientId" to "care")))
+    assertFalse(care.canUpdateAppointment("c1", "a1", created, edited + ("patientId" to "")))
+  }
+
+  /**
    * @return a valid appointment "a1" created and last saved by [savedBy], as Firestore stores it.
    *   The SDK's own mapper builds it, so it holds exactly the fields the repository writes.
    */
@@ -893,6 +970,7 @@ class FirestoreSecurityRulesTest {
               startAt = START,
               durationMinutes = 60,
               attendeeIds = listOf(savedBy),
+              patientId = "pat",
               lastEndAt = START + 60 * 60_000L,
               createdBy = savedBy,
               createdAt = START - 1,
@@ -1223,6 +1301,8 @@ private class FirestoreSecurityRules(
         data["notes"] is String &&
         hasValidAppointmentTime(data) &&
         isValidLocation(data["location"]) &&
+        isValidReminderList(data["reminderMinutesBefore"]) &&
+        data["patientId"] is String &&
         data["updatedBy"] == authUid &&
         data["updatedAt"] is Long &&
         memberIds.containsAll(attendeeIds)
@@ -1243,6 +1323,14 @@ private class FirestoreSecurityRules(
     return startAt > 0 && lastEndAt == startAt + duration * 60_000L
   }
 
+  // At most 5 whole numbers of minutes from 0 to 7 days. Ints and Longs both stand for the rules'
+  // ints.
+  private fun isValidReminderList(reminders: Any?): Boolean {
+    val list = reminders as? List<*> ?: return false
+    return list.size <= 5 &&
+        list.all { (it is Int || it is Long) && (it as Number).toLong() in 0L..7 * 24 * 60L }
+  }
+
   // Null, or a GeoLocation: only lat, lng and placeName, each unset or of its type.
   private fun isValidLocation(location: Any?): Boolean {
     if (location == null) return true
@@ -1261,9 +1349,11 @@ private class FirestoreSecurityRules(
       canWriteTo(circleId) &&
           isValidAppointment(circleId, appointmentId, resource) &&
           resource["createdBy"] == authUid &&
-          resource["createdAt"] is Long
+          resource["createdAt"] is Long &&
+          lookup.circle(circleId)?.patientId.orEmpty().isNotEmpty() &&
+          resource["patientId"] == lookup.circle(circleId)?.patientId
 
-  // Every member may edit any appointment, but not who created it or when.
+  // Every member may edit any appointment, but not who created it, when, or who it is for.
   fun canUpdateAppointment(
       circleId: String,
       appointmentId: String,
@@ -1273,7 +1363,8 @@ private class FirestoreSecurityRules(
       canWriteTo(circleId) &&
           isValidAppointment(circleId, appointmentId, after) &&
           after["createdBy"] == before["createdBy"] &&
-          after["createdAt"] == before["createdAt"]
+          after["createdAt"] == before["createdAt"] &&
+          after["patientId"] == before["patientId"]
 
   fun canDeleteAppointment(circleId: String): Boolean = canWriteTo(circleId)
 
@@ -1313,6 +1404,8 @@ private class FirestoreSecurityRules(
             "durationMinutes",
             "location",
             "attendeeIds",
+            "reminderMinutesBefore",
+            "patientId",
             "lastEndAt",
             "createdBy",
             "createdAt",

@@ -5,6 +5,8 @@ package com.github.se.amber.data.appointment
 
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.AppointmentValidationError
+import com.github.se.amber.model.appointment.MAX_REMINDERS
+import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.location.GeoLocation
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -41,6 +43,8 @@ class FirebaseAppointmentRepositoryTest {
   private val circleId = "circle-1"
   private val appointmentId = "appointment-1"
   private val uid = "caregiver-1"
+  private val patientId = "patient-1"
+  private val circle = CareCircle(id = circleId, patientId = patientId)
   private val now = 1_750_000_000_000L
   private val start = 1_800_000_000_000L
 
@@ -97,18 +101,23 @@ class FirebaseAppointmentRepositoryTest {
     val invalid = appointment.copy(id = "a/b", title = "")
 
     // Each call has every problem left, so only the first one in the order is reported.
-    assertError(AppointmentError.InvalidCircleId(), repository.addAppointment("", invalid))
+    val noPatient = circle.copy(patientId = "")
+    assertError(
+        AppointmentError.InvalidCircleId(),
+        repository.addAppointment(noPatient.copy(id = ""), invalid),
+    )
+    assertError(AppointmentError.NoPatient(), repository.addAppointment(noPatient, invalid))
     assertError(
         AppointmentError.InvalidAppointmentId(),
-        repository.addAppointment(circleId, invalid),
+        repository.addAppointment(circle, invalid),
     )
     assertError(
         AppointmentError.InvalidAppointment(AppointmentValidationError.BLANK_TITLE),
-        repository.addAppointment(circleId, invalid.copy(id = appointmentId)),
+        repository.addAppointment(circle, invalid.copy(id = appointmentId)),
     )
     assertError(
         AppointmentError.NotAuthenticated(),
-        repository.addAppointment(circleId, appointment),
+        repository.addAppointment(circle, appointment),
     )
 
     verify(exactly = 0) { firestore.collection(any()) }
@@ -128,12 +137,14 @@ class FirebaseAppointmentRepositoryTest {
             updatedBy = "someone-else",
             updatedAt = 1L,
             lastEndAt = 2L,
+            patientId = "someone-else",
         )
 
-    val saved = repository.addAppointment(circleId, fromCaller).getOrThrow()
+    val saved = repository.addAppointment(circle, fromCaller).getOrThrow()
 
     val expected =
         appointment.copy(
+            patientId = patientId,
             createdBy = uid,
             createdAt = now,
             updatedBy = uid,
@@ -151,7 +162,7 @@ class FirebaseAppointmentRepositoryTest {
     val pending = TaskCompletionSource<Void>()
     every { document.set(any()) } returns pending.task
 
-    assertEquals(appointmentId, repository.addAppointment(circleId, appointment).getOrThrow().id)
+    assertEquals(appointmentId, repository.addAppointment(circle, appointment).getOrThrow().id)
     assertEquals(emptyList<AppointmentWriteFailure>(), failures)
 
     pending.setException(firestoreError(FirebaseFirestoreException.Code.PERMISSION_DENIED))
@@ -172,7 +183,13 @@ class FirebaseAppointmentRepositoryTest {
     val written = slot<Map<String, Any>>()
     every { document.update(capture(written)) } returns Tasks.forResult(null)
     val stored =
-        appointment.copy(createdBy = "creator", createdAt = 5L, updatedAt = 6L, lastEndAt = end)
+        appointment.copy(
+            patientId = patientId,
+            createdBy = "creator",
+            createdAt = 5L,
+            updatedAt = 6L,
+            lastEndAt = end,
+        )
     val newStart = start + 2.hours.inWholeMilliseconds
     // Written out from the new start and the 90 minutes, so the end is computed again.
     val newEnd = newStart + 90.minutes.inWholeMilliseconds
@@ -193,12 +210,13 @@ class FirebaseAppointmentRepositoryTest {
             "durationMinutes" to 90,
             "location" to appointment.location,
             "attendeeIds" to appointment.attendeeIds,
+            "reminderMinutesBefore" to appointment.reminderMinutesBefore,
             "lastEndAt" to newEnd,
             "updatedBy" to uid,
             "updatedAt" to now,
         )
     assertEquals(expectedFields, written.captured)
-    // The creator fields are not written, and the returned appointment keeps them.
+    // The creator fields and the patient are not written, and the returned appointment keeps them.
     assertEquals(
         stored.copy(
             title = "Dentist",
@@ -229,6 +247,40 @@ class FirebaseAppointmentRepositoryTest {
     assertEquals(null, written.captured["location"])
     // With no duration, the default of 60 minutes gives the end.
     assertEquals(start + 60.minutes.inWholeMilliseconds, written.captured["lastEndAt"])
+  }
+
+  @Test
+  fun addAndUpdateWriteTheReminders() = runTest {
+    val added = slot<Any>()
+    val updated = slot<Map<String, Any>>()
+    every { document.set(capture(added)) } returns Tasks.forResult(null)
+    every { document.update(capture(updated)) } returns Tasks.forResult(null)
+
+    repository.addAppointment(circle, appointment.copy(reminderMinutesBefore = listOf(60, 1440)))
+    // An empty list is written as it is: it means no reminder, not the default.
+    repository.updateAppointment(circleId, appointment.copy(reminderMinutesBefore = emptyList()))
+
+    assertEquals(listOf(60, 1440), (added.captured as Appointment).reminderMinutesBefore)
+    assertEquals(emptyList<Int>(), updated.captured["reminderMinutesBefore"])
+  }
+
+  @Test
+  fun aCircleWithoutPatientGetsNoAppointment() = runTest {
+    val result = repository.addAppointment(circle.copy(patientId = ""), appointment)
+
+    assertError(AppointmentError.NoPatient(), result)
+    verifyNoWrite()
+  }
+
+  @Test
+  fun invalidRemindersAreRefusedBeforeWriting() = runTest {
+    val tooMany = appointment.copy(reminderMinutesBefore = List(MAX_REMINDERS + 1) { it })
+    val expected = AppointmentError.InvalidAppointment(AppointmentValidationError.INVALID_REMINDERS)
+
+    assertError(expected, repository.addAppointment(circle, tooMany))
+    assertError(expected, repository.updateAppointment(circleId, tooMany))
+
+    verifyNoWrite()
   }
 
   @Test
@@ -281,7 +333,7 @@ class FirebaseAppointmentRepositoryTest {
     val failures = collectFailures()
     stubWrites(Tasks.forException(firestoreError(FirebaseFirestoreException.Code.NOT_FOUND)))
 
-    repository.addAppointment(circleId, appointment).getOrThrow()
+    repository.addAppointment(circle, appointment).getOrThrow()
     repository.updateAppointment(circleId, appointment).getOrThrow()
     repository.deleteAppointment(circleId, appointmentId).getOrThrow()
 
@@ -317,7 +369,7 @@ class FirebaseAppointmentRepositoryTest {
     testScheduler.runCurrent()
     stubWrites(Tasks.forException(firestoreError(FirebaseFirestoreException.Code.NOT_FOUND)))
 
-    repository.addAppointment(circleId, appointment).getOrThrow()
+    repository.addAppointment(circle, appointment).getOrThrow()
     repository.updateAppointment(circleId, appointment).getOrThrow()
     repository.deleteAppointment(circleId, appointmentId).getOrThrow()
     testScheduler.runCurrent()
@@ -358,7 +410,7 @@ class FirebaseAppointmentRepositoryTest {
   fun aSuccessfulWriteReportsNothing() = runTest {
     val failures = collectFailures()
 
-    repository.addAppointment(circleId, appointment).getOrThrow()
+    repository.addAppointment(circle, appointment).getOrThrow()
     repository.updateAppointment(circleId, appointment).getOrThrow()
     repository.deleteAppointment(circleId, appointmentId).getOrThrow()
 
@@ -403,7 +455,7 @@ class FirebaseAppointmentRepositoryTest {
     val source = IllegalArgumentException("Unsupported field value")
     every { document.set(any()) } throws source
 
-    assertError(AppointmentError.Unknown(source), repository.addAppointment(circleId, appointment))
+    assertError(AppointmentError.Unknown(source), repository.addAppointment(circle, appointment))
   }
 
   @Test

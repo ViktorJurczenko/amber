@@ -5,6 +5,7 @@ package com.github.se.amber.data.appointment
 import com.github.se.amber.data.Synced
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.AppointmentValidationError
+import com.github.se.amber.model.circle.CareCircle
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
@@ -76,10 +77,14 @@ interface AppointmentRepository {
   fun newId(): String
 
   /**
-   * Saves a new appointment in the circle [circleId] and returns the appointment as saved.
+   * Saves a new appointment in [circle] and returns the appointment as saved.
+   *
+   * It takes the whole circle, not only its id, because [Appointment.patientId] must be set on
+   * creation. It can't be changed later. So a circle without a patient can't have appointments.
    *
    * [appointment] must have an id from [newId]. Its `validationError()` must return null. The
    * repository then:
+   * - sets [Appointment.patientId] to the circle's patientId;
    * - trims the title and the notes;
    * - sets [Appointment.createdBy] and [Appointment.updatedBy] to the signed-in user;
    * - sets [Appointment.createdAt] and [Appointment.updatedAt] to the current time;
@@ -96,34 +101,37 @@ interface AppointmentRepository {
    * - [AppointmentError.InvalidCircleId] or [AppointmentError.InvalidAppointmentId] for an invalid
    *   id. An id is invalid when it is blank. It is also invalid with spaces around it, and with a
    *   slash in it;
+   * - [AppointmentError.NoPatient] when the patient hasn't joined [circle] yet;
    * - [AppointmentError.InvalidAppointment] when `validationError()` doesn't return null;
    * - [AppointmentError.NotAuthenticated] when nobody is signed in.
    *
    * Call it once per appointment. To change an appointment after it is saved, use
    * [updateAppointment].
    *
-   * @param circleId the id of the care circle the appointment belongs to.
+   * @param circle the care circle the appointment belongs to. Pass the latest one loaded, so that
+   *   its patientId is up to date.
    * @param appointment the new appointment, with an id from [newId].
    * @return the appointment as saved on the phone, or a failure with an [AppointmentError].
    */
-  suspend fun addAppointment(circleId: String, appointment: Appointment): Result<Appointment>
+  suspend fun addAppointment(circle: CareCircle, appointment: Appointment): Result<Appointment>
 
   /**
    * Saves the changes to an existing appointment and returns the appointment as saved.
    *
    * Only the editable fields are written: the title, the notes, [Appointment.startAt],
-   * [Appointment.durationMinutes], [Appointment.location] and [Appointment.attendeeIds]. The
-   * repository trims the title and the notes, like [addAppointment] does. It also sets
-   * [Appointment.updatedBy] to the signed-in user, sets [Appointment.updatedAt] to the current
-   * time, and computes [Appointment.lastEndAt] again.
+   * [Appointment.durationMinutes], [Appointment.location], [Appointment.attendeeIds] and
+   * [Appointment.reminderMinutesBefore]. The repository trims the title and the notes, like
+   * [addAppointment] does. It also sets [Appointment.updatedBy] to the signed-in user, sets
+   * [Appointment.updatedAt] to the current time, and computes [Appointment.lastEndAt] again.
    *
-   * [Appointment.createdBy] and [Appointment.createdAt] are never written. The returned appointment
-   * keeps the caller's values for them.
+   * [Appointment.createdBy], [Appointment.createdAt] and [Appointment.patientId] are never written.
+   * The returned appointment keeps the caller's values for them.
    *
    * An edit never brings back a deleted appointment. If someone deleted it meanwhile, the server
    * refuses the edit. It is reported in [writeFailures] as [AppointmentError.NotFound].
    *
-   * Fails right away, without writing anything, for the same reasons as [addAppointment].
+   * Fails right away, without writing anything, for the same reasons as [addAppointment], except
+   * [AppointmentError.NoPatient].
    *
    * @param circleId the id of the care circle the appointment belongs to.
    * @param appointment the appointment with its new values. Its id says which one to change.
@@ -234,6 +242,12 @@ sealed class AppointmentError(message: String, cause: Throwable? = null) :
 
   /** The appointment id is invalid. See [AppointmentRepository.addAppointment]. */
   class InvalidAppointmentId : AppointmentError("A valid appointment ID is required")
+
+  /**
+   * The circle has no patient yet, so an appointment can't be created. The patient joins when their
+   * phone redeems an invitation. See [AppointmentRepository.addAppointment].
+   */
+  class NoPatient : AppointmentError("The care circle has no patient yet")
 
   /** The appointment can't be saved. [reason] says why, so the form can point at the field. */
   data class InvalidAppointment(val reason: AppointmentValidationError) :

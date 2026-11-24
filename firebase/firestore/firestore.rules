@@ -199,13 +199,16 @@ service cloud.firestore {
       return data.id == appointmentId
         && data.keys().hasOnly([
           'id', 'title', 'notes', 'startAt', 'durationMinutes', 'location', 'attendeeIds',
-          'lastEndAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+          'reminderMinutesBefore', 'patientId', 'lastEndAt', 'createdBy', 'createdAt', 'updatedBy',
+          'updatedAt'
         ])
         && data.title is string
         && data.title.trim().size() > 0
         && data.notes is string
         && hasValidAppointmentTime(data)
         && isValidLocation(data.get('location', null))
+        && isValidReminderList(data.reminderMinutesBefore)
+        && data.patientId is string
         && data.updatedBy == request.auth.uid
         && data.updatedAt is int
         && data.attendeeIds is list
@@ -227,6 +230,27 @@ service cloud.firestore {
             && minutes >= 1
             && minutes <= 24 * 60
             && data.lastEndAt == data.startAt + minutes * 60000));
+    }
+
+    // The reminders of an appointment: a list of at most 5 values, the same limits as
+    // validationError() in the app. Rules can't loop over a list, so each of the 5 places is
+    // checked on its own.
+    function isValidReminderList(reminders) {
+      return reminders is list
+        && reminders.size() <= 5
+        && isValidReminderAt(reminders, 0)
+        && isValidReminderAt(reminders, 1)
+        && isValidReminderAt(reminders, 2)
+        && isValidReminderAt(reminders, 3)
+        && isValidReminderAt(reminders, 4);
+    }
+
+    // The value at this index is missing, or a whole number of minutes from 0 to 7 days.
+    function isValidReminderAt(reminders, index) {
+      return reminders.size() <= index
+        || (reminders[index] is int
+          && reminders[index] >= 0
+          && reminders[index] <= 7 * 24 * 60);
     }
 
     // Null, or a GeoLocation: only lat, lng and placeName, each unset or of its type.
@@ -334,16 +358,21 @@ service cloud.firestore {
       match /appointments/{appointmentId} {
         allow read: if isMember(circleId);
 
+        // The patient is the circle's. A circle without a patient yet can't have appointments.
         allow create: if canWriteTo(circleId)
           && isValidAppointment(circleId, appointmentId)
           && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.createdAt is int;
+          && request.resource.data.createdAt is int
+          && circleDoc(circleId).patientId != ''
+          && request.resource.data.patientId == circleDoc(circleId).patientId;
 
-        // Every member may edit any appointment, but nobody may change who created it or when
+        // Every member may edit any appointment, but nobody may change who created it, when, or
+        // who it is for.
         allow update: if canWriteTo(circleId)
           && isValidAppointment(circleId, appointmentId)
           && request.resource.data.createdBy == resource.data.createdBy
-          && request.resource.data.createdAt == resource.data.createdAt;
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.patientId == resource.data.patientId;
 
         allow delete: if canWriteTo(circleId);
       }
