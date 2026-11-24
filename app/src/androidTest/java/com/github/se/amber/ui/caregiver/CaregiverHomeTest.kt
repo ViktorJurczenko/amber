@@ -2,6 +2,7 @@
 // Modified by Alaabrine, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver
 
@@ -16,6 +17,7 @@ import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.calendar.CalendarTestTags
 import com.github.se.amber.ui.caregiver.CaregiverHomeTestTags.WELCOME_TEXT
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import io.mockk.every
@@ -104,5 +106,11 @@ class CaregiverHomeScreenTest {
     setScreen()
 
     verify { viewModel.clearErrorMsg() }
+  }
+
+  @Test
+  fun displaysTheCalendar() {
+    setScreen()
+    composeTestRule.onNodeWithTag(CalendarTestTags.CALENDAR).assertIsDisplayed()
   }
 }

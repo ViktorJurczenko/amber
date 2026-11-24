@@ -2,6 +2,7 @@
 // Modified by Alaabrine, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver
 
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -30,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.ui.calendar.Calendar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.CaregiverTab
@@ -96,6 +100,7 @@ fun CaregiverHomeScreen(
             modifier =
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
                     .padding(
                         horizontal = CAREGIVER_PADDING_MEDIUM,
                         vertical = CAREGIVER_PADDING_SMALL,
@@ -118,6 +123,7 @@ fun CaregiverHomeScreen(
               style = MaterialTheme.typography.bodyLarge,
               textAlign = TextAlign.Center,
           )
+          Calendar(isPatient = false)
         }
       },
   )
