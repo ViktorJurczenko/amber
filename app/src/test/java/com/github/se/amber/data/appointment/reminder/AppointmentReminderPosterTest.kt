@@ -2,16 +2,17 @@
 
 package com.github.se.amber.data.appointment.reminder
 
-import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.CareCircleRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.appointment.PlannedReminder
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthUser
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDate
@@ -23,10 +24,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Checks that a due reminder is shown only if it is still wanted, with the right names. */
+/** Checks that a reminder is shown with the right text and names, for the signed-in user. */
 class AppointmentReminderPosterTest {
 
-  private val appointments = FakeAppointmentRepository()
   private val circles: CareCircleRepository = mockk()
   private val profiles: ProfileRepository = mockk()
   private val auth: AuthRepository = mockk()
@@ -34,7 +34,6 @@ class AppointmentReminderPosterTest {
   private val notifier = AppointmentReminderNotifier { shown += it }
   private val poster =
       AppointmentReminderPoster(
-          appointments,
           circles,
           profiles,
           auth,
@@ -67,25 +66,22 @@ class AppointmentReminderPosterTest {
     every { auth.currentUser } returns uid?.let(::AuthUser)
   }
 
-  /** Saves the doctor appointment, tomorrow at 14:00, with Anna and Ben, then [change] applied. */
-  private fun save(change: (Appointment) -> Appointment = { it }) = runBlocking {
-    appointments.addAppointment(circle, change(DOCTOR)).getOrThrow()
-  }
-
-  private fun post(minutes: Int = 60, startAt: Long = DOCTOR.startAt) = runBlocking {
-    poster.post(DueReminder(CIRCLE, DOCTOR.id, startAt, minutes, "tag"))
+  /** Posts the reminder [minutes] before [occurrence], the doctor appointment by default. */
+  private fun post(occurrence: Appointment = DOCTOR, minutes: Int = 60) = runBlocking {
+    poster.post(
+        CIRCLE,
+        PlannedReminder(occurrence, minutes, occurrence.startAt - minutes * 60_000L),
+    )
   }
 
   @Test
   fun showsWhenWhatAndTheAttendeesToThePatient() {
-    save()
-
     assertTrue(post())
 
     assertEquals(
         listOf(
             ReminderNotification(
-                tag = "tag",
+                tag = "a1@${DOCTOR.startAt}",
                 title = "Doctor",
                 start = LocalDateTime.of(2027, 1, 16, 14, 0),
                 today = LocalDate.of(2027, 1, 15),
@@ -98,7 +94,6 @@ class AppointmentReminderPosterTest {
 
   @Test
   fun anAttendeeSeesThePatientAndTheOtherAttendeesButNeverThemselves() {
-    save()
     signIn(BEN)
 
     post()
@@ -108,65 +103,33 @@ class AppointmentReminderPosterTest {
 
   @Test
   fun aPatientAloneSeesNoNames() {
-    save { it.copy(attendeeIds = emptyList()) }
-
-    post()
+    post(DOCTOR.copy(attendeeIds = emptyList()))
 
     assertEquals(emptyList<String>(), shown.single().otherNames)
   }
 
   @Test
-  fun nothingIsShownOnceTheAppointmentIsDeleted() {
-    assertFalse(post())
-    assertTrue(shown.isEmpty())
-  }
+  fun bothRemindersOfOneOccurrenceShareTheirTag() {
+    post(minutes = 24 * 60)
+    post(minutes = 60)
+    // the next occurrence of a repeating appointment shares its id, but not its start
+    post(DOCTOR.copy(startAt = DOCTOR.startAt + 7 * 24 * 3_600_000L))
 
-  @Test
-  fun nothingIsShownOnceTheAppointmentHasMoved() {
-    save { it.copy(startAt = it.startAt + 30 * 60_000) }
-
-    assertFalse(post())
-    assertTrue(shown.isEmpty())
-  }
-
-  @Test
-  fun aReminderDaysAheadFindsItsAppointment() {
-    // shown on Friday 15, for Monday 18 at 9:00, 3 days before
-    val monday = DOCTOR.startAt + (2 * 24 - 5) * 3_600_000L
-    save { it.copy(startAt = monday, reminderMinutesBefore = listOf(3 * 24 * 60)) }
-
-    assertTrue(post(minutes = 3 * 24 * 60, startAt = monday))
-    assertEquals(LocalDateTime.of(2027, 1, 18, 9, 0), shown.single().start)
-  }
-
-  @Test
-  fun nothingIsShownOnceThatReminderTimeIsRemoved() {
-    save { it.copy(reminderMinutesBefore = listOf(24 * 60)) }
-
-    assertFalse(post(minutes = 60))
-    assertTrue(post(minutes = 24 * 60))
-  }
-
-  @Test
-  fun nothingIsShownToACaregiverRemovedFromTheAttendees() {
-    save { it.copy(attendeeIds = listOf(ANNA)) }
-    signIn(BEN)
-
-    assertFalse(post())
-    assertTrue(shown.isEmpty())
+    val tags = shown.map { it.tag }
+    assertEquals(tags[0], tags[1])
+    assertTrue(tags[2] != tags[0])
   }
 
   @Test
   fun nothingIsShownOnceSignedOut() {
-    save()
     signIn(null)
 
     assertFalse(post())
+    assertTrue(shown.isEmpty())
   }
 
   @Test
   fun theReminderStillComesWhenTheCircleCantBeRead() {
-    save()
     coEvery { circles.getCircle(CIRCLE) } returns Result.failure(IllegalStateException("offline"))
 
     assertTrue(post())
@@ -175,12 +138,22 @@ class AppointmentReminderPosterTest {
 
   @Test
   fun aPersonWhoseProfileCantBeReadIsLeftOut() {
-    save()
     coEvery { profiles.getProfile(BEN) } returns Result.failure(IllegalStateException("offline"))
 
     assertTrue(post())
     // Anna is still named, from the patient's own nickname for her
     assertEquals(listOf("Annie"), shown.single().otherNames)
+  }
+
+  @Test
+  fun anAttendeeWhoLeftTheCircleIsNotNamed() {
+    coEvery { circles.getCircle(CIRCLE) } returns
+        Result.success(circle.copy(memberIds = listOf(PATIENT, ANNA)))
+
+    post()
+
+    assertEquals(listOf("Annie"), shown.single().otherNames)
+    coVerify(exactly = 0) { profiles.getProfile(BEN) }
   }
 
   private companion object {
@@ -197,6 +170,7 @@ class AppointmentReminderPosterTest {
             id = "a1",
             title = "Doctor",
             startAt = LocalDateTime.of(2027, 1, 16, 14, 0).toInstant(ZoneOffset.UTC).toEpochMilli(),
+            patientId = PATIENT,
             attendeeIds = listOf(ANNA, BEN),
             reminderMinutesBefore = listOf(60, 24 * 60),
         )
