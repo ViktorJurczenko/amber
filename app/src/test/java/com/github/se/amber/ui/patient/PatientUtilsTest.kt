@@ -1,12 +1,16 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.patient
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.mutableStateOf
@@ -30,16 +34,22 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.width
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -51,6 +61,8 @@ import org.robolectric.annotation.GraphicsMode
 class PatientUtilsTest {
 
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val context: Context = ApplicationProvider.getApplicationContext()
 
   // ---------- DisplayPatientTitle ----------
 
@@ -489,6 +501,28 @@ class PatientUtilsTest {
     assertEquals(1, iconClicks)
   }
 
+  // ---------- Outlined button ----------
+
+  private fun assertOutlinedButtonWorks(dark: Boolean) {
+    var clicks = 0
+    composeTestRule.setContent {
+      AmberAppTheme(darkTheme = dark) {
+        DisplayPatientButton(text = "Go", outlined = true, onClick = { clicks++ })
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals("Go")
+        .performClick()
+    assertEquals(1, clicks)
+  }
+
+  @Test fun outlinedButton_light_isDisplayedAndClickable() = assertOutlinedButtonWorks(dark = false)
+
+  @Test fun outlinedButton_dark_isDisplayedAndClickable() = assertOutlinedButtonWorks(dark = true)
+
   // ---------- DisplayPatientCircularIconButton ----------
 
   @Test
@@ -581,11 +615,217 @@ class PatientUtilsTest {
     composeTestRule.onNodeWithTag("custom_icon_button").assertIsDisplayed()
   }
 
+  // ---------- DisplayPatientTextField ----------
+
+  @Test
+  fun textField_displaysControlledValueAndPassesEditsToCaller() {
+    val value = mutableStateOf("")
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(
+            value = value.value,
+            onValueChange = { value.value = it },
+            placeholder = context.getString(R.string.patientMapSearchHint),
+        )
+      }
+    }
+
+    val field = composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD)
+    field.assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
+        .assertIsDisplayed()
+
+    field.performTextInput("Ada")
+    assertEquals("Ada", value.value)
+    field.assertTextEquals("Ada")
+
+    value.value = "Grace"
+    field.assertTextEquals("Grace")
+  }
+
+  @Test
+  fun textField_displaysOptionalLabelAndCustomTag() {
+    val label = context.getString(R.string.patientMapYourPosition)
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(value = "Ada", label = label, testTag = "labelled_text_field")
+      }
+    }
+
+    composeTestRule.onNodeWithTag("labelled_text_field").assertIsDisplayed()
+    composeTestRule.onNodeWithText(label).assertIsDisplayed()
+  }
+
+  @Test
+  fun textField_emptyErrorAppearsAfterFocusAndClearsWhenFilled() {
+    val value = mutableStateOf("")
+    val emptyMessage = context.getString(R.string.patientMapPermissionNeeded)
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(
+            value = value.value,
+            onValueChange = { value.value = it },
+            emptyErrorMessage = emptyMessage,
+        )
+      }
+    }
+
+    val error = composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD_ERROR)
+    error.assertDoesNotExist()
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).performClick()
+    error.assertIsDisplayed().assertTextEquals(emptyMessage)
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).performTextInput("Ada")
+    error.assertDoesNotExist()
+
+    value.value = ""
+    error.assertIsDisplayed().assertTextEquals(emptyMessage)
+  }
+
+  @Test
+  fun textField_explicitErrorTakesPriorityWithoutFocus() {
+    val emptyMessage = context.getString(R.string.patientMapPermissionNeeded)
+    val explicitMessage = context.getString(R.string.patientMapLocationOff)
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(
+            emptyErrorMessage = emptyMessage,
+            error = explicitMessage,
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD_ERROR)
+        .assertIsDisplayed()
+        .assertTextEquals(explicitMessage)
+    composeTestRule.onNodeWithText(emptyMessage).assertDoesNotExist()
+  }
+
+  @Test
+  fun textField_explicitErrorUpdatesAndClearsWithCallerState() {
+    val firstMessage = context.getString(R.string.patientMapPermissionNeeded)
+    val secondMessage = context.getString(R.string.patientMapLocationOff)
+    val errorMessage = mutableStateOf<String?>(firstMessage)
+    composeTestRule.setContent {
+      AmberAppTheme { DisplayPatientTextField(error = errorMessage.value) }
+    }
+
+    val error = composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD_ERROR)
+    error.assertIsDisplayed().assertTextEquals(firstMessage)
+
+    errorMessage.value = secondMessage
+    error.assertIsDisplayed().assertTextEquals(secondMessage)
+
+    errorMessage.value = null
+    error.assertDoesNotExist()
+  }
+
+  @Test
+  fun textField_characterGuidanceAppearsAtThresholdAfterFocus() {
+    val value = mutableStateOf("Ada")
+    val guidance = context.resources.getQuantityString(R.plurals.textFieldMaxCharReached, 3, 3)
+    composeTestRule.setContent {
+      AmberAppTheme { DisplayPatientTextField(value = value.value, maxChar = 3) }
+    }
+
+    composeTestRule.onNodeWithText(guidance).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).performClick()
+    composeTestRule.onNodeWithText(guidance).assertIsDisplayed()
+
+    value.value = "Ad"
+    composeTestRule.onNodeWithText(guidance).assertDoesNotExist()
+  }
+
+  @Test
+  fun textField_lineGuidanceIsOnlyShownInMultilineMode() {
+    val singleLine = mutableStateOf(false)
+    val guidance = context.resources.getQuantityString(R.plurals.textFieldMaxLinesReached, 2, 2)
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(
+            value = "first\nsecond",
+            maxLines = 2,
+            singleLine = singleLine.value,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).performClick()
+    composeTestRule.onNodeWithText(guidance).assertIsDisplayed()
+
+    singleLine.value = true
+    composeTestRule.onNodeWithText(guidance).assertDoesNotExist()
+  }
+
+  @Test
+  fun textField_forwardsImeAction() {
+    var searches = 0
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientTextField(
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { searches++ }),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).performImeAction()
+    assertEquals(1, searches)
+  }
+
+  @Test
+  fun textField_rejectsNonPositiveCharacterLimit() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent { AmberAppTheme { DisplayPatientTextField(maxChar = 0) } }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_rejectsNonPositiveMinimumLines() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent { AmberAppTheme { DisplayPatientTextField(minLines = 0) } }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_rejectsMinimumLinesAboveMaximumForMultilineInput() {
+    assertThrows(IllegalArgumentException::class.java) {
+      composeTestRule.setContent {
+        AmberAppTheme { DisplayPatientTextField(minLines = 3, maxLines = 2) }
+      }
+      composeTestRule.waitForIdle()
+    }
+  }
+
+  @Test
+  fun textField_singleLineAllowsMinimumLinesAboveMultilineMaximum() {
+    composeTestRule.setContent {
+      AmberAppTheme { DisplayPatientTextField(singleLine = true, minLines = 3, maxLines = 2) }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).assertIsDisplayed()
+  }
+
   // ---------- Previews ----------
 
   @Test
-  fun preview_showsThePatientButtons() {
-    composeTestRule.setContent { DisplayPatientButtonsPreview() }
+  fun previews_showTheTextFieldHintAndPatientButtons() {
+    composeTestRule.setContent {
+      Column {
+        DisplayPatientTextFieldPreview()
+        DisplayPatientButtonsPreview()
+      }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TEXT_FIELD).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchHint))
+        .assertIsDisplayed()
 
     // The labeled button takes a width fraction inside a weighted row, so it is composed but has
     // no size in this unbounded test. Existence still runs the preview.

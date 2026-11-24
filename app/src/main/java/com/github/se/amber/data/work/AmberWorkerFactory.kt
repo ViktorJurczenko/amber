@@ -4,7 +4,6 @@ package com.github.se.amber.data.work
 
 import androidx.work.DelegatingWorkerFactory
 import androidx.work.WorkerFactory
-import com.github.se.amber.data.appointment.reminder.AppointmentReminderProvider
 import com.github.se.amber.model.media.MediaRepositoryProvider
 
 /**
@@ -18,15 +17,10 @@ import com.github.se.amber.model.media.MediaRepositoryProvider
  * with what it needs.
  *
  * @param factories the factories of each feature. By default, the media one,
- *   [MediaRepositoryProvider.workerFactory], and the appointment reminder one,
- *   [AppointmentReminderProvider.workerFactory] of its default instance. Tests can pass their own.
+ *   [MediaRepositoryProvider.workerFactory]. Tests can pass their own.
  */
 class AmberWorkerFactory(
-    factories: List<WorkerFactory> =
-        listOf(
-            MediaRepositoryProvider.workerFactory,
-            AppointmentReminderProvider.default.workerFactory,
-        )
+    factories: List<WorkerFactory> = listOf(MediaRepositoryProvider.workerFactory)
 ) : DelegatingWorkerFactory() {
   init {
     factories.forEach(::addFactory)

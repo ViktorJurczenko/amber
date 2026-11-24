@@ -1,9 +1,11 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.appointment
 
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.AppointmentValidationError
+import com.github.se.amber.model.appointment.MAX_REMINDERS
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.location.GeoLocation
 import com.google.android.gms.tasks.Task
@@ -272,7 +274,7 @@ class FirebaseAppointmentRepositoryTest {
 
   @Test
   fun invalidRemindersAreRefusedBeforeWriting() = runTest {
-    val tooMany = appointment.copy(reminderMinutesBefore = listOf(1, 2, 3, 4, 5, 6))
+    val tooMany = appointment.copy(reminderMinutesBefore = List(MAX_REMINDERS + 1) { it })
     val expected = AppointmentError.InvalidAppointment(AppointmentValidationError.INVALID_REMINDERS)
 
     assertError(expected, repository.addAppointment(circle, tooMany))
@@ -454,6 +456,17 @@ class FirebaseAppointmentRepositoryTest {
     every { document.set(any()) } throws source
 
     assertError(AppointmentError.Unknown(source), repository.addAppointment(circle, appointment))
+  }
+
+  @Test
+  fun anUpdateThatCannotStartFailsTheCall() = runTest {
+    val source = IllegalArgumentException("Unsupported field value")
+    every { document.update(any<Map<String, Any>>()) } throws source
+
+    assertError(
+        AppointmentError.Unknown(source),
+        repository.updateAppointment(circleId, appointment),
+    )
   }
 
   @Test

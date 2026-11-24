@@ -9,6 +9,7 @@
     <string name="navigationTabUpload">Upload</string>
     <string name="navigationTabSetting">Setting</string>
     <string name="navigationTabMedias">Medias</string>
+    <string name="navigationTabMap">Map</string>
     <string name="navigationCancel">Cancel</string>
     <string name="navigationSignOut">Sign out</string>
     <string name="navigationBack">Back</string>
@@ -34,6 +35,7 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
+    <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
     <!-- EmailSignIn -->
@@ -162,7 +164,12 @@
     <string name="changeCareCircleCurrent">Current care circle:</string>
     <string name="changeCareCircleAll">All care circles:</string>
     <string name="changeCareCircleNone">No active care circle</string>
+    <string name="changeCareCircleInfo">Click on any circle in the list to switch to that Care Circle.</string>
     <string name="changeCareCircleEmpty">You are not linked to any care circle.\nYou can create one from %1$s &gt; %2$s, or join one from %1$s &gt; %3$s.</string>
+    <string name="changeCareCircleErrorLoadProfile">Could not load your profile.</string>
+    <string name="changeCareCircleErrorLoadCircle">Could not load your care circles.</string>
+    <string name="changeCareCircleErrorChange">Could not change the active care circle. Try again.</string>
+    <string name="changeCareCircleRetry">Retry</string>
 
     <!-- DeleteAccount -->
     <string name="deleteAccountTitle">Delete account</string>
@@ -419,7 +426,18 @@
     <string name="audioPlaybackLoading">Loading</string>
     <string name="audioPlaybackRetry">Retry</string>
     <string name="audioPlaybackError">This memo could not be played.</string>
+
     <!-- MediaMap -->
+    <string name="patientMapSearchHint">Look up a place</string>
+    <string name="patientMapOverview">MAP OVERVIEW</string>
+    <string name="patientMapYourPosition">Your position</string>
+    <string name="patientMapPermissionNeeded">Allow location to see your position</string>
+    <string name="patientMapLocationOff">Turn on location to see your position</string>
+    <string name="patientMapSearching">Finding your position…</string>
+    <string name="patientMapLocationUnavailable">Your position is unavailable</string>
+    <string name="patientMapLastKnown">Last known position</string>
+    <string name="patientMapLocationFound">Current position</string>
+    <string name="patientMapRecenter">Recenter</string>
     <string name="mediaMapErrorNoProfile">No profile found.</string>
     <string name="mediaMapErrorLoadProfile">Failed to load the profile.</string>
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
@@ -440,4 +458,17 @@
     <string name="appointmentReminderNameSeparator">", "</string>
     <!-- %1$s is every name but the last, joined by the separator above; %2$s is the last name -->
     <string name="appointmentReminderLastNames">%1$s and %2$s</string>
+
+    <!-- AddAppointment -->
+    <string name="addAppointmentTitle">Add an event</string>
+    <string name="addAppointmentTitleLabel">Title</string>
+    <string name="addAppointmentTitlePlaceholder">Enter a title</string>
+    <string name="addAppointmentNoteLabel">Note - Optional</string>
+    <string name="addAppointmentNotePlaceholder">Enter a note for yourself or the patient</string>
+    <string name="addAppointmentAddButton">Add event</string>
+    <string name="addAppointmentErrorTitleEmpty">The title cannot be empty</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Previous month</string>
+    <string name="calendarNextMonth">Next month</string>
 </resources>

@@ -10,9 +10,9 @@ import coil3.request.Options
 import com.github.se.amber.data.account.AccountDeletionRepository
 import com.github.se.amber.data.account.AccountDeletionRepositoryProvider
 import com.github.se.amber.data.account.DeletionMarker
+import com.github.se.amber.data.media.MediaSendWorker
 import com.github.se.amber.data.media.image.MediaPictureFetcher
 import com.github.se.amber.data.work.AmberWorkerFactory
-import com.github.se.amber.data.work.MediaSendWorker
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaPicture
@@ -94,7 +94,7 @@ class AmberApplicationTest {
         )
 
     // created without its sender: the repository is built only when the worker runs
-    assertEquals(MediaSendWorker::class, worker!!::class)
+    assertEquals(MediaSendWorker::class, worker?.let { it::class })
   }
 
   @Test

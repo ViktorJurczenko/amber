@@ -8,14 +8,17 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import io.mockk.mockk
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** Checks that the app's worker factory creates each known worker and nothing else. */
+/**
+ * Checks that the app's worker factory asks each feature's factory for a worker, and gives null for
+ * a worker none of them knows. That the app's own factory creates the media worker is checked in
+ * `AmberApplicationTest`.
+ */
 @RunWith(RobolectricTestRunner::class)
 class AmberWorkerFactoryTest {
 
@@ -31,29 +34,6 @@ class AmberWorkerFactoryTest {
             workerParameters: WorkerParameters,
         ): ListenableWorker? = if (workerClassName == name) worker else null
       }
-
-  @Test
-  fun stillCreatesTheMediaSendWorker() {
-    val worker =
-        AmberWorkerFactory().createWorker(context, MediaSendWorker::class.java.name, params)
-
-    // created without its sender: the repository is built only when the worker runs
-    assertEquals(MediaSendWorker::class, worker!!::class)
-  }
-
-  @Test
-  fun createsTheAppointmentReminderWorker() {
-    val worker =
-        AmberWorkerFactory()
-            .createWorker(context, AppointmentReminderWorker::class.java.name, params)
-
-    assertEquals(AppointmentReminderWorker::class, worker!!::class)
-  }
-
-  @Test
-  fun givesNullForAnUnknownWorker() {
-    assertNull(AmberWorkerFactory().createWorker(context, "com.example.UnknownWorker", params))
-  }
 
   @Test
   fun asksEachFactoryUntilOneKnowsTheWorker() {
