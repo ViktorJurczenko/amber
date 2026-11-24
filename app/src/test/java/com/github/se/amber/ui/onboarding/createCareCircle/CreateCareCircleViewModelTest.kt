@@ -210,6 +210,28 @@ class CreateCareCircleViewModelTest {
     )
   }
 
+  @Test
+  fun everyOtherRepositoryFailureShowsItsOwnMessage() = runTest {
+    val messages =
+        mapOf(
+            OnboardingError.InvalidCircleName to R.string.createCareCircleErrorInvalidName,
+            OnboardingError.ProfileMissing to R.string.createCareCircleErrorProfileMissing,
+            OnboardingError.InvalidProfile to R.string.createCareCircleErrorProfileMissing,
+            OnboardingError.NotCaregiver to R.string.createCareCircleErrorNotCaregiver,
+            OnboardingError.CareCircleAlreadyExists to R.string.createCareCircleErrorAlreadyExists,
+        )
+    viewModel.onNameChange("Family")
+
+    messages.forEach { (error, message) ->
+      repository.result = Result.failure(error)
+      viewModel.createCareCircle()
+      advanceUntilIdle()
+
+      assertEquals(error.toString(), message, viewModel.errorEvents.first())
+      assertFalse(viewModel.uiState.value.isCreated)
+    }
+  }
+
   private class FakeOnboardingRepository(var result: Result<CareCircle>) : OnboardingRepository {
     val submittedNames = mutableListOf<String>()
     var pending: CompletableDeferred<Result<CareCircle>>? = null

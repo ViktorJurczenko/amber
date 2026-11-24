@@ -1,6 +1,6 @@
 // Written by Neha Chakraborty and Copilot
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.profile
 
@@ -362,14 +362,33 @@ class FirebaseProfileRepositoryTest {
 
   @Test
   fun updateOnboardingProfile_rejectsABlankNameBeforeWriting() = runTest {
+    val blankNames =
+        listOf(
+            Person(firstName = " ", lastName = "Lovelace"),
+            Person(firstName = "Ada", lastName = " "),
+        )
+
+    blankNames.forEach { person ->
+      assertFailure<ProfileUpdateError.InvalidPersonDetails>(
+          repository.updateOnboardingProfile(person, Role.PATIENT)
+      )
+    }
+    verify(exactly = 0) { firestore.collection(any()) }
+  }
+
+  @Test
+  fun updateOnboardingProfile_blankCircleIdsDoNotCountAsJoined() = runTest {
+    val captured = stubUpdateTransaction(existingProfile(circleIds = listOf("", " ")))
+
     val result =
         repository.updateOnboardingProfile(
-            Person(firstName = " ", lastName = "Lovelace"),
+            Person(firstName = "Ada", lastName = "Lovelace"),
             Role.PATIENT,
         )
 
-    assertFailure<ProfileUpdateError.InvalidPersonDetails>(result)
-    verify(exactly = 0) { firestore.collection(any()) }
+    assertTrue(result.isSuccess)
+    assertEquals(Role.PATIENT, captured.captured.role)
+    assertEquals(emptyList<String>(), captured.captured.circleIds)
   }
 
   @Test

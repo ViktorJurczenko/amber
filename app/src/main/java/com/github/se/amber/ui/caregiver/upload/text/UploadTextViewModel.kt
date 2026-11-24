@@ -85,8 +85,6 @@ open class UploadTextViewModel(
         cleanupScope = cleanupScope,
     ) {
 
-  // FIXME: Save this field in MediaItem.Text.title. The parameter exists; this screen does not
-  // write it yet.
   /** Stores [title] as the story title. */
   fun setTitle(title: String) {
     // Todo: save the title in the UI state

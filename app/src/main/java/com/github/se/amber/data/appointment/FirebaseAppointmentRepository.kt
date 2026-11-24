@@ -10,6 +10,7 @@ import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.validationError
 import com.github.se.amber.model.calendar.dayWindow
 import com.github.se.amber.model.calendar.endAt
+import com.github.se.amber.model.circle.CareCircle
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
@@ -86,28 +87,35 @@ class FirebaseAppointmentRepository(
   override fun newId(): String = firestore.collection(CARE_CIRCLES_COLLECTION).document().id
 
   /**
-   * Writes the whole appointment with `set()` and doesn't wait for the server.
+   * Writes the whole appointment with `set()` and doesn't wait for the server. The patient comes
+   * from [circle], never from the caller's appointment.
    *
-   * @param circleId the id of the care circle the appointment belongs to.
+   * @param circle the care circle the appointment belongs to.
    * @param appointment the new appointment, with an id from [newId].
    * @return the appointment as written, or a failure with an [AppointmentError].
    */
   override suspend fun addAppointment(
-      circleId: String,
+      circle: CareCircle,
       appointment: Appointment,
   ): Result<Appointment> {
     val trimmed = appointment.withTrimmedText()
     val uid =
-        checkWrite(circleId, trimmed.id, trimmed).getOrElse {
+        checkWrite(circle.id, trimmed.id, trimmed, circle.patientId).getOrElse {
           return Result.failure(it)
         }
     val time = now()
     val saved =
         trimmed
-            .copy(createdBy = uid, createdAt = time, updatedBy = uid, updatedAt = time)
+            .copy(
+                patientId = circle.patientId,
+                createdBy = uid,
+                createdAt = time,
+                updatedBy = uid,
+                updatedAt = time,
+            )
             .withLastEndAt()
 
-    return startWrite(saved.id, AppointmentWrite.ADD) { document(circleId, saved.id).set(saved) }
+    return startWrite(saved.id, AppointmentWrite.ADD) { document(circle.id, saved.id).set(saved) }
         .map { saved }
   }
 
@@ -132,7 +140,7 @@ class FirebaseAppointmentRepository(
     val saved = trimmed.copy(updatedBy = uid, updatedAt = now()).withLastEndAt()
 
     // update() and not set(): it fails on the server when the document is gone, so an edit never
-    // brings back a deleted appointment. It also leaves the creator fields alone.
+    // brings back a deleted appointment. It also leaves the creator fields and the patient alone.
     return startWrite(saved.id, AppointmentWrite.UPDATE) {
           document(circleId, saved.id).update(saved.updatedFields())
         }
@@ -212,22 +220,25 @@ class FirebaseAppointmentRepository(
 
   /**
    * Checks a write before anything is written, and returns the uid of the signed-in user. The
-   * checks run in this order: the circle id, the appointment id, then [appointment] if given, then
-   * the user.
+   * checks run in this order: the circle id, the patient if given, the appointment id, then
+   * [appointment] if given, then the user.
    *
    * @param circleId the circle id to check.
    * @param appointmentId the appointment id to check.
    * @param appointment the appointment to validate, or null for a delete.
+   * @param patientId the circle's patient, only for a create. It must not be empty.
    * @return the uid of the signed-in user, or a failure with the first [AppointmentError] found.
    */
   private fun checkWrite(
       circleId: String,
       appointmentId: String,
       appointment: Appointment? = null,
+      patientId: String? = null,
   ): Result<String> {
     val error =
         when {
           !isValidDocumentId(circleId) -> AppointmentError.InvalidCircleId()
+          patientId?.isEmpty() == true -> AppointmentError.NoPatient()
           !isValidDocumentId(appointmentId) -> AppointmentError.InvalidAppointmentId()
           else -> appointment?.validationError()?.let { AppointmentError.InvalidAppointment(it) }
         }
@@ -317,6 +328,7 @@ class FirebaseAppointmentRepository(
           Appointment::durationMinutes.name to durationMinutes,
           Appointment::location.name to location,
           Appointment::attendeeIds.name to attendeeIds,
+          Appointment::reminderMinutesBefore.name to reminderMinutesBefore,
           Appointment::lastEndAt.name to lastEndAt,
           Appointment::updatedBy.name to updatedBy,
           Appointment::updatedAt.name to updatedAt,

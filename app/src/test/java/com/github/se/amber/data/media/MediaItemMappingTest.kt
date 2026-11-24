@@ -116,8 +116,9 @@ class MediaItemMappingTest {
   @Test
   fun aFieldOfTheWrongKindCantBeRead() {
     val fields = picture.toMap()
+    // a list, not a map, so a key can be tried with several bad values
     val badFields =
-        mapOf(
+        listOf(
             "createdAt" to "yesterday",
             "description" to 42,
             "shownIds" to listOf("u2", 7),
@@ -125,6 +126,7 @@ class MediaItemMappingTest {
             "status" to "ARCHIVED", // unknown status
             "width" to 4032.5, // a fraction where a whole number is expected
             "height" to Long.MAX_VALUE, // too big for an Int
+            "height" to Long.MIN_VALUE, // too small for an Int
             "date" to "1974",
             "location" to mapOf("lat" to "north"),
         )
@@ -132,6 +134,17 @@ class MediaItemMappingTest {
     for ((key, value) in badFields) {
       assertNull("$key = $value was read", mediaItemFromMap("m1", fields + (key to value)))
     }
+  }
+
+  @Test
+  fun shortAndByteNumbersAreRead() {
+    val fields = picture.toMap()
+    val width: Short = 640
+    val height: Byte = 48
+
+    val read = mediaItemFromMap("m1", fields + ("width" to width) + ("height" to height))
+
+    assertEquals(picture.copy(width = width.toInt(), height = height.toInt()), read)
   }
 
   @Test
