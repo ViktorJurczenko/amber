@@ -56,7 +56,7 @@ class AddAppointmentViewModelTest {
     Dispatchers.setMain(dispatcher)
     every { authRepo.currentUser } returns AuthUser(UID)
     coEvery { profileRepo.getProfile(UID) } returns
-            Result.success(UserProfile(uid = UID, circleIds = listOf(CIRCLE)))
+        Result.success(UserProfile(uid = UID, circleIds = listOf(CIRCLE)))
     every { activeCircleRepo.activeCircleId(UID, listOf(CIRCLE)) } returns flowOf(CIRCLE)
   }
 
@@ -178,12 +178,12 @@ class AddAppointmentViewModelTest {
 
   @Test
   fun successSendsTheAddedEvent() =
-    runTest(dispatcher) {
-      val viewModel = viewModel()
-      viewModel.setTitle("Dr. Martin")
-      viewModel.addAppointment(day)
-      assertEquals(AddAppointmentEvent.Added, viewModel.events.first())
-    }
+      runTest(dispatcher) {
+        val viewModel = viewModel()
+        viewModel.setTitle("Dr. Martin")
+        viewModel.addAppointment(day)
+        assertEquals(AddAppointmentEvent.Added, viewModel.events.first())
+      }
 
   @Test
   fun successStopsAdding() {
@@ -246,42 +246,42 @@ class AddAppointmentViewModelTest {
   @Test
   fun invalidCircleIdSetsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorInvalidCircle,
-      messageFor(AppointmentError.InvalidCircleId()),
+        R.string.addAppointmentErrorInvalidCircle,
+        messageFor(AppointmentError.InvalidCircleId()),
     )
   }
 
   @Test
   fun invalidAppointmentIdSetsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorInvalidId,
-      messageFor(AppointmentError.InvalidAppointmentId()),
+        R.string.addAppointmentErrorInvalidId,
+        messageFor(AppointmentError.InvalidAppointmentId()),
     )
   }
 
   @Test
   fun blankTitleErrorSetsTheEmptyTitleMessage() {
     assertEquals(
-      R.string.addAppointmentErrorTitleEmpty,
-      messageFor(AppointmentError.InvalidAppointment(AppointmentValidationError.BLANK_TITLE)),
+        R.string.addAppointmentErrorTitleEmpty,
+        messageFor(AppointmentError.InvalidAppointment(AppointmentValidationError.BLANK_TITLE)),
     )
   }
 
   @Test
   fun missingStartErrorSetsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorMissingStart,
-      messageFor(AppointmentError.InvalidAppointment(AppointmentValidationError.MISSING_START)),
+        R.string.addAppointmentErrorMissingStart,
+        messageFor(AppointmentError.InvalidAppointment(AppointmentValidationError.MISSING_START)),
     )
   }
 
   @Test
   fun invalidDurationErrorSetsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorInvalidDuration,
-      messageFor(
-        AppointmentError.InvalidAppointment(AppointmentValidationError.INVALID_DURATION)
-      ),
+        R.string.addAppointmentErrorInvalidDuration,
+        messageFor(
+            AppointmentError.InvalidAppointment(AppointmentValidationError.INVALID_DURATION)
+        ),
     )
   }
 
@@ -293,24 +293,24 @@ class AddAppointmentViewModelTest {
   @Test
   fun notAuthenticatedSetsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorNotSignedIn,
-      messageFor(AppointmentError.NotAuthenticated()),
+        R.string.addAppointmentErrorNotSignedIn,
+        messageFor(AppointmentError.NotAuthenticated()),
     )
   }
 
   @Test
   fun permissionDeniedShowsItsMessage() {
     assertEquals(
-      R.string.addAppointmentErrorPermissionDenied,
-      messageFor(AppointmentError.PermissionDenied()),
+        R.string.addAppointmentErrorPermissionDenied,
+        messageFor(AppointmentError.PermissionDenied()),
     )
   }
 
   @Test
   fun unknownErrorShowsTheGenericMessage() {
     assertEquals(
-      R.string.addAppointmentErrorAdd,
-      messageFor(AppointmentError.Unknown(RuntimeException("boom"))),
+        R.string.addAppointmentErrorAdd,
+        messageFor(AppointmentError.Unknown(RuntimeException("boom"))),
     )
   }
 
@@ -332,16 +332,16 @@ class AddAppointmentViewModelTest {
   private fun saved() = appointments.appointmentsOf(CIRCLE).single()
 
   private fun dayOf(epochMillis: Long): LocalDate =
-    Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+      Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
 
   private fun viewModel(): AddAppointmentViewModel =
-    AddAppointmentViewModel(
-      appointmentRepo = appointments,
-      authRepo = authRepo,
-      profileRepo = profileRepo,
-      activeCircleRepo = activeCircleRepo,
-    )
-      .also { viewModels += it }
+      AddAppointmentViewModel(
+              appointmentRepo = appointments,
+              authRepo = authRepo,
+              profileRepo = profileRepo,
+              activeCircleRepo = activeCircleRepo,
+          )
+          .also { viewModels += it }
 
   private companion object {
     const val UID = "user1"
