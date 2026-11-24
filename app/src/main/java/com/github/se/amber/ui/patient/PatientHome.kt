@@ -44,7 +44,7 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
-import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
+import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 
 /** No-op [ProfileRepository] used by Compose previews (and preview-driven tests). */
 private object PreviewPatientHomeProfileRepository : ProfileRepository {
@@ -111,7 +111,7 @@ fun PatientHomeScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = PATIENT_PADDING_MEDIUM),
+                    .padding(PATIENT_PADDING_SMALL),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           val firstName = uiState.patientProfile.person.firstName
