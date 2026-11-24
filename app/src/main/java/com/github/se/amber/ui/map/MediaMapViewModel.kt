@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * UI state of the memories map, the same for the patient and the caregiver. The errors are string
@@ -326,7 +327,7 @@ class MediaMapViewModel(
   private fun searchPlaces(query: String) {
     placeSearchJob?.cancel()
     placeSearchJob = viewModelScope.launch {
-      delay(MAP_PLACE_SEARCH_DELAY_MILLIS)
+      delay(MAP_PLACE_SEARCH_DELAY_MILLIS.milliseconds)
       val result = placeSearchRepository.search(query)
       val current = _placeSearchState.value
       if (current.query != query || current.selectedPlace != null) return@launch

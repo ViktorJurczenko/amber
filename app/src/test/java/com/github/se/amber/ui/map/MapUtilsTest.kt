@@ -7,10 +7,12 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -19,8 +21,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -83,6 +87,74 @@ class MapUtilsTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
+  }
+
+  @Test
+  fun searchPopup_showsSuggestionsAndSelectionClosesIt() {
+    val lausanne = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val geneva = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    val state = mutableStateOf(MapPlaceSearchState(query = "Lausanne", isSearching = true))
+    var selected: GeoLocation? = null
+    composeTestRule.setContent {
+      AmberAppTheme {
+        MapSearchField(
+            state = state.value,
+            onSuggestionClick = { selected = it },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.locationSearching)).assertIsDisplayed()
+
+    state.value =
+        MapPlaceSearchState(
+            query = "Lausanne",
+            suggestions = listOf(lausanne, geneva),
+            hasSearched = true,
+        )
+    composeTestRule.onNodeWithText(context.getString(R.string.locationSearching)).assertDoesNotExist()
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(2)
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION)[0].performClick()
+    assertEquals(lausanne, selected)
+
+    state.value = MapPlaceSearchState(query = lausanne.placeName.orEmpty(), selectedPlace = lausanne)
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  @Test
+  fun searchPopup_showsShortEmptyAndFailedStatesWithRetry() {
+    val state = mutableStateOf(MapPlaceSearchState(query = "La"))
+    var retries = 0
+    composeTestRule.setContent {
+      AmberAppTheme {
+        MapSearchField(state = state.value, onRetrySearch = { retries++ })
+      }
+    }
+
+    val shortHint =
+        context.resources.getQuantityString(
+            R.plurals.locationQueryTooShort,
+            MAP_MIN_PLACE_QUERY_LENGTH,
+            MAP_MIN_PLACE_QUERY_LENGTH,
+        )
+    composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
+
+    state.value = MapPlaceSearchState(query = "Geneva", hasSearched = true)
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapNoPlaceFound))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(shortHint).assertDoesNotExist()
+
+    state.value = MapPlaceSearchState(query = "Geneva", searchFailed = true)
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchFailed))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.locationTryAgain)).performClick()
+    assertEquals(1, retries)
+
+    state.value = MapPlaceSearchState()
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
 
   @Test
@@ -173,7 +245,7 @@ class MapUtilsTest {
             R.string.patientMapRecenter,
             R.string.patientMapOverview,
             R.string.patientMapYourPosition,
-        )
+            )
 
     keys.forEach { id ->
       val frenchText = context.getString(id)

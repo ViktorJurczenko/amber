@@ -106,11 +106,11 @@ internal fun MapSearchField(
                 )
             state.isSearching -> MapSearchHint(stringResource(R.string.locationSearching))
             state.searchFailed -> {
-              MapSearchHint(stringResource(R.string.locationSearchFailed))
+              MapSearchHint(stringResource(R.string.patientMapSearchFailed))
               TextButton(onClick = onRetrySearch) { Text(stringResource(R.string.locationTryAgain)) }
             }
             state.hasSearched && state.suggestions.isEmpty() ->
-                MapSearchHint(stringResource(R.string.locationNoPlaceFound))
+                MapSearchHint(stringResource(R.string.patientMapNoPlaceFound))
             else ->
                 state.suggestions.forEachIndexed { index, place ->
                   if (index > 0) HorizontalDivider(thickness = DIVIDER_THICKNESS)
@@ -160,7 +160,7 @@ internal fun MapPositionCard(
         MediaMapLocationState.Searching -> R.string.patientMapSearching
         MediaMapLocationState.Unavailable -> R.string.patientMapLocationUnavailable
         is MediaMapLocationState.Located ->
-            // TODO the user location will be displayed later instead of a hard coded string
+            // TODO the user location will be displayed later (backend is missing for now)
             if (locationState.position.isLastKnown) R.string.patientMapLastKnown
             else R.string.patientMapLocationFound
       }

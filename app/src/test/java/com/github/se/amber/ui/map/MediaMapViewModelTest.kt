@@ -1,4 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -234,7 +235,7 @@ class MediaMapViewModelTest {
   fun selectingAPinWhileLoadingDoesNothing() {
     // The screen is already loading when the pin is selected, and its pins arrive after
     val updates = MutableSharedFlow<List<MediaMarker>>(extraBufferCapacity = 1)
-    val viewModel = createViewModel { updates }
+    val viewModel = createViewModel(repository = { updates })
     assertEquals(MediaMapUIState.Loading, viewModel.uiState.value)
 
     viewModel.selectMarker(twoPins[0].id)
@@ -428,6 +429,77 @@ class MediaMapViewModelTest {
   private val farFromLausanne = atLausannePin.movedNorth(wellOutsideRadius)
 
   private fun MediaMapViewModel.location() = locationState.value
+
+  @Test
+  fun recenterRequestsPermissionOrUsesTheCurrentPosition() {
+    locationUpdates.permission = false
+    val viewModel = createViewModel()
+    viewModel.showMap()
+    assertEquals(MapRecenterAction.RequestPermission, viewModel.recenter())
+
+    locationUpdates.permission = true
+    viewModel.refreshPermission()
+    assertEquals(MapRecenterAction.PositionUnavailable, viewModel.recenter())
+
+    locationUpdates.updates.value = LocationUpdate.Position(atLausannePin)
+    assertEquals(MapRecenterAction.MoveTo(atLausannePin), viewModel.recenter())
+
+    locationUpdates.updates.value = LocationUpdate.LocationOff
+    assertEquals(MapRecenterAction.PositionUnavailable, viewModel.recenter())
+  }
+
+  @Test
+  fun placeSearchUsesOnlyTheLatestValidQueryAndAcceptsASuggestedPlace() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val searched = mutableListOf<String>()
+    val repository = PlaceSearchRepository { query ->
+      searched += query
+      Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("La")
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+    viewModel.updateSearchQuery("Lausa")
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    assertEquals(listOf("Lausanne"), searched)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+
+    viewModel.selectPlace(GeoLocation(lat = 1.0, lng = 1.0, placeName = "Other"))
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    viewModel.selectPlace(place)
+    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+    assertEquals("Lausanne", viewModel.placeSearchState.value.query)
+    assertTrue(viewModel.placeSearchState.value.suggestions.isEmpty())
+  }
+
+  @Test
+  fun failedPlaceSearchCanRetryAndEditingTheQueryClearsOldResults() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    var calls = 0
+    val repository = PlaceSearchRepository {
+      calls++
+      if (calls == 1) Result.failure(IllegalStateException("offline"))
+      else Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Geneva")
+    scheduler.advanceUntilIdle()
+    assertTrue(viewModel.placeSearchState.value.searchFailed)
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+
+    viewModel.retryPlaceSearch()
+    scheduler.advanceUntilIdle()
+    assertEquals(2, calls)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+
+    viewModel.updateSearchQuery("")
+    assertEquals(MapPlaceSearchState(), viewModel.placeSearchState.value)
+  }
 
   @Test
   fun withoutThePermissionTheMapWorksWithoutTheGPSUntilTheUserAllowsIt() {
