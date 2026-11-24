@@ -83,6 +83,7 @@ internal fun MapPositionCard(
         MediaMapLocationState.Searching -> R.string.patientMapSearching
         MediaMapLocationState.Unavailable -> R.string.patientMapLocationUnavailable
         is MediaMapLocationState.Located ->
+            // TODO the user location will be displayed later instead of a hard coded string
             if (locationState.position.isLastKnown) R.string.patientMapLastKnown
             else R.string.patientMapLocationFound
       }

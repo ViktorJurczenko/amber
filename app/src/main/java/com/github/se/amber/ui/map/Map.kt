@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,12 +37,14 @@ import com.github.se.amber.ui.theme.PATIENT_PADDING_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 
 object MapScreenTestTags {
   const val GOOGLE_MAP = "map_google_map"
@@ -60,10 +62,11 @@ fun MapScreen(
     onTabSelected: (Tab) -> Unit = {},
     viewModel: MediaMapViewModel = viewModel(),
 ) {
-  var searchQuery by remember { mutableStateOf("") }
+  val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
   val locationState by viewModel.locationState.collectAsStateWithLifecycle()
   val userPosition = (locationState as? MediaMapLocationState.Located)?.position
   var centeredOnFreshPosition by rememberSaveable { mutableStateOf(false) }
+  val cameraScope = rememberCoroutineScope()
 
   // Create an Android permission launcher (this does not show the dialog yet)
   // RequestMultiplePermission() lets the screen ask for both precise and approximate user location
@@ -76,8 +79,11 @@ fun MapScreen(
 
   // Lausanne is a fallback while GPS is searching or location access is unavailable
   val cameraPositionState = rememberCameraPositionState {
-    position = CameraPosition.fromLatLngZoom(
-        LatLng(INITIAL_LATITUDE, INITIAL_LONGITUDE), INITIAL_ZOOM)
+    position =
+        CameraPosition.fromLatLngZoom(
+            LatLng(INITIAL_LATITUDE, INITIAL_LONGITUDE),
+            INITIAL_ZOOM,
+        )
   }
 
   LaunchedEffect(Unit) {
@@ -88,7 +94,8 @@ fun MapScreen(
           arrayOf(
               Manifest.permission.ACCESS_FINE_LOCATION, // Precise location
               Manifest.permission.ACCESS_COARSE_LOCATION, // Approximate location
-          ))
+          )
+      )
     }
   }
 
@@ -98,7 +105,9 @@ fun MapScreen(
     if (userPosition != null && !centeredOnFreshPosition) {
       cameraPositionState.position =
           CameraPosition.fromLatLngZoom(
-              LatLng(userPosition.lat, userPosition.lng), INITIAL_ZOOM)
+              LatLng(userPosition.lat, userPosition.lng),
+              INITIAL_ZOOM,
+          )
 
       // Marks the job done only when the position is fresh
       if (!userPosition.isLastKnown) centeredOnFreshPosition = true
@@ -129,18 +138,38 @@ fun MapScreen(
           contentPadding =
               PaddingValues(
                   end = PATIENT_PADDING_MINI,
-                  bottom =
-                      PATIENT_PADDING_ENORMOUS + PATIENT_PADDING_BIG + PATIENT_PADDING_SMALL,
+                  bottom = PATIENT_PADDING_ENORMOUS + PATIENT_PADDING_BIG + PATIENT_PADDING_SMALL,
               ),
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
           query = searchQuery,
-          onQueryChange = { searchQuery = it },
+          onQueryChange = viewModel::updateSearchQuery,
       )
       MapPositionCard(
           modifier = Modifier.align(Alignment.BottomCenter).padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
+          onRecenter = {
+            when (val action = viewModel.recenter()) {
+              // Ask for permission
+              MapRecenterAction.RequestPermission ->
+                  permissionLauncher.launch(
+                      arrayOf(
+                          Manifest.permission.ACCESS_FINE_LOCATION,
+                          Manifest.permission.ACCESS_COARSE_LOCATION,
+                      )
+                  )
+              is MapRecenterAction.MoveTo ->
+                  cameraScope.launch {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLng(
+                            LatLng(action.position.lat, action.position.lng)
+                        )
+                    )
+                  }
+              MapRecenterAction.PositionUnavailable -> Unit
+            }
+          },
       )
     }
   }

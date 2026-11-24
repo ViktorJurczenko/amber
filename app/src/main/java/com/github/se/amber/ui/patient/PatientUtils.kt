@@ -320,79 +320,80 @@ fun DisplayPatientTextField(
   var hasBeenFocused by rememberSaveable { mutableStateOf(false) }
 
   Column(modifier = modifier.fillMaxWidth()) {
-      OutlinedTextField(
-          value = value,
-          onValueChange = onValueChange,
-          label =
-              label?.let {
-                  {
-                      Text(
-                          it,
-                          color = MaterialTheme.colorScheme.onSurface,
-                          style = MaterialTheme.typography.bodyLarge,
-                      )
-                  }
-              },
-          placeholder = placeholder?.let {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label =
+            label?.let {
               {
-                  Text(
-                      it,
-                      style = MaterialTheme.typography.bodyMedium
-                  )
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
               }
-          },
-          leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
-          modifier =
-              Modifier.fillMaxWidth()
-                  .border(
-                      width = BORDER_THICKNESS_PATIENT,
-                      color =
-                          if (isFocused) MaterialTheme.colorScheme.secondary
-                          else MaterialTheme.colorScheme.tertiary,
-                      shape = RoundedCornerShape(ROUND_CORNER),
-                  )
-                  .onFocusChanged { focus ->
-                      isFocused = focus.isFocused
-                      if (focus.isFocused) hasBeenFocused = true
-                  }
-                  .testTag(testTag),
-          shape = RoundedCornerShape(ROUND_CORNER),
-          colors =
-              OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = Color.Transparent,
-                  unfocusedBorderColor = Color.Transparent,
-              ),
-          singleLine = singleLine,
-          minLines = minLines,
-          maxLines = if (singleLine) MIN_LINE_DEFAULT else maxLines,
-          isError = error != null,
-          keyboardOptions = keyboardOptions,
-          keyboardActions = keyboardActions,
-      )
+            },
+        placeholder =
+            placeholder?.let {
+              {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+              }
+            },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+        modifier =
+            Modifier.fillMaxWidth()
+                .border(
+                    width = BORDER_THICKNESS_PATIENT,
+                    color =
+                        if (isFocused) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.tertiary,
+                    shape = RoundedCornerShape(ROUND_CORNER),
+                )
+                .onFocusChanged { focus ->
+                  isFocused = focus.isFocused
+                  if (focus.isFocused) hasBeenFocused = true
+                }
+                .testTag(testTag),
+        shape = RoundedCornerShape(ROUND_CORNER),
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+            ),
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = if (singleLine) MIN_LINE_DEFAULT else maxLines,
+        isError = error != null,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+    )
 
-      if (value.length >= maxChar && hasBeenFocused) {
-          Text(
-              text = pluralStringResource(R.plurals.textFieldMaxCharReached, maxChar, maxChar),
-              color = MaterialTheme.colorScheme.error,
-              style = MaterialTheme.typography.bodySmall,
-          )
-      }
-      if (!singleLine && value.lines().size >= maxLines && hasBeenFocused) {
-          Text(
-              text = pluralStringResource(R.plurals.textFieldMaxLinesReached, maxLines, maxLines),
-              color = MaterialTheme.colorScheme.error,
-              style = MaterialTheme.typography.bodySmall,
-          )
-      }
-      val shownError = error ?: emptyErrorMessage?.takeIf { value.isBlank() && hasBeenFocused }
-      if (shownError != null) {
-          Text(
-              text = shownError,
-              modifier = Modifier.testTag(PatientUtilsTestTags.TEXT_FIELD_ERROR),
-              color = MaterialTheme.colorScheme.error,
-              style = MaterialTheme.typography.bodySmall,
-          )
-      }
+    if (value.length >= maxChar && hasBeenFocused) {
+      Text(
+          text = pluralStringResource(R.plurals.textFieldMaxCharReached, maxChar, maxChar),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+    if (!singleLine && value.lines().size >= maxLines && hasBeenFocused) {
+      Text(
+          text = pluralStringResource(R.plurals.textFieldMaxLinesReached, maxLines, maxLines),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+    val shownError = error ?: emptyErrorMessage?.takeIf { value.isBlank() && hasBeenFocused }
+    if (shownError != null) {
+      Text(
+          text = shownError,
+          modifier = Modifier.testTag(PatientUtilsTestTags.TEXT_FIELD_ERROR),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
   }
 }
 

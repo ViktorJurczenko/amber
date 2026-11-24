@@ -1,4 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -117,6 +119,15 @@ sealed interface MediaMapLocationState {
   }
 }
 
+/** What the screen should do when the patient taps the Recenter button. */
+sealed interface MapRecenterAction {
+  data object RequestPermission : MapRecenterAction
+
+  data class MoveTo(val position: DevicePosition) : MapRecenterAction
+
+  data object PositionUnavailable : MapRecenterAction
+}
+
 /**
  * How long the GPS keeps running after the map stops being shown: long enough for a screen
  * rotation, short enough not to run in the background.
@@ -160,6 +171,14 @@ class MediaMapViewModel(
   // or an older one is added, and the pin must stay open then
   private val selectedMediaIds = MutableStateFlow<Set<String>>(emptySet())
   private val errorMsgRes = MutableStateFlow<Int?>(null)
+  private val _searchQuery = MutableStateFlow("")
+
+  // Text entered in the map search field
+  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+  fun updateSearchQuery(query: String) {
+    _searchQuery.value = query
+  }
 
   val uiState: StateFlow<MediaMapUIState> =
       combine(loaded, selectedMediaIds, errorMsgRes, connectivityMonitor.isOnline) {
@@ -252,6 +271,14 @@ class MediaMapViewModel(
   fun refreshPermission() {
     hasLocationPermission.value = locationUpdatesRepository.hasPermission()
   }
+
+  /** Chooses the recenter action from the current location state; camera motion stays in the UI. */
+  fun recenter(): MapRecenterAction =
+      when (val location = locationState.value) {
+        MediaMapLocationState.NoPermission -> MapRecenterAction.RequestPermission
+        is MediaMapLocationState.Located -> MapRecenterAction.MoveTo(location.position)
+        else -> MapRecenterAction.PositionUnavailable
+      }
 
   /** Clears the non-blocking error message. */
   fun clearErrorMsg() {

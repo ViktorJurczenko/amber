@@ -184,8 +184,7 @@ sealed class PatientTab(
   companion object {
     /** Tabs shown on patient screens, in bar order. */
     val patientTabs: List<PatientTab>
-      get() =
-          listOf(Home, SeeMedias, Map, Setting)
+      get() = listOf(Home, SeeMedias, Map, Setting)
   }
 }
 
