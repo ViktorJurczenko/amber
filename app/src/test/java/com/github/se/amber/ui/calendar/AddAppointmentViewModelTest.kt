@@ -5,6 +5,7 @@ package com.github.se.amber.ui.calendar
 import androidx.lifecycle.viewModelScope
 import com.github.se.amber.R
 import com.github.se.amber.data.appointment.AppointmentError
+import com.github.se.amber.data.appointment.AppointmentRepository
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.profile.ProfileRepository
@@ -20,6 +21,7 @@ import io.mockk.mockk
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -241,6 +243,25 @@ class AddAppointmentViewModelTest {
     assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
   }
 
+  @Test
+  fun cancelledAddShowsNoError() {
+    coEvery { profileRepo.getProfile(UID) } throws CancellationException("cancelled")
+    val viewModel = addWithTitle("Dr. Martin")
+    assertNull(viewModel.uiState.value.errorMsgRes)
+  }
+
+  @Test
+  fun failureThatIsNotAnAppointmentErrorShowsTheGenericMessage() {
+    val repo = mockk<AppointmentRepository>()
+    every { repo.newId() } returns "appointment-1"
+    coEvery { repo.addAppointment(CIRCLE, any()) } returns
+        Result.failure(IllegalStateException("boom"))
+    val viewModel = viewModel(repo)
+    viewModel.setTitle("Dr. Martin")
+    viewModel.addAppointment(day)
+    assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
+  }
+
   // ---- One message for each repository error ----
 
   @Test
@@ -334,9 +355,11 @@ class AddAppointmentViewModelTest {
   private fun dayOf(epochMillis: Long): LocalDate =
       Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
 
-  private fun viewModel(): AddAppointmentViewModel =
+  private fun viewModel(
+      appointmentRepo: AppointmentRepository = appointments
+  ): AddAppointmentViewModel =
       AddAppointmentViewModel(
-              appointmentRepo = appointments,
+              appointmentRepo = appointmentRepo,
               authRepo = authRepo,
               profileRepo = profileRepo,
               activeCircleRepo = activeCircleRepo,
