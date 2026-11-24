@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,6 +56,8 @@ internal object CalendarTestTags {
   const val MONTH_TITLE = "calendar_month_title"
   const val PREVIOUS_MONTH_BUTTON = "calendar_previous_month_button"
   const val NEXT_MONTH_BUTTON = "calendar_next_month_button"
+  const val PREVIOUS_MONTH_ICON = "calendar_previous_month_icon"
+  const val NEXT_MONTH_ICON = "calendar_next_month_icon"
 
   fun weekday(index: Int) = "calendar_weekday_$index"
 
@@ -73,16 +76,16 @@ private const val MONTH_TITLE_PATTERN = "LLLL yyyy"
  *
  * @param modifier modifier applied to the calendar box.
  * @param onDayClick called with the date of the day the user clicks on.
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient. A patient gets
+ *   larger texts (month, year, weekdays, day numbers) and larger icons.
  * @param viewModel the ViewModel owning the displayed month. It starts on the current month.
  */
 @Composable
-// Not restartable: the Compose compiler adds no skip or recompose code to this function, which
-// is only a layout around other composables.
-@NonRestartableComposable
 fun Calendar(
     modifier: Modifier = Modifier,
     // Note: the signature of onDayClick may change once the appointment are taken into account
     onDayClick: (LocalDate) -> Unit = {},
+    isPatient: Boolean = true,
     viewModel: CalendarViewModel = viewModel(),
 ) {
   // State: the displayed month, owned by the ViewModel.
@@ -108,19 +111,25 @@ fun Calendar(
         locale = locale,
         onPreviousMonth = viewModel::showPreviousMonth,
         onNextMonth = viewModel::showNextMonth,
+        isPatient = isPatient,
     )
     // Under the header: the names of the days of the week.
-    CalendarWeekdays(locale = locale)
+    CalendarWeekdays(locale = locale, isPatient = isPatient)
     // Then the days of the month; a click is reported to the caller through [onDayClick].
     CalendarDays(
         month = uiState.month,
         locale = locale,
         onDayClick = onDayClick,
+        isPatient = isPatient,
     )
   }
 }
 
-/** Month and year at the top left, the previous and next month arrows at the top right. */
+/**
+ * Month and year at the top left, the previous and next month arrows at the top right.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ */
 @Composable
 @NonRestartableComposable
 internal fun CalendarHeader(
@@ -128,6 +137,7 @@ internal fun CalendarHeader(
     locale: Locale = Locale.getDefault(),
     onPreviousMonth: () -> Unit = {},
     onNextMonth: () -> Unit = {},
+    isPatient: Boolean = true,
 ) {
   // The formatter gives the month name as the language writes it inside a sentence.
   // e.g.: lowercase in French ("novembre 2026"), which looks wrong as a title. titlecase puts the
@@ -141,7 +151,7 @@ internal fun CalendarHeader(
   Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleLarge,
+        style = calendarTitleTextStyle(isPatient),
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.weight(WEIGHT_ONE).testTag(CalendarTestTags.MONTH_TITLE),
     )
@@ -153,6 +163,7 @@ internal fun CalendarHeader(
           imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
           contentDescription = stringResource(R.string.calendarPreviousMonth),
           tint = MaterialTheme.colorScheme.secondary,
+          modifier = Modifier.size(calendarIconSize(isPatient)).testTag(CalendarTestTags.PREVIOUS_MONTH_ICON),
       )
     }
     IconButton(
@@ -163,22 +174,30 @@ internal fun CalendarHeader(
           imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
           contentDescription = stringResource(R.string.calendarNextMonth),
           tint = MaterialTheme.colorScheme.secondary,
+          modifier = Modifier.size(calendarIconSize(isPatient)).testTag(CalendarTestTags.NEXT_MONTH_ICON),
       )
     }
   }
 }
 
-/** The names of the days of the week, starting with the first day of the week of [locale]. */
+/**
+ * The names of the days of the week, starting with the first day of the week of [locale].
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ */
 @Composable
 @NonRestartableComposable
-internal fun CalendarWeekdays(locale: Locale = Locale.getDefault()) {
+internal fun CalendarWeekdays(
+    locale: Locale = Locale.getDefault(),
+    isPatient: Boolean = true,
+) {
   val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
 
   Row(modifier = Modifier.fillMaxWidth()) {
     repeat(DayOfWeek.entries.size) { index ->
       Text(
           text = firstDayOfWeek.plus(index.toLong()).getDisplayName(TextStyle.SHORT, locale),
-          style = MaterialTheme.typography.bodyMedium,
+          style = calendarBodyTextStyle(isPatient),
           color = MaterialTheme.colorScheme.secondary,
           textAlign = TextAlign.Center,
           modifier = Modifier.weight(WEIGHT_ONE).testTag(CalendarTestTags.weekday(index)),
@@ -187,13 +206,18 @@ internal fun CalendarWeekdays(locale: Locale = Locale.getDefault()) {
   }
 }
 
-/** Every day of [month], one row per week. A day is clickable: [onDayClick] gets its date. */
+/**
+ * Every day of [month], one row per week. A day is clickable: [onDayClick] gets its date.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ */
 @Composable
 @NonRestartableComposable
 internal fun CalendarDays(
     month: YearMonth = YearMonth.now(),
     locale: Locale = Locale.getDefault(),
     onDayClick: (LocalDate) -> Unit = {},
+    isPatient: Boolean = true,
 ) {
   val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
   val weeks = calendarCells(month, firstDayOfWeek).chunked(DayOfWeek.entries.size)
@@ -215,6 +239,7 @@ internal fun CalendarDays(
               CalendarDay(
                   day = day,
                   onClick = { onDayClick(month.atDay(day)) },
+                  isPatient = isPatient,
               )
             }
           }
@@ -224,11 +249,16 @@ internal fun CalendarDays(
   }
 }
 
-/** A clickable day number. The click flash is round. */
+/**
+ * A clickable day number. The click flash is round.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ */
 @Composable
 internal fun CalendarDay(
     day: Int = 1,
     onClick: () -> Unit = {},
+    isPatient: Boolean = true,
 ) {
   Box(
       modifier =
@@ -242,15 +272,15 @@ internal fun CalendarDay(
   ) {
     Text(
         text = day.toString(),
-        style = MaterialTheme.typography.bodyMedium,
+        style = calendarBodyTextStyle(isPatient),
         color = MaterialTheme.colorScheme.onSurface,
     )
   }
 }
 
-/** Preview of the calendar on the current month. */
+/** Preview of the calendar on the current month, with the sizes of the caregiver. */
 @Preview(showBackground = true)
 @Composable
 internal fun CalendarPreview() {
-  AmberAppTheme { Calendar() }
+  AmberAppTheme { Calendar(isPatient = false) }
 }
