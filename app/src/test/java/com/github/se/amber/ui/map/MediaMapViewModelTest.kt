@@ -9,8 +9,10 @@ import com.github.se.amber.data.location.FakeLocationUpdatesRepository
 import com.github.se.amber.data.location.FakeMediaLocationRepository
 import com.github.se.amber.data.location.LocationUpdate
 import com.github.se.amber.data.location.MediaLocationRepository
+import com.github.se.amber.data.location.PlaceSearchRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.NEARBY_EXIT_MARGIN_METERS
 import com.github.se.amber.model.location.NEARBY_RADIUS_METERS
@@ -81,6 +83,7 @@ class MediaMapViewModelTest {
   private val activeCircleRepository = FakeActiveCircleRepository("circle1")
   private val connectivity = FakeConnectivityMonitor(online = true)
   private val locationUpdates = FakeLocationUpdatesRepository(permission = true)
+  private val emptyPlaceSearch = PlaceSearchRepository { Result.success(emptyList()) }
 
   private val caregiver =
       UserProfile(
@@ -120,13 +123,17 @@ class MediaMapViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel(repository: MediaLocationRepository = mediaLocationRepository) =
+  private fun createViewModel(
+      repository: MediaLocationRepository = mediaLocationRepository,
+      placeSearch: PlaceSearchRepository = emptyPlaceSearch,
+  ) =
       MediaMapViewModel(
           repository,
           profileRepository,
           activeCircleRepository,
           connectivity,
           locationUpdates,
+          placeSearch,
       )
 
   /**

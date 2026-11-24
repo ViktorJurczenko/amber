@@ -45,7 +45,7 @@ class MapUtilsTest {
     composeTestRule.setContent {
       AmberAppTheme {
         MapSearchField(
-            query = query.value,
+            state = MapPlaceSearchState(query = query.value),
             onQueryChange = { query.value = it },
             onSearch = { searches++ },
         )
@@ -69,7 +69,9 @@ class MapUtilsTest {
   @Test
   fun searchField_reflectsQueryChangesFromItsParent() {
     val query = mutableStateOf("Lausanne")
-    composeTestRule.setContent { AmberAppTheme { MapSearchField(query = query.value) } }
+    composeTestRule.setContent {
+      AmberAppTheme { MapSearchField(state = MapPlaceSearchState(query = query.value)) }
+    }
 
     val field = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     field.assertTextEquals("Lausanne")

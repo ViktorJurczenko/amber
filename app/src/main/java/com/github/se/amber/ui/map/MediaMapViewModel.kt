@@ -17,14 +17,20 @@ import com.github.se.amber.data.location.LocationUpdatesRepository
 import com.github.se.amber.data.location.LocationUpdatesRepositoryProvider
 import com.github.se.amber.data.location.MediaLocationRepository
 import com.github.se.amber.data.location.MediaLocationRepositoryProvider
+import com.github.se.amber.data.location.PlaceSearchRepository
+import com.github.se.amber.data.location.PlaceSearchRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.location.MediaMarker
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.location.NEARBY_EXIT_MARGIN_METERS
 import com.github.se.amber.model.location.NEARBY_MAX_ACCURACY_METERS
 import com.github.se.amber.model.location.isPreciseWithin
 import com.github.se.amber.model.location.nearby
+import com.github.se.amber.model.location.pointOrNull
+import com.github.se.amber.model.validation.InputValidation
+import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +51,7 @@ import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * UI state of the memories map, the same for the patient and the caregiver. The errors are string
@@ -128,6 +135,16 @@ sealed interface MapRecenterAction {
   data object PositionUnavailable : MapRecenterAction
 }
 
+/** Search field state, including the floating suggestions before a place is selected. */
+data class MapPlaceSearchState(
+    val query: String = "",
+    val suggestions: List<GeoLocation> = emptyList(),
+    val selectedPlace: GeoLocation? = null,
+    val isSearching: Boolean = false,
+    val searchFailed: Boolean = false,
+    val hasSearched: Boolean = false,
+)
+
 /**
  * How long the GPS keeps running after the map stops being shown: long enough for a screen
  * rotation, short enough not to run in the background.
@@ -155,6 +172,8 @@ class MediaMapViewModel(
     connectivityMonitor: ConnectivityMonitor = ConnectivityMonitorProvider.monitor,
     private val locationUpdatesRepository: LocationUpdatesRepository =
         LocationUpdatesRepositoryProvider.default.repository,
+    private val placeSearchRepository: PlaceSearchRepository =
+        PlaceSearchRepositoryProvider.default.repository,
 ) : ViewModel() {
 
   /** The pins, or why there are none yet; the open pin and the offline flag are kept apart. */
@@ -171,14 +190,9 @@ class MediaMapViewModel(
   // or an older one is added, and the pin must stay open then
   private val selectedMediaIds = MutableStateFlow<Set<String>>(emptySet())
   private val errorMsgRes = MutableStateFlow<Int?>(null)
-  private val _searchQuery = MutableStateFlow("")
-
-  // Text entered in the map search field
-  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-  fun updateSearchQuery(query: String) {
-    _searchQuery.value = query
-  }
+  private val _placeSearchState = MutableStateFlow(MapPlaceSearchState())
+  val placeSearchState: StateFlow<MapPlaceSearchState> = _placeSearchState.asStateFlow()
+  private var placeSearchJob: Job? = null
 
   val uiState: StateFlow<MediaMapUIState> =
       combine(loaded, selectedMediaIds, errorMsgRes, connectivityMonitor.isOnline) {
@@ -279,6 +293,58 @@ class MediaMapViewModel(
         is MediaMapLocationState.Located -> MapRecenterAction.MoveTo(location.position)
         else -> MapRecenterAction.PositionUnavailable
       }
+
+  /** Updates the field and cancels results for text the patient has already changed. */
+  fun updateSearchQuery(query: String) {
+    val cleaned = InputValidation.PLACE_QUERY.clean(query)
+    if (cleaned == _placeSearchState.value.query && _placeSearchState.value.selectedPlace == null) {
+      return
+    }
+    placeSearchJob?.cancel()
+    val shouldSearch = cleaned.trim().length >= MAP_MIN_PLACE_QUERY_LENGTH
+    _placeSearchState.value = MapPlaceSearchState(query = cleaned, isSearching = shouldSearch)
+    if (shouldSearch) searchPlaces(cleaned)
+  }
+
+  /** Repeats a failed lookup without changing the query. */
+  fun retryPlaceSearch() {
+    val state = _placeSearchState.value
+    if (!state.searchFailed) return
+    _placeSearchState.value = state.copy(isSearching = true, searchFailed = false)
+    searchPlaces(state.query)
+  }
+
+  /** Picks a suggested point; the screen moves the camera after observing [placeSearchState]. */
+  fun selectPlace(place: GeoLocation) {
+    if (place !in _placeSearchState.value.suggestions || place.pointOrNull() == null) return
+    placeSearchJob?.cancel()
+    _placeSearchState.value =
+        MapPlaceSearchState(query = place.placeName.orEmpty(), selectedPlace = place)
+  }
+
+  /** Runs only the latest lookup after the patient pauses typing. */
+  private fun searchPlaces(query: String) {
+    placeSearchJob?.cancel()
+    placeSearchJob = viewModelScope.launch {
+      delay(MAP_PLACE_SEARCH_DELAY_MILLIS)
+      val result = placeSearchRepository.search(query)
+      val current = _placeSearchState.value
+      if (current.query != query || current.selectedPlace != null) return@launch
+      _placeSearchState.value =
+          result.fold(
+              onSuccess = { places ->
+                current.copy(suggestions = places, isSearching = false, hasSearched = true)
+              },
+              onFailure = {
+                current.copy(
+                    suggestions = emptyList(),
+                    isSearching = false,
+                    searchFailed = true,
+                )
+              },
+          )
+    }
+  }
 
   /** Clears the non-blocking error message. */
   fun clearErrorMsg() {
@@ -394,5 +460,6 @@ class MediaMapViewModel(
 
   private companion object {
     const val TAG = "MediaMapViewModel"
+    const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
   }
 }

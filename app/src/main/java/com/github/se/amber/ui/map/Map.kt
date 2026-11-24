@@ -21,12 +21,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.model.location.pointOrNull
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
@@ -53,6 +55,7 @@ object MapScreenTestTags {
 private const val INITIAL_LATITUDE = 46.5197
 private const val INITIAL_LONGITUDE = 6.6323
 private const val INITIAL_ZOOM = 14f
+private const val SEARCH_ZOOM = 16f
 
 /** Patient map centered on the first available device position; media pins come later. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,11 +65,12 @@ fun MapScreen(
     onTabSelected: (Tab) -> Unit = {},
     viewModel: MediaMapViewModel = viewModel(),
 ) {
-  val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+  val placeSearchState by viewModel.placeSearchState.collectAsStateWithLifecycle()
   val locationState by viewModel.locationState.collectAsStateWithLifecycle()
   val userPosition = (locationState as? MediaMapLocationState.Located)?.position
   var centeredOnFreshPosition by rememberSaveable { mutableStateOf(false) }
   val cameraScope = rememberCoroutineScope()
+  val focusManager = LocalFocusManager.current
 
   // Create an Android permission launcher (this does not show the dialog yet)
   // RequestMultiplePermission() lets the screen ask for both precise and approximate user location
@@ -114,6 +118,16 @@ fun MapScreen(
     }
   }
 
+  // A chosen suggestion takes priority over the initial GPS centering
+  LaunchedEffect(placeSearchState.selectedPlace) {
+    placeSearchState.selectedPlace?.pointOrNull()?.let { (lat, lng) ->
+      centeredOnFreshPosition = true
+      cameraPositionState.animate(
+          CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), SEARCH_ZOOM)
+      )
+    }
+  }
+
   Scaffold(
       topBar = {
         TopAppBar(
@@ -133,6 +147,7 @@ fun MapScreen(
       GoogleMap(
           modifier = Modifier.fillMaxSize().testTag(MapScreenTestTags.GOOGLE_MAP),
           cameraPositionState = cameraPositionState,
+          onMapClick = { focusManager.clearFocus() },
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
           contentPadding =
@@ -143,13 +158,29 @@ fun MapScreen(
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
-          query = searchQuery,
+          state = placeSearchState,
           onQueryChange = viewModel::updateSearchQuery,
+
+          // User clicks on a suggestion in the location propositions
+          onSuggestionClick = { place ->
+            focusManager.clearFocus() // Clear focus when user taps the map
+            viewModel.selectPlace(place)
+          },
+          onRetrySearch = viewModel::retryPlaceSearch,
+
+          // User presses Search on the keyboard: takes the first currently displayed suggestion
+          onSearch = {
+            placeSearchState.suggestions.firstOrNull()?.let { place ->
+              focusManager.clearFocus() // Clear focus to dismiss the keyboard
+              viewModel.selectPlace(place)
+            }
+          },
       )
       MapPositionCard(
           modifier = Modifier.align(Alignment.BottomCenter).padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
           onRecenter = {
+            focusManager.clearFocus()
             when (val action = viewModel.recenter()) {
               // Ask for permission
               MapRecenterAction.RequestPermission ->
