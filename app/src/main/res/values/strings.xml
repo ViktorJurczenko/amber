@@ -38,7 +38,6 @@
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
-
     <!-- EmailSignIn -->
     <string name="signInWelcome">Welcome to Amber</string>
     <string name="signInInstruction">Sign in with Google to access your account or create one.</string>
@@ -427,6 +426,7 @@
     <string name="audioPlaybackLoading">Loading</string>
     <string name="audioPlaybackRetry">Retry</string>
     <string name="audioPlaybackError">This memo could not be played.</string>
+
     <!-- MediaMap -->
     <string name="patientMapSearchHint">Look up a place</string>
     <string name="patientMapOverview">MAP OVERVIEW</string>
@@ -451,4 +451,8 @@
     <string name="addAppointmentNotePlaceholder">Enter a note for yourself or the patient</string>
     <string name="addAppointmentAddButton">Add event</string>
     <string name="addAppointmentErrorTitleEmpty">The title cannot be empty</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Previous month</string>
+    <string name="calendarNextMonth">Next month</string>
 </resources>

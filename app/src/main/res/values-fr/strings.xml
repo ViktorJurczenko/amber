@@ -34,7 +34,6 @@
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
-
     <!-- EmailSignIn -->
     <string name="signInWelcome">Bienvenue sur Amber</string>
     <string name="signInInstruction">Connectez-vous avec Google pour accéder à votre compte ou en créer un.</string>
@@ -454,4 +453,8 @@
     <string name="addAppointmentNotePlaceholder">Saisissez une note pour vous ou le patient</string>
     <string name="addAppointmentAddButton">Ajouter l\'événement</string>
     <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Mois précédent</string>
+    <string name="calendarNextMonth">Mois suivant</string>
 </resources>
