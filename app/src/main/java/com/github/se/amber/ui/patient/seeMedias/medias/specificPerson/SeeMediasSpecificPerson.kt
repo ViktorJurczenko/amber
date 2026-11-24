@@ -71,7 +71,7 @@ fun SeeMediasSpecificPersonScreen(
       onTabSelected = onTabSelected,
       onPersonClick = onPersonClick,
       titleArgs = listOf(),
-  ) { item, circle, modifier ->
+  ) { _, _, _ ->
     // TODO implement
   }
 }

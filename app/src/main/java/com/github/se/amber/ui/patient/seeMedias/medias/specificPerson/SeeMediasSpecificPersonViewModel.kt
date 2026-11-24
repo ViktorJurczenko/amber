@@ -54,12 +54,16 @@ class SeeMediasSpecificPersonViewModel(
    *
    * @param audio the memory whose playback button was pressed.
    */
-  fun onPlayPause(audio: MediaItem.Audio) {}
+  fun onPlayPause(audio: MediaItem.Audio) {
+    // Not implemented yet: audio playback on this screen comes in a follow-up PR
+  }
 
   /**
    * Seeks the loaded [audio] to the start.
    *
    * @param audio the memory whose restart button was pressed.
    */
-  fun onRestart(audio: MediaItem.Audio) {}
+  fun onRestart(audio: MediaItem.Audio) {
+    // Not implemented yet: audio playback on this screen comes in a follow-up PR
+  }
 }
