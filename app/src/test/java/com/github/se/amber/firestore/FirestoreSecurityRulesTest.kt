@@ -9,6 +9,8 @@ package com.github.se.amber.firestore
 
 import com.github.se.amber.data.media.toMap
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.appointment.INVALID_REMINDER_LISTS
+import com.github.se.amber.model.appointment.VALID_REMINDER_LISTS
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.circle.Invitation
 import com.github.se.amber.model.location.Place
@@ -890,11 +892,8 @@ class FirestoreSecurityRulesTest {
   }
 
   /**
-   * The reminder list of an appointment: the limits of validationError(), checked value by value.
-   *
-   * Firestore's rules can't loop over a list, so the real rules check each of the 5 places on its
-   * own. The cases below put a bad value at the first and at the last place, so a check missing at
-   * one place fails here and in the emulator test.
+   * The reminder list of an appointment. The lists are the ones the app's validation test uses, so
+   * the rules and the app are checked on the same inputs.
    */
   @Test
   fun appointments_reminderList_checkedLikeTheApp_enforcedByFakeStore() {
@@ -903,45 +902,24 @@ class FirestoreSecurityRulesTest {
     db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
     db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
     val care = db.rulesFor("care")
+    val pat = db.rulesFor("pat")
     val created = storedAppointment("care")
-    val week = 7 * 24 * 60
+    val edit = mapOf("updatedBy" to "pat")
 
-    // from a caregiver and from the patient, on create and on edit
-    assertTrue(care.canCreateAppointment("c1", "a1", created))
-    assertTrue(db.rulesFor("pat").canCreateAppointment("c1", "a1", storedAppointment("pat")))
-    val edited = created + ("reminderMinutesBefore" to listOf(0, 60, 1440, 2880, week))
-    assertTrue(care.canUpdateAppointment("c1", "a1", created, edited))
-    assertTrue(
-        db.rulesFor("pat")
-            .canUpdateAppointment("c1", "a1", created, edited + ("updatedBy" to "pat"))
-    )
-    // an empty list means no reminder, but the field can't be left out
-    assertTrue(
-        care.canCreateAppointment(
-            "c1",
-            "a1",
-            created + ("reminderMinutesBefore" to emptyList<Int>()),
-        )
-    )
-    assertFalse(care.canCreateAppointment("c1", "a1", created - "reminderMinutesBefore"))
-
-    // too many values, a value out of 0..7 days at the first or the last place, not a list
-    val refused =
-        listOf(
-            listOf(1, 2, 3, 4, 5, 6),
-            listOf(-1),
-            listOf(1, 2, 3, 4, week + 1),
-            listOf("60"),
-            listOf(60.5),
-            60,
-            null,
-        )
-    refused.forEach { reminders ->
-      assertFalse(
-          "$reminders",
-          care.canCreateAppointment("c1", "a1", created + ("reminderMinutesBefore" to reminders)),
-      )
+    // Created by a caregiver, then edited by the patient.
+    VALID_REMINDER_LISTS.forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertTrue("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertTrue("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
     }
+    // Not a list, and not whole numbers, refused too.
+    (INVALID_REMINDER_LISTS + listOf(listOf("60"), listOf(60.5), 60, null)).forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertFalse("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertFalse("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
+    }
+    // The field can't be left out.
+    assertFalse(care.canCreateAppointment("c1", "a1", created - "reminderMinutesBefore"))
   }
 
   /**
