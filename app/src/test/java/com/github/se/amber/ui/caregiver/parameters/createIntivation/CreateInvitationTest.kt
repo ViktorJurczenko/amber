@@ -5,7 +5,10 @@
 
 package com.github.se.amber.ui.caregiver.parameters.createIntivation
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -43,6 +46,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowToast
 
 /**
  * Tests what [CreateInvitationScreen] draws and which actions a click performs.
@@ -78,33 +82,21 @@ class CreateInvitationScreenTest {
   @Test
   @Config(qualifiers = "+en-rUS")
   fun showsCodeInvitationAndErrorAndDisablesCreateWhileCreating() {
-    val createdAt = 1_700_000_000_000L
     setScreen(
         viewModel(
             CreateInvitationUIState(
                 generatedCode = "AB12CD34",
-                invitations =
-                    listOf(
-                        InvitationSummary(
-                            code = "AB12CD34",
-                            createdAt = createdAt,
-                            expiresAt = createdAt + 86_400_000L,
-                            status = InvitationStatus.ACTIVE,
-                        ),
-                    ),
+                invitations = listOf(invitation("AB12CD34")),
                 errorMsgRes = R.string.createInvitationErrorNotAuthenticated,
                 isCreating = true,
             ),
         ),
     )
-    val createdAtText =
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US)
-            .format(Date(createdAt))
 
     composeTestRule.onNodeWithTag(CreateInvitationTestTags.HINT_BOX).assertTextContains("AB12CD34")
     composeTestRule
         .onNodeWithText(
-            "AB12CD34 | $createdAtText | ${string(R.string.createInvitationStatusActive)}"
+            "AB12CD34 | ${createdAtText(Locale.US)} | ${string(R.string.createInvitationStatusActive)}"
         )
         .assertIsDisplayed()
     composeTestRule
@@ -148,25 +140,13 @@ class CreateInvitationScreenTest {
   @Test
   @Config(qualifiers = "fr")
   fun invitationRowShowsTheStatusAndDateInFrench() {
-    val createdAt = 1_700_000_000_000L
     setScreen(
         viewModel(
             CreateInvitationUIState(
-                invitations =
-                    listOf(
-                        InvitationSummary(
-                            code = "USED1234",
-                            createdAt = createdAt,
-                            expiresAt = createdAt + 86_400_000L,
-                            status = InvitationStatus.USED,
-                        ),
-                    ),
-            ),
+                invitations = listOf(invitation("USED1234", InvitationStatus.USED))
+            )
         ),
     )
-    val createdAtText =
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.FRENCH)
-            .format(Date(createdAt))
 
     composeTestRule
         .onNodeWithTag(CreateInvitationTestTags.codeRow("USED1234"))
@@ -174,7 +154,7 @@ class CreateInvitationScreenTest {
             string(
                 R.string.createInvitationListRow,
                 "USED1234",
-                createdAtText,
+                createdAtText(Locale.FRENCH),
                 string(R.string.createInvitationStatusUsed),
             ),
         )
@@ -183,25 +163,20 @@ class CreateInvitationScreenTest {
   @Test
   @Config(qualifiers = "+en-rUS")
   fun expiredInvitationShowsTheExpiredStatus() {
-    val createdAt = 1_700_000_000_000L
     setScreen(
         viewModel(
             CreateInvitationUIState(
                 invitations =
                     listOf(
-                        InvitationSummary(
-                            code = "EXP12345",
-                            createdAt = createdAt,
-                            expiresAt = createdAt,
-                            status = InvitationStatus.EXPIRED,
+                        invitation(
+                            "EXP12345",
+                            InvitationStatus.EXPIRED,
+                            expiresAt = CREATED_AT_MS,
                         ),
                     ),
             ),
         ),
     )
-    val createdAtText =
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US)
-            .format(Date(createdAt))
 
     composeTestRule
         .onNodeWithTag(CreateInvitationTestTags.codeRow("EXP12345"))
@@ -209,10 +184,79 @@ class CreateInvitationScreenTest {
             string(
                 R.string.createInvitationListRow,
                 "EXP12345",
-                createdAtText,
+                createdAtText(Locale.US),
                 string(R.string.createInvitationStatusExpired),
             ),
         )
+  }
+
+  @Test
+  fun copyButtonCopiesThatRowAndShowsTheMessage() {
+    val state =
+        MutableStateFlow(
+            CreateInvitationUIState(
+                invitations =
+                    listOf(
+                        invitation("FIRST123"),
+                        invitation("SECOND12", InvitationStatus.USED),
+                    ),
+            ),
+        )
+    val viewModel =
+        mockk<CreateInvitationViewModel>(relaxed = true) {
+          every { uiState } returns state
+          every { copyCode(any()) } answers
+              {
+                val code = args[0] as String
+                state.value =
+                    state.value.copy(
+                        codeToCopy = code,
+                        copiedMessageRes = R.string.createInvitationCodeCopied,
+                    )
+              }
+          // Without a real clear, a second tap of the same code would leave the state unchanged
+          // and the screen would not copy or toast again.
+          every { clearCopiedCode() } answers
+              {
+                state.value = state.value.copy(codeToCopy = null, copiedMessageRes = null)
+              }
+        }
+    setScreen(viewModel)
+    ShadowToast.reset()
+    val clipboard =
+        checkNotNull(
+            ApplicationProvider.getApplicationContext<Context>()
+                .getSystemService(ClipboardManager::class.java)
+        ) {
+          "No clipboard service"
+        }
+    val copySecond = composeTestRule.onNodeWithTag(CreateInvitationTestTags.copyCode("SECOND12"))
+
+    composeTestRule.onNodeWithTag(CreateInvitationTestTags.copyCode("FIRST123")).assertIsDisplayed()
+    copySecond
+        .assertContentDescriptionEquals(string(R.string.createInvitationCopyCode, "SECOND12"))
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals("SECOND12", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+    assertEquals(
+        string(R.string.createInvitationClipboardLabel),
+        clipboard.primaryClip?.description?.label?.toString(),
+    )
+    assertEquals(string(R.string.createInvitationCodeCopied), ShadowToast.getTextOfLatestToast())
+    assertEquals(1, ShadowToast.shownToastCount())
+
+    clipboard.setPrimaryClip(ClipData.newPlainText("other", "OTHERCODE"))
+    copySecond.performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(2, ShadowToast.shownToastCount())
+    assertEquals("SECOND12", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+    assertEquals(
+        string(R.string.createInvitationClipboardLabel),
+        clipboard.primaryClip?.description?.label?.toString(),
+    )
+    assertEquals(string(R.string.createInvitationCodeCopied), ShadowToast.getTextOfLatestToast())
   }
 
   @Test
@@ -254,6 +298,22 @@ class CreateInvitationScreenTest {
   private fun viewModel(state: CreateInvitationUIState): CreateInvitationViewModel =
       mockk(relaxed = true) { every { uiState } returns MutableStateFlow(state) }
 
+  private fun invitation(
+      code: String,
+      status: InvitationStatus = InvitationStatus.ACTIVE,
+      expiresAt: Long = CREATED_AT_MS + ONE_DAY_MS,
+  ): InvitationSummary =
+      InvitationSummary(
+          code = code,
+          createdAt = CREATED_AT_MS,
+          expiresAt = expiresAt,
+          status = status,
+      )
+
+  private fun createdAtText(locale: Locale): String =
+      DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, locale)
+          .format(Date(CREATED_AT_MS))
+
   private fun setScreen(
       viewModel: CreateInvitationViewModel,
       onTabSelected: (Tab) -> Unit = {},
@@ -268,5 +328,10 @@ class CreateInvitationScreenTest {
         )
       }
     }
+  }
+
+  private companion object {
+    const val CREATED_AT_MS = 1_700_000_000_000L
+    const val ONE_DAY_MS = 86_400_000L
   }
 }
