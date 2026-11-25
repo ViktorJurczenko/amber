@@ -2,6 +2,7 @@
 
 package com.github.se.amber.data.appointment
 
+import com.github.se.amber.data.appointment.reminder.ReminderCheckingAppointmentRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import io.mockk.every
@@ -48,13 +49,13 @@ class AppointmentRepositoryProviderTest {
   }
 
   @Test
-  fun defaultFactoryBuildsTheFirebaseRepository() {
+  fun defaultFactoryBuildsTheFirebaseRepositoryThatChecksTheReminders() {
     mockkStatic(FirebaseAuth::class, FirebaseFirestore::class)
     every { FirebaseAuth.getInstance() } returns mockk()
     every { FirebaseFirestore.getInstance() } returns mockk()
 
     val provider = AppointmentRepositoryProvider()
 
-    assertEquals(FirebaseAppointmentRepository::class.java, provider.repository.javaClass)
+    assertEquals(ReminderCheckingAppointmentRepository::class.java, provider.repository.javaClass)
   }
 }

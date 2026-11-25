@@ -2,6 +2,9 @@
 
 package com.github.se.amber.data.appointment
 
+import com.github.se.amber.data.appointment.reminder.ReminderCheckingAppointmentRepository
+import com.github.se.amber.data.appointment.reminder.checkRemindersNow
+
 /**
  * Holds a single [AppointmentRepository], built lazily by `factory` on first access.
  *
@@ -11,10 +14,12 @@ package com.github.se.amber.data.appointment
  * tries again.
  *
  * There must be one repository for the app. Its [AppointmentRepository.writeFailures] only reports
- * the writes made through it.
+ * the writes made through it. The default one also runs the reminder check after each save.
  */
 class AppointmentRepositoryProvider(
-    factory: () -> AppointmentRepository = { FirebaseAppointmentRepository() },
+    factory: () -> AppointmentRepository = {
+      ReminderCheckingAppointmentRepository(FirebaseAppointmentRepository()) { checkRemindersNow() }
+    },
 ) {
   val repository: AppointmentRepository by lazy(factory)
 
