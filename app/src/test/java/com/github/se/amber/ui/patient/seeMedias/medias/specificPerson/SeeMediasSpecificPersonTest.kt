@@ -3,11 +3,12 @@
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
@@ -26,8 +27,9 @@ import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
-import com.github.se.amber.ui.media.MediaCardTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
+import com.github.se.amber.ui.media.clickRelatedPerson
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -39,14 +41,14 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -62,6 +64,7 @@ import org.robolectric.shadows.ShadowToast
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class SeeMediasSpecificPersonScreenTest {
+  @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
 
   private val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
@@ -90,7 +93,6 @@ class SeeMediasSpecificPersonScreenTest {
 
   @Before
   fun setUp() {
-    Dispatchers.setMain(UnconfinedTestDispatcher())
     coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
     coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
     every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
@@ -102,20 +104,25 @@ class SeeMediasSpecificPersonScreenTest {
     Dispatchers.resetMain()
   }
 
-  private fun clickRelatedPerson(mediaId: String) {
-    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow(mediaId)).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
-      composeTestRule
-          .onAllNodesWithTag(MediaCardTestTags.relatedItem(mediaId, 0))
-          .fetchSemanticsNodes()
-          .isNotEmpty()
-    }
-    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem(mediaId, 0)).performClick()
-  }
-
   /** Text of [id] in the current test language, with [args] for its placeholders. */
   private fun string(id: Int, vararg args: Any): String =
       ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
+
+  /** Text of [id] in English, whatever the language of the current test. */
+  private fun englishString(id: Int, vararg args: Any): String {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val configuration =
+        Configuration(context.resources.configuration).apply { setLocale(Locale.ENGLISH) }
+    return context.createConfigurationContext(configuration).getString(id, *args)
+  }
+
+  /** Text currently displayed by the node with the given [tag]. */
+  private fun displayedText(tag: String): String =
+      composeTestRule
+          .onNodeWithTag(tag)
+          .fetchSemanticsNode()
+          .config[SemanticsProperties.Text]
+          .joinToString("") { it.text }
 
   private fun setContent(
       state: SeeGeneralMediasUIState<MediaItem> = SeeGeneralMediasUIState.Empty(profile, circle),
@@ -260,6 +267,15 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule
         .onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS)
         .assertTextEquals(string(R.string.seeMediasSpecificPersonEmpty))
+    // Would fail if the "fr" qualifier were ignored and the screen fell back to English
+    assertNotEquals(
+        englishString(R.string.seeMediasSpecificPersonTitle),
+        displayedText(SeeMediasSpecificPersonTestTags.TITLE),
+    )
+    assertNotEquals(
+        englishString(R.string.seeMediasSpecificPersonEmpty),
+        displayedText(SeeMediasSpecificPersonTestTags.NO_MEDIAS),
+    )
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -290,7 +306,7 @@ class SeeMediasSpecificPersonScreenTest {
         onPersonClick = { clickedId = it },
     )
 
-    clickRelatedPerson("m1")
+    composeTestRule.clickRelatedPerson("m1")
 
     assertEquals("p1", clickedId)
   }
@@ -310,7 +326,7 @@ class SeeMediasSpecificPersonScreenTest {
         onPersonClick = { clickedId = it },
     )
 
-    clickRelatedPerson("m2")
+    composeTestRule.clickRelatedPerson("m2")
 
     assertNull(clickedId)
   }
@@ -328,7 +344,7 @@ class SeeMediasSpecificPersonScreenTest {
       }
     }
 
-    clickRelatedPerson("m1")
+    composeTestRule.clickRelatedPerson("m1")
     composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))

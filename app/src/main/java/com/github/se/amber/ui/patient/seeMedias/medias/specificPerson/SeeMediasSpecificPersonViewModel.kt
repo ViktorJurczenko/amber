@@ -47,5 +47,8 @@ class SeeMediasSpecificPersonViewModel(
     load()
   }
 
+  // this function will be implemented in the next pull request that implement the logic of the
+  // viewmodel. So for now it doesn't filter the media but return all the medias that belong to the
+  // carecircle.
   override fun filterMedia(media: List<MediaItem>): List<MediaItem> = media
 }

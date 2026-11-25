@@ -33,8 +33,10 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
 import com.github.se.amber.ui.media.audio.AudioPlaybackState
 import com.github.se.amber.ui.media.audio.AudioPlaybackTestTags
+import com.github.se.amber.ui.media.clickRelatedPerson
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -62,6 +64,7 @@ import org.robolectric.shadows.ShadowToast
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class SeeAudiosScreenTest {
+  @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
 
   private val activeCircleRepository =
@@ -326,14 +329,7 @@ class SeeAudiosScreenTest {
         onPersonClick = { clickedId = it },
     )
 
-    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
-      composeTestRule
-          .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
-          .fetchSemanticsNodes()
-          .isNotEmpty()
-    }
-    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
+    composeTestRule.clickRelatedPerson("a1")
 
     assertEquals("p1", clickedId)
   }

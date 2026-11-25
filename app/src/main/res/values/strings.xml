@@ -419,7 +419,6 @@
     <string name="seeMediasSpecificPersonErrorLoadCircle">Failed to load the care circle.</string>
     <string name="seeMediasSpecificPersonErrorLoadMedia">Failed to load the media.</string>
 
-
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">show infos</string>
     <string name="mediaCardHideInfos">hide infos</string>

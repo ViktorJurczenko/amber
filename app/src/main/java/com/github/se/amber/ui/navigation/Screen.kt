@@ -197,7 +197,7 @@ sealed class PatientScreen(
           route = "patient_see_medias_specific_person/{${NavArgs.PERSON_ID}}",
           title = R.string.screenTitlePatientSeeMediasSpecificPerson,
       ) {
-    const val ARG_PERSON_ID = "personId"
+    const val ARG_PERSON_ID = NavArgs.PERSON_ID
 
     /** Builds the concrete route for the given person. */
     fun routeFor(personId: String) = "patient_see_medias_specific_person/$personId"
