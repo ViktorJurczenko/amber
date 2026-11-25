@@ -143,7 +143,12 @@ open class AddAppointmentViewModel(
     _uiState.update { it.copy(isAdding = true) }
     viewModelScope.launch {
       try {
-        val circleId = activeCircleId()
+        val circleId =
+            activeCircleId().getOrElse { error ->
+              Log.e(TAG, "Reading the profile failed", error)
+              fail(R.string.addAppointmentErrorAdd)
+              return@launch
+            }
         if (circleId == null) {
           fail(R.string.addAppointmentErrorNoCircle)
           return@launch
@@ -167,11 +172,18 @@ open class AddAppointmentViewModel(
     }
   }
 
-  /** The id of the care circle the signed-in user is working in, or null when there is none. */
-  private suspend fun activeCircleId(): String? {
-    val uid = authRepo.currentUser?.uid ?: return null
-    val profile = profileRepo.getProfile(uid).getOrNull() ?: return null
-    return activeCircleRepo.activeCircleId(uid, profile.circleIds).first()
+  /**
+   * The id of the care circle the signed-in user is working in, or null when there is none.
+   *
+   * Fails when the profile can't be read: that is a failure, not a missing circle.
+   */
+  private suspend fun activeCircleId(): Result<String?> {
+    val uid = authRepo.currentUser?.uid ?: return Result.success(null)
+    val profile =
+        profileRepo.getProfile(uid).getOrElse {
+          return Result.failure(it)
+        } ?: return Result.success(null)
+    return Result.success(activeCircleRepo.activeCircleId(uid, profile.circleIds).first())
   }
 
   /**

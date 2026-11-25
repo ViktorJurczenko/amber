@@ -9,6 +9,7 @@ import com.github.se.amber.data.appointment.AppointmentRepository
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.profile.ProfileRepository
+import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.AppointmentValidationError
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthUser
@@ -16,12 +17,14 @@ import com.github.se.amber.model.calendar.DEFAULT_DURATION_MINUTES
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -48,6 +51,7 @@ class AddAppointmentViewModelTest {
   private val dispatcher = UnconfinedTestDispatcher()
   private val viewModels = mutableListOf<AddAppointmentViewModel>()
   private val appointments = FakeAppointmentRepository()
+  private val pendingRepo = mockk<AppointmentRepository>()
   private val authRepo = mockk<AuthRepository>()
   private val profileRepo = mockk<ProfileRepository>()
   private val activeCircleRepo = mockk<ActiveCircleRepository>()
@@ -73,8 +77,8 @@ class AddAppointmentViewModelTest {
   @Test
   fun setTitleStoresTheTitle() {
     val viewModel = viewModel()
-    viewModel.setTitle("Dr. Martin")
-    assertEquals("Dr. Martin", viewModel.uiState.value.title)
+    viewModel.setTitle(TITLE)
+    assertEquals(TITLE, viewModel.uiState.value.title)
   }
 
   @Test
@@ -87,7 +91,7 @@ class AddAppointmentViewModelTest {
   @Test
   fun clearErrorMsgRemovesTheError() {
     val viewModel = viewModel()
-    viewModel.setTitle("Dr. Martin")
+    viewModel.setTitle(TITLE)
     every { authRepo.currentUser } returns null
     viewModel.addAppointment(day)
     viewModel.clearErrorMsg()
@@ -101,7 +105,29 @@ class AddAppointmentViewModelTest {
 
   @Test
   fun cannotAddWhileAdding() {
-    assertFalse(AddAppointmentUIState(title = "Dr. Martin", isAdding = true).canAdd)
+    assertFalse(AddAppointmentUIState(title = TITLE, isAdding = true).canAdd)
+  }
+
+  // ---- While the repository has not answered yet ----
+
+  @Test
+  fun addingStartsAsSoonAsTheAddIsAsked() {
+    val (viewModel, _) = startPendingAdd()
+    assertTrue(viewModel.uiState.value.isAdding)
+  }
+
+  @Test
+  fun aSecondAddWhileAddingDoesNotCreateAnotherAppointment() {
+    val (viewModel, _) = startPendingAdd()
+    viewModel.addAppointment(day)
+    coVerify(exactly = 1) { pendingRepo.addAppointment(CIRCLE, any()) }
+  }
+
+  @Test
+  fun addingStopsOnceTheRepositoryAnswers() {
+    val (viewModel, answer) = startPendingAdd()
+    answer.complete(Unit)
+    assertFalse(viewModel.uiState.value.isAdding)
   }
 
   // ---- What is saved ----
@@ -115,64 +141,68 @@ class AddAppointmentViewModelTest {
 
   @Test
   fun oneAppointmentIsSavedInTheActiveCircle() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertEquals(1, appointments.appointmentsOf(CIRCLE).size)
   }
 
   @Test
   fun savedAppointmentHasTheIdOfTheRepository() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertEquals("appointment-1", saved().id)
   }
 
   @Test
   fun savedAppointmentHasTheTypedTitle() {
-    addWithTitle("Dr. Martin")
-    assertEquals("Dr. Martin", saved().title)
+    addWithTitle(TITLE)
+    assertEquals(TITLE, saved().title)
   }
 
   @Test
   fun savedAppointmentHasTheTypedNote() {
-    addWithTitle("Dr. Martin", note = "Bring the blood test results")
+    addWithTitle(TITLE, note = "Bring the blood test results")
     assertEquals("Bring the blood test results", saved().notes)
   }
 
   @Test
   fun savedAppointmentStartsOnTheGivenDay() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertEquals(day, dayOf(saved().startAt))
   }
 
   @Test
   fun savedAppointmentStartsTodayByDefault() {
+    // The clock is read before and after the add. If midnight passes in between (for example
+    // 23:59:59.999 on the 12th, then 00:00:00.000 on the 13th), the saved day can be either one.
+    val before = LocalDate.now()
     val viewModel = viewModel()
-    viewModel.setTitle("Dr. Martin")
+    viewModel.setTitle(TITLE)
     viewModel.addAppointment()
-    assertEquals(LocalDate.now(), dayOf(saved().startAt))
+    val after = LocalDate.now()
+    assertTrue(dayOf(saved().startAt) in setOf(before, after))
   }
 
   @Test
   fun savedAppointmentHasTheDefaultDuration() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertEquals(DEFAULT_DURATION_MINUTES, saved().durationMinutes)
   }
 
   @Test
   fun savedAppointmentHasAnEmptyLocation() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertEquals(GeoLocation(), saved().location)
   }
 
   @Test
   fun savedAppointmentHasNoAttendee() {
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertTrue(saved().attendeeIds.isEmpty())
   }
 
   @Test
   fun failedAddSavesNothing() {
     appointments.failWith = AppointmentError.PermissionDenied()
-    addWithTitle("Dr. Martin")
+    addWithTitle(TITLE)
     assertTrue(appointments.appointmentsOf(CIRCLE).isEmpty())
   }
 
@@ -182,27 +212,27 @@ class AddAppointmentViewModelTest {
   fun successSendsTheAddedEvent() =
       runTest(dispatcher) {
         val viewModel = viewModel()
-        viewModel.setTitle("Dr. Martin")
+        viewModel.setTitle(TITLE)
         viewModel.addAppointment(day)
         assertEquals(AddAppointmentEvent.Added, viewModel.events.first())
       }
 
   @Test
   fun successStopsAdding() {
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertFalse(viewModel.uiState.value.isAdding)
   }
 
   @Test
   fun successShowsNoError() {
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertNull(viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
   fun failureStopsAdding() {
     appointments.failWith = AppointmentError.PermissionDenied()
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertFalse(viewModel.uiState.value.isAdding)
   }
 
@@ -211,42 +241,42 @@ class AddAppointmentViewModelTest {
   @Test
   fun noSignedInUserShowsTheNoCircleMessage() {
     every { authRepo.currentUser } returns null
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertEquals(R.string.addAppointmentErrorNoCircle, viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
   fun noProfileShowsTheNoCircleMessage() {
     coEvery { profileRepo.getProfile(UID) } returns Result.success(null)
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertEquals(R.string.addAppointmentErrorNoCircle, viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
-  fun unreadableProfileSetsTheNoCircleMessage() {
+  fun unreadableProfileSetsTheGenericMessageAndNotTheNoCircleOne() {
     coEvery { profileRepo.getProfile(UID) } returns Result.failure(RuntimeException("offline"))
-    val viewModel = addWithTitle("Dr. Martin")
-    assertEquals(R.string.addAppointmentErrorNoCircle, viewModel.uiState.value.errorMsgRes)
+    val viewModel = addWithTitle(TITLE)
+    assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
   fun noActiveCircleSetsTheNoCircleMessage() {
     every { activeCircleRepo.activeCircleId(UID, listOf(CIRCLE)) } returns flowOf(null)
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertEquals(R.string.addAppointmentErrorNoCircle, viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
   fun unexpectedExceptionSetsTheGenericMessage() {
     coEvery { profileRepo.getProfile(UID) } throws IllegalStateException("boom")
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
   }
 
   @Test
   fun cancelledAddShowsNoError() {
     coEvery { profileRepo.getProfile(UID) } throws CancellationException("cancelled")
-    val viewModel = addWithTitle("Dr. Martin")
+    val viewModel = addWithTitle(TITLE)
     assertNull(viewModel.uiState.value.errorMsgRes)
   }
 
@@ -257,7 +287,7 @@ class AddAppointmentViewModelTest {
     coEvery { repo.addAppointment(CIRCLE, any()) } returns
         Result.failure(IllegalStateException("boom"))
     val viewModel = viewModel(repo)
-    viewModel.setTitle("Dr. Martin")
+    viewModel.setTitle(TITLE)
     viewModel.addAppointment(day)
     assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
   }
@@ -338,7 +368,25 @@ class AddAppointmentViewModelTest {
   /** Makes the repository fail with [error] and returns the message the screen would show. */
   private fun messageFor(error: AppointmentError): Int? {
     appointments.failWith = error
-    return addWithTitle("Dr. Martin").uiState.value.errorMsgRes
+    return addWithTitle(TITLE).uiState.value.errorMsgRes
+  }
+
+  /**
+   * Starts an add whose repository answer stays pending until the returned [CompletableDeferred] is
+   * completed.
+   */
+  private fun startPendingAdd(): Pair<AddAppointmentViewModel, CompletableDeferred<Unit>> {
+    val answer = CompletableDeferred<Unit>()
+    every { pendingRepo.newId() } returns "appointment-1"
+    coEvery { pendingRepo.addAppointment(CIRCLE, any()) } coAnswers
+        {
+          answer.await()
+          Result.success(secondArg<Appointment>())
+        }
+    val viewModel = viewModel(pendingRepo)
+    viewModel.setTitle(TITLE)
+    viewModel.addAppointment(day)
+    return viewModel to answer
   }
 
   /** Types [title] and [note], then adds the appointment on [day]. */
@@ -369,5 +417,6 @@ class AddAppointmentViewModelTest {
   private companion object {
     const val UID = "user1"
     const val CIRCLE = "circle1"
+    const val TITLE = "Dr. Martin"
   }
 }
