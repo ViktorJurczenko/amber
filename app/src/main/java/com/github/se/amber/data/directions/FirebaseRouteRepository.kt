@@ -3,25 +3,26 @@
 package com.github.se.amber.data.directions
 
 import android.util.Log
+import com.github.se.amber.data.directions.RouteJsonKeys.DISTANCE
+import com.github.se.amber.data.directions.RouteJsonKeys.DURATION
+import com.github.se.amber.data.directions.RouteJsonKeys.END
+import com.github.se.amber.data.directions.RouteJsonKeys.LAT
+import com.github.se.amber.data.directions.RouteJsonKeys.LNG
+import com.github.se.amber.data.directions.RouteJsonKeys.MANEUVER
+import com.github.se.amber.data.directions.RouteJsonKeys.POINTS
+import com.github.se.amber.data.directions.RouteJsonKeys.START
+import com.github.se.amber.data.directions.RouteJsonKeys.STEPS
 import com.github.se.amber.model.directions.Maneuver
 import com.github.se.amber.model.directions.Route
 import com.github.se.amber.model.directions.RoutePoint
 import com.github.se.amber.model.directions.RouteStep
-import com.github.se.amber.model.location.SAME_PLACE_RADIUS_METERS
-import com.github.se.amber.model.location.distanceMeters
+import com.github.se.amber.model.location.isSamePlace
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.tasks.await
-
-/**
- * How long the app waits for a route. A patient is waiting at the door: past this, the kept route
- * or an error is better than waiting. The function gives up on the Routes API sooner
- * (ROUTES_TIMEOUT_MS), so it can still answer "unavailable" in time.
- */
-internal const val CALL_TIMEOUT_SECONDS = 20L
 
 /**
  * [RouteRepository] backed by the getWalkingRoute Cloud Function, which holds the Routes API key.
@@ -47,8 +48,8 @@ class FirebaseRouteRepository(
         Log.w(TAG, "Could not keep the route on the phone", exception)
       }
     }
-    if (fetched.exceptionOrNull() != RouteError.Network) return fetched
-    val kept = store.load()?.takeIf { it.destination.isNear(to) }
+    if (fetched.exceptionOrNull() !in KEPT_ROUTE_ERRORS) return fetched
+    val kept = store.load()?.takeIf { it.destination.isSamePlaceAs(to) }
     return kept?.let { Result.success(it) } ?: fetched
   }
 
@@ -59,7 +60,8 @@ class FirebaseRouteRepository(
         callable.setTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         val data = mapOf(ORIGIN to from.toMap(), DESTINATION to to.toMap())
         val response = callable.call(data).await().data as? Map<*, *>
-        response?.toRoute(to)?.let { Result.success(it) } ?: malformedResponse()
+        response?.toRoute(to)?.let { Result.success(it) }
+            ?: Result.failure(RouteError.InvalidAnswer)
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: FirebaseFunctionsException) {
@@ -68,24 +70,10 @@ class FirebaseRouteRepository(
         Result.failure(RouteError.Unknown(exception))
       }
 
-  private fun malformedResponse(): Result<Route> =
-      Result.failure(
-          RouteError.Unknown(IllegalStateException("getWalkingRoute returned an invalid route"))
-      )
-
   /** The route of the function's answer, or null if a field is missing or of the wrong type. */
   private fun Map<*, *>.toRoute(destination: RoutePoint): Route? {
     val points = (this[POINTS] as? List<*>)?.map { (it as? Map<*, *>)?.toPoint() ?: return null }
-    val steps =
-        (this[STEPS] as? List<*>)?.map { item ->
-          val step = item as? Map<*, *> ?: return null
-          RouteStep(
-              maneuver = Maneuver.fromRoutesApi(step[MANEUVER] as? String),
-              distanceMeters = (step[DISTANCE] as? Number)?.toInt() ?: return null,
-              start = (step[START] as? Map<*, *>)?.toPoint() ?: return null,
-              end = (step[END] as? Map<*, *>)?.toPoint() ?: return null,
-          )
-        }
+    val steps = (this[STEPS] as? List<*>)?.map { (it as? Map<*, *>)?.toStep() ?: return null }
     return Route(
         destination = destination,
         distanceMeters = (this[DISTANCE] as? Number)?.toInt() ?: return null,
@@ -95,21 +83,32 @@ class FirebaseRouteRepository(
     )
   }
 
+  /** A step of the function's answer, or null if a field is missing or of the wrong type. */
+  private fun Map<*, *>.toStep(): RouteStep? =
+      RouteStep(
+          maneuver = Maneuver.fromRoutesApi(this[MANEUVER] as? String),
+          distanceMeters = (this[DISTANCE] as? Number)?.toInt() ?: return null,
+          start = (this[START] as? Map<*, *>)?.toPoint() ?: return null,
+          end = (this[END] as? Map<*, *>)?.toPoint() ?: return null,
+      )
+
+  /** A point of the function's answer, or null without two numbers. */
   private fun Map<*, *>.toPoint(): RoutePoint? {
     val lat = (this[LAT] as? Number)?.toDouble() ?: return null
     val lng = (this[LNG] as? Number)?.toDouble() ?: return null
     return RoutePoint(lat, lng)
   }
 
+  /** This point as the function expects it. */
   private fun RoutePoint.toMap() = mapOf(LAT to lat, LNG to lng)
 
-  /** Whether [other] is within [SAME_PLACE_RADIUS_METERS], so counts as the same place. */
-  private fun RoutePoint.isNear(other: RoutePoint) =
-      distanceMeters(lat, lng, other.lat, other.lng) <= SAME_PLACE_RADIUS_METERS
+  /** Whether [other] counts as the same place, so a route to one serves the other. */
+  private fun RoutePoint.isSamePlaceAs(other: RoutePoint) =
+      isSamePlace(lat, lng, other.lat, other.lng)
 
   /**
-   * The [RouteError] for a failed call. Only [RouteError.Network] lets [walkingRoute] fall back to
-   * the route kept on the phone.
+   * The [RouteError] for a failed call. Only the [KEPT_ROUTE_ERRORS] let [walkingRoute] fall back
+   * to the route kept on the phone.
    */
   private fun FirebaseFunctionsException.toRouteError(): RouteError =
       when (code) {
@@ -121,26 +120,36 @@ class FirebaseRouteRepository(
             if (cause is IOException) RouteError.Network else RouteError.Unknown(this)
         FirebaseFunctionsException.Code.UNAUTHENTICATED -> RouteError.NotAuthenticated
         FirebaseFunctionsException.Code.NOT_FOUND ->
-            if ((details as? Map<*, *>)?.get(REASON) == NO_ROUTE) RouteError.NoRoute
-            else RouteError.Unknown(this)
+            if (reason() == NO_ROUTE) RouteError.NoRoute else RouteError.Unknown(this)
+        FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
+            if (reason() == DAILY_LIMIT) RouteError.DailyLimit else RouteError.Unknown(this)
         else -> RouteError.Unknown(this)
       }
+
+  /** The reason the function gave in its error's details, such as [NO_ROUTE]. */
+  private fun FirebaseFunctionsException.reason() = (details as? Map<*, *>)?.get(REASON)
 
   private companion object {
     const val TAG = "FirebaseRouteRepository"
     const val FUNCTION = "getWalkingRoute"
     const val ORIGIN = "origin"
     const val DESTINATION = "destination"
-    const val POINTS = "points"
-    const val STEPS = "steps"
-    const val MANEUVER = "maneuver"
-    const val DISTANCE = "distanceMeters"
-    const val DURATION = "durationSeconds"
-    const val START = "start"
-    const val END = "end"
-    const val LAT = "lat"
-    const val LNG = "lng"
     const val REASON = "reason"
     const val NO_ROUTE = "NO_ROUTE"
+    const val DAILY_LIMIT = "DAILY_LIMIT"
+
+    /**
+     * The failures where the kept route helps: the server can't be reached, or won't give more
+     * routes today. Any other failure says something about this request, so an old route would hide
+     * it.
+     */
+    val KEPT_ROUTE_ERRORS = setOf(RouteError.Network, RouteError.DailyLimit)
   }
 }
+
+/**
+ * How long the app waits for a route. A patient is waiting at the door: past this, the kept route
+ * or an error is better than waiting. The function gives up on the Routes API sooner
+ * (ROUTES_TIMEOUT_MS), so it can still answer "unavailable" in time.
+ */
+internal const val CALL_TIMEOUT_SECONDS = 20L

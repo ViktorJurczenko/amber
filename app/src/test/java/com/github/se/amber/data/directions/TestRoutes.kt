@@ -12,6 +12,7 @@ import com.github.se.amber.model.location.TestPlaces.METERS_PER_DEGREE_OF_LATITU
 import com.github.se.amber.model.location.TestPlaces.latitude
 import com.github.se.amber.model.location.TestPlaces.longitude
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Routes shared by the route tests: a short walk in Lausanne, from Flon to the cathedral. The same
@@ -47,6 +48,22 @@ object TestRoutes {
    * function and the app agree on the format. The unit tests run from the app folder.
    */
   val FUNCTION_ANSWER = File("../functions/test/fixtures/walkingRoute.json")
+
+  /**
+   * How long the function waits for the Routes API, in seconds: its ROUTES_TIMEOUT_MS, read from
+   * its source so the app's test follows it when it changes.
+   */
+  val FUNCTION_TIMEOUT_SECONDS: Long by lazy {
+    val source = File("../functions/src/walkingRoute.js").readText()
+    val millis =
+        checkNotNull(Regex("""const ROUTES_TIMEOUT_MS = ([\d_]+);""").find(source)) {
+              "ROUTES_TIMEOUT_MS is no longer in walkingRoute.js"
+            }
+            .groupValues[1]
+            .replace("_", "")
+            .toLong()
+    TimeUnit.MILLISECONDS.toSeconds(millis)
+  }
 
   /** This point moved [meters] north. */
   fun RoutePoint.movedNorth(meters: Double) =

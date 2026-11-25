@@ -7,6 +7,7 @@ import com.github.se.amber.data.directions.TestRoutes.CORNER
 import com.github.se.amber.data.directions.TestRoutes.FLON
 import com.github.se.amber.data.directions.TestRoutes.FLON_TO_CATHEDRAL
 import com.github.se.amber.data.directions.TestRoutes.FUNCTION_ANSWER
+import com.github.se.amber.data.directions.TestRoutes.FUNCTION_TIMEOUT_SECONDS
 import com.github.se.amber.data.directions.TestRoutes.movedNorth
 import com.github.se.amber.data.directions.TestRoutes.samePlace
 import com.github.se.amber.model.directions.Route
@@ -125,6 +126,15 @@ class FirebaseRouteRepositoryTest {
   }
 
   @Test
+  fun theAppWaitsLongerThanTheFunctionSoItHearsUnavailableInTime() {
+    // Otherwise the app gives up first and never learns the Routes API was too slow
+    assertTrue(
+        "app $CALL_TIMEOUT_SECONDS s, function $FUNCTION_TIMEOUT_SECONDS s",
+        CALL_TIMEOUT_SECONDS > FUNCTION_TIMEOUT_SECONDS,
+    )
+  }
+
+  @Test
   fun aRouteThatCannotBeKeptIsStillGiven() {
     respondWith(answer)
     store.saveFailure = IOException("Disk full")
@@ -133,7 +143,7 @@ class FirebaseRouteRepositoryTest {
   }
 
   @Test
-  fun aMalformedAnswerIsUnknownAndNotKept() {
+  fun aMalformedAnswerIsAnInvalidAnswerAndNotKept() {
     val malformed =
         listOf(
             null,
@@ -155,7 +165,7 @@ class FirebaseRouteRepositoryTest {
 
     for (data in malformed) {
       respondWith(data)
-      assertTrue("$data", route().exceptionOrNull() is RouteError.Unknown)
+      assertSame("$data", RouteError.InvalidAnswer, route().exceptionOrNull())
     }
     assertEquals(null, store.kept)
   }
@@ -169,6 +179,8 @@ class FirebaseRouteRepositoryTest {
             functionsException(Code.DEADLINE_EXCEEDED) to RouteError.Network,
             offlineException() to RouteError.Network,
             functionsException(Code.UNAUTHENTICATED) to RouteError.NotAuthenticated,
+            functionsException(Code.RESOURCE_EXHAUSTED, mapOf("reason" to "DAILY_LIMIT")) to
+                RouteError.DailyLimit,
         )
     for ((exception, error) in expected) {
       failWith(exception)
@@ -178,6 +190,7 @@ class FirebaseRouteRepositoryTest {
     for (exception in
         listOf(
             functionsException(Code.NOT_FOUND),
+            functionsException(Code.RESOURCE_EXHAUSTED),
             functionsException(Code.INTERNAL),
             functionsException(Code.INVALID_ARGUMENT),
             IllegalStateException("Firebase not initialized"),
@@ -188,23 +201,47 @@ class FirebaseRouteRepositoryTest {
   }
 
   @Test
-  fun offlineTheKeptRouteToTheSamePlaceIsGiven() {
+  fun offlineOrPastTheDailyLimitTheKeptRouteToTheSamePlaceIsGiven() {
     store.kept = FLON_TO_CATHEDRAL
-    failWith(functionsException(Code.UNAVAILABLE))
+    val dailyLimit = functionsException(Code.RESOURCE_EXHAUSTED, mapOf("reason" to "DAILY_LIMIT"))
 
-    // Asked again from elsewhere, to the same place: guidance leads the patient to the route
-    assertEquals(
-        FLON_TO_CATHEDRAL,
-        runBlocking { repository.walkingRoute(CORNER, CATHEDRAL.samePlace()) }.getOrThrow(),
-    )
-    // Another place
-    assertSame(
-        RouteError.Network,
-        route(to = CATHEDRAL.movedNorth(SAME_PLACE_RADIUS_METERS * 2)).exceptionOrNull(),
-    )
-    // Not when the server says there is no route
-    failWith(functionsException(Code.NOT_FOUND, mapOf("reason" to "NO_ROUTE")))
-    assertSame(RouteError.NoRoute, route().exceptionOrNull())
+    for ((exception, error) in
+        listOf(
+            functionsException(Code.UNAVAILABLE) to RouteError.Network,
+            dailyLimit to RouteError.DailyLimit,
+        )) {
+      failWith(exception)
+      // Asked again from elsewhere, to the same place: guidance leads the patient to the route
+      assertEquals(
+          FLON_TO_CATHEDRAL,
+          runBlocking { repository.walkingRoute(CORNER, CATHEDRAL.samePlace()) }.getOrThrow(),
+      )
+      // Another place
+      assertSame(
+          error,
+          route(to = CATHEDRAL.movedNorth(SAME_PLACE_RADIUS_METERS * 2)).exceptionOrNull(),
+      )
+    }
+  }
+
+  @Test
+  fun anyOtherFailureNeverGivesTheKeptRoute() {
+    store.kept = FLON_TO_CATHEDRAL
+
+    // Each says something about this request, which an old route would hide
+    val failures =
+        listOf(
+            functionsException(Code.NOT_FOUND, mapOf("reason" to "NO_ROUTE")) to
+                RouteError.NoRoute::class,
+            functionsException(Code.UNAUTHENTICATED) to RouteError.NotAuthenticated::class,
+            functionsException(Code.INVALID_ARGUMENT) to RouteError.Unknown::class,
+        )
+    for ((exception, error) in failures) {
+      failWith(exception)
+      assertTrue("$exception", error.isInstance(route().exceptionOrNull()))
+    }
+    respondWith("not a map")
+    assertSame(RouteError.InvalidAnswer, route().exceptionOrNull())
   }
 
   @Test

@@ -8,12 +8,16 @@ import com.github.se.amber.data.directions.TestRoutes.FLON_TO_CATHEDRAL
 import com.github.se.amber.model.directions.Maneuver
 import com.github.se.amber.model.directions.Route
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -50,6 +54,11 @@ class RouteFileTest {
         val stored = File(tempFolder.root, LAST_ROUTE_FILE_NAME)
         stored.writeText("""{"destination": {"lat": ${CATHEDRAL.lat}}""")
         assertNull(routeFile(stored).load())
+        // An older file: a whole route, but without a field this version needs
+        routeFile(stored).save(FLON_TO_CATHEDRAL)
+        val withoutDuration = JSONObject(stored.readText()).apply { remove("durationSeconds") }
+        stored.writeText(withoutDuration.toString())
+        assertNull(routeFile(stored).load())
         // Can't be read at all
         assertNull(routeFile(tempFolder.newFolder("unreadable")).load())
 
@@ -66,9 +75,31 @@ class RouteFileTest {
         // A folder where the file should go: it can't be replaced
         val blocked = tempFolder.newFolder("blocked")
         File(blocked, "inside").writeText("x")
-        assertThrows(IllegalStateException::class.java) {
+        assertThrows(IOException::class.java) {
           runBlocking { routeFile(blocked).save(FLON_TO_CATHEDRAL) }
         }
-        assertFalse(File(tempFolder.root, "blocked.tmp").exists())
+        assertEquals(emptyList<String>(), temporaryFiles())
       }
+
+  @Test
+  fun savesAtTheSameTimeLeaveOneWholeRouteAndNoTemporaryFile() = runBlocking {
+    // On the real IO threads, so the saves do run together
+    val file = RouteFile(File(tempFolder.root, LAST_ROUTE_FILE_NAME))
+    val routes =
+        (1..SAVES_AT_ONCE).map { meters ->
+          FLON_TO_CATHEDRAL.copy(distanceMeters = FLON_TO_CATHEDRAL.distanceMeters + meters)
+        }
+
+    routes.map { async(Dispatchers.IO) { file.save(it) } }.awaitAll()
+
+    assertTrue(file.load() in routes)
+    assertEquals(emptyList<String>(), temporaryFiles())
+  }
+
+  /** The temporary files left in the folder. */
+  private fun temporaryFiles() = tempFolder.root.list().orEmpty().filter { it.endsWith(".tmp") }
+
+  private companion object {
+    const val SAVES_AT_ONCE = 20
+  }
 }
