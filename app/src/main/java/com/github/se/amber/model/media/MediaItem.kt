@@ -53,7 +53,7 @@ sealed interface MediaItem {
       override val authorId: String = "",
       override val storagePath: String = "",
       override val createdAt: Long = 0L,
-      override val description: String? = null,
+      override val description: String? = "",
       override val date: MemoryDate? = null,
       override val location: GeoLocation? = null,
       override val shownIds: List<String> = emptyList(),
