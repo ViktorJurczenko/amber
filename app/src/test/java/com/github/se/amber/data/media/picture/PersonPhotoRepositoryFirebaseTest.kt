@@ -27,10 +27,8 @@ import com.google.firebase.firestore.Transaction
 import com.google.firebase.storage.StorageException
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
 import io.mockk.slot
-import io.mockk.unmockkConstructor
 import io.mockk.unmockkStatic
 import java.io.File
 import java.io.IOException
@@ -46,9 +44,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
