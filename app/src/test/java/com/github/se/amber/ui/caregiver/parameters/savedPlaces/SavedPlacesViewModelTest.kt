@@ -5,6 +5,8 @@ package com.github.se.amber.ui.caregiver.parameters.savedPlaces
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.CareCircleError
+import com.github.se.amber.data.circle.PlaceWrite
+import com.github.se.amber.data.circle.PlaceWriteFailure
 import com.github.se.amber.data.circle.SavedPlacesRepository
 import com.github.se.amber.data.location.FakeLocationUpdatesRepository
 import com.github.se.amber.data.location.LocationUpdate
@@ -27,7 +29,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -45,18 +49,30 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SavedPlacesViewModelTest {
 
-  /** Keeps the places of each circle in memory. [failWith] makes every write fail with it. */
+  /**
+   * Keeps the places of each circle in memory. [failWith] makes every write fail with it, and
+   * [refusals] plays the server refusing a write later.
+   */
   private class FakePlacesRepository : SavedPlacesRepository {
     val places = MutableStateFlow<Map<String, List<Place>>>(emptyMap())
     val feedFailure = MutableStateFlow<Throwable?>(null)
     var failWith: CareCircleError? = null
+    val refusals = MutableSharedFlow<PlaceWriteFailure>()
     private var lastId = 0
 
-    override fun observePlaces(circleId: String): Flow<List<Place>> =
-        merge(
-            places.map { it[circleId].orEmpty() },
-            feedFailure.filterNotNull().map<Throwable, List<Place>> { throw it },
-        )
+    override val writeFailures: Flow<PlaceWriteFailure> = refusals
+
+    // Like the real listener, a failure already there ends the feed before any list, and one set
+    // later ends it after the lists already sent
+    override fun observePlaces(circleId: String): Flow<List<Place>> = flow {
+      feedFailure.value?.let { throw it }
+      emitAll(
+          merge(
+              places.map { it[circleId].orEmpty() },
+              feedFailure.filterNotNull().map<Throwable, List<Place>> { throw it },
+          )
+      )
+    }
 
     override suspend fun addPlace(circleId: String, place: Place) =
         save(circleId, place.copy(id = "id${++lastId}"))
@@ -193,20 +209,58 @@ class SavedPlacesViewModelTest {
       }
 
   @Test
-  fun feedFailingAfterPlacesKeepsThemAndSaysSoAgainAfterRetry() =
+  fun feedFailingAfterPlacesKeepsThemRefusesChangesAndOnlyRetryBringsItBack() =
       runTest(dispatcher) {
         val viewModel = createViewModel()
 
-        // Twice, so a failure after a retry still reaches the user
-        repeat(2) {
+        // Twice, so a failure after a retry is handled the same way
+        repeat(2) { round ->
+          val before = viewModel.content.places
           circles.feedFailure.value = CareCircleError.Network
-          assertEquals(listOf(bakery, home), viewModel.content.places)
-          assertEquals(R.string.savedPlacesErrorLoad, viewModel.content.errorMsgRes)
+          assertEquals(before, viewModel.content.places)
+          assertTrue(viewModel.content.feedLost)
+
+          // Dismissing a message doesn't make the list live again
           viewModel.clearErrorMsg()
+          assertTrue(viewModel.content.feedLost)
+          // A change now would never show in the list: refused, and nothing is written
+          viewModel.addPlace("Café $round", GENEVA)
+          assertEquals(R.string.savedPlacesErrorStopped, viewModel.content.errorMsgRes)
+          assertEquals(
+              before,
+              circles.places.value.getValue("circle1").sortedBy { it.name.lowercase() },
+          )
+
           circles.feedFailure.value = null
           viewModel.retry()
-          assertEquals(listOf(bakery, home), viewModel.content.places)
+          assertFalse(viewModel.content.feedLost)
+          // Live again: a place added now shows up
+          viewModel.addPlace("Café $round", GENEVA)
+          assertTrue(viewModel.content.places.any { it.name == "Café $round" })
         }
+      }
+
+  @Test
+  fun aWriteTheServerRefusesLaterSaysSoEveryTime() =
+      runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        // The same refusal twice in a row is said twice
+        repeat(2) {
+          circles.refusals.emit(
+              PlaceWriteFailure("id1", PlaceWrite.ADD, CareCircleError.PermissionDenied)
+          )
+          assertEquals(R.string.savedPlacesErrorSave, viewModel.content.errorMsgRes)
+          viewModel.clearErrorMsg()
+        }
+        circles.refusals.emit(
+            PlaceWriteFailure(home.id, PlaceWrite.UPDATE, CareCircleError.PermissionDenied)
+        )
+        assertEquals(R.string.savedPlacesErrorSave, viewModel.content.errorMsgRes)
+        circles.refusals.emit(
+            PlaceWriteFailure(home.id, PlaceWrite.DELETE, CareCircleError.NotFound)
+        )
+        assertEquals(R.string.savedPlacesErrorDelete, viewModel.content.errorMsgRes)
       }
 
   @Test

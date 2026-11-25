@@ -136,6 +136,20 @@ class DestinationTest {
     )
     assertEquals("later", listOf(ended, noPlace, later).nextAppointmentWithPlace(now)?.id)
     assertNull(listOf(ended, noPlace).nextAppointmentWithPlace(now))
+    // Two that start together: the same one whatever the order of the list
+    val twin = appointment(id = "a0", startAt = later.startAt)
+    assertEquals("a0", listOf(later, twin).nextAppointmentWithPlace(now)?.id)
+    assertEquals("a0", listOf(twin, later).nextAppointmentWithPlace(now)?.id)
+  }
+
+  @Test
+  fun anEarlierAppointmentWithoutATitleDoesntHideTheNextOne() {
+    val untitled = appointment(id = "untitled").copy(title = " ")
+    val drMartin = appointment(startAt = now + defaultDuration)
+
+    val next = listOf(untitled, drMartin).nextAppointmentWithPlace(now)
+
+    assertEquals("Dr. Martin", destinations(emptyList(), emptyList(), next).first().name)
   }
 
   @Test

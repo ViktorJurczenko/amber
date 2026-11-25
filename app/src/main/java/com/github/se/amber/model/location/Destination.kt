@@ -48,7 +48,9 @@ const val MAX_MEMORY_DESTINATIONS = 5
  * Left out: whatever has no real point (see [GeoLocation.pointOrNull]), an appointment with a blank
  * title, memories without a place name, and whatever is within [SAME_PLACE_RADIUS_METERS] of an
  * earlier destination, so the same pharmacy isn't offered twice. An appointment at a saved place is
- * offered once, as the appointment, since the patient is going there for it.
+ * offered once, as the appointment, since the patient is going there for it. Saved places are never
+ * dropped for being close to each other: the caregiver saved each one on purpose, like a doctor and
+ * the pharmacy next door.
  *
  * @param memories the pins of the memories map, newest first, as MediaLocationRepository gives
  *   them.
@@ -79,16 +81,16 @@ fun destinations(
 
 /**
  * The appointment the patient may go to next: the one that starts first among those that haven't
- * ended at [nowMillis] and have a real point. One that has started counts, since the patient may be
- * late. Null if there is none.
+ * ended at [nowMillis] and that [destinations] can offer, so with a title and a real point. One
+ * that has started counts, since the patient may be late. Two that start together are told apart by
+ * id, so the same list always gives the same one. Null if there is none.
  *
  * @param nowMillis the current time, in epoch milliseconds. It is a parameter so that tests can
  *   choose it.
  */
-fun List<Appointment>.nextAppointmentWithPlace(nowMillis: Long): Appointment? {
-  val notOverWithPlace = filter { it.endAt() > nowMillis && it.location?.pointOrNull() != null }
-  return notOverWithPlace.minByOrNull { it.startAt }
-}
+fun List<Appointment>.nextAppointmentWithPlace(nowMillis: Long): Appointment? = filter {
+  it.endAt() > nowMillis && it.toDestination() != null
+}.minWithOrNull(compareBy({ it.startAt }, { it.id }))
 
 /** A place found by the address search, or null if it has no real point or no name to show. */
 fun GeoLocation.toSearchDestination(): Destination? =

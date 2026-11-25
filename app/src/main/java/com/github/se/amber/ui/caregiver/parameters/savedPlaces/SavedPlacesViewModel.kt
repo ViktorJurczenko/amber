@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
+import com.github.se.amber.data.circle.PlaceWrite
 import com.github.se.amber.data.circle.SavedPlacesRepository
 import com.github.se.amber.data.circle.SavedPlacesRepositoryProvider
 import com.github.se.amber.data.location.LocationUpdate
@@ -55,6 +56,11 @@ sealed interface SavedPlacesUIState {
    * The saved [places], by name. While a place is being added: [searchResults] of the address
    * search, [isSearching] while it runs, and [here] for "I'm here now". [errorMsgRes] is a message
    * to show once, then clear with [SavedPlacesViewModel.clearErrorMsg].
+   *
+   * [feedLost] means the list stopped updating after an error: [places] are the last ones known.
+   * The screen shows it with a Retry button calling [SavedPlacesViewModel.retry], the only way to
+   * get a live list again; [SavedPlacesViewModel.clearErrorMsg] doesn't end it. Meanwhile adding,
+   * renaming and deleting are refused, since the change would never show in the list.
    */
   data class Content(
       val places: List<Place>,
@@ -62,6 +68,7 @@ sealed interface SavedPlacesUIState {
       val isSearching: Boolean = false,
       val here: HereState = HereState.Idle,
       @param:StringRes val errorMsgRes: Int? = null,
+      val feedLost: Boolean = false,
   ) : SavedPlacesUIState
 }
 
@@ -100,7 +107,8 @@ internal const val HERE_TIMEOUT_MILLIS = 30_000L
  * shows the places of the new one.
  *
  * Writes don't wait for the server (see [SavedPlacesRepository.addPlace]), so there is no saving
- * state: a place shows up in the list at once.
+ * state: a place shows up in the list at once. If the server refuses one later, the place goes away
+ * again and the save or delete message is shown (see [SavedPlacesRepository.writeFailures]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SavedPlacesViewModel(
@@ -121,7 +129,11 @@ class SavedPlacesViewModel(
 
     data class Failed(@param:StringRes val errorMsgRes: Int) : Loaded
 
-    data class Places(val circleId: String, val places: List<Place>) : Loaded
+    data class Places(
+        val circleId: String,
+        val places: List<Place>,
+        val feedLost: Boolean = false,
+    ) : Loaded
   }
 
   private data class Form(
@@ -146,6 +158,7 @@ class SavedPlacesViewModel(
                       isSearching = form.isSearching,
                       here = form.here,
                       errorMsgRes = errorMsgRes,
+                      feedLost = loaded.feedLost,
                   )
             }
           }
@@ -157,9 +170,20 @@ class SavedPlacesViewModel(
 
   init {
     load()
+    viewModelScope.launch {
+      placesRepository.writeFailures.collect { failure ->
+        Log.e(TAG, "The server refused a place write", failure.error)
+        errorMsgRes.value =
+            if (failure.write == PlaceWrite.DELETE) R.string.savedPlacesErrorDelete
+            else R.string.savedPlacesErrorSave
+      }
+    }
   }
 
-  /** Loads everything again and shows the loading state. */
+  /**
+   * Loads everything again and shows the loading state. Also ends
+   * [SavedPlacesUIState.Content.feedLost].
+   */
   fun retry() = load()
 
   /** Clears the message shown once. */
@@ -247,10 +271,16 @@ class SavedPlacesViewModel(
 
   /**
    * Runs [save] (an add, rename or delete) on the loaded circle, and shows [failureMsgRes] if it
-   * fails. Does nothing while the places aren't loaded: there is no circle to write to yet.
+   * fails. Does nothing while the places aren't loaded: there is no circle to write to yet. Refused
+   * with a message once the list stopped updating, since the change would never show.
    */
   private fun write(@StringRes failureMsgRes: Int, save: suspend (String) -> Result<*>) {
-    val circleId = (loaded.value as? Loaded.Places)?.circleId ?: return
+    val loadedPlaces = loaded.value as? Loaded.Places ?: return
+    if (loadedPlaces.feedLost) {
+      errorMsgRes.value = R.string.savedPlacesErrorStopped
+      return
+    }
+    val circleId = loadedPlaces.circleId
     viewModelScope.launch {
       save(circleId).onFailure { e ->
         Log.e(TAG, "Error saving a place", e)
@@ -310,22 +340,20 @@ class SavedPlacesViewModel(
 
   /**
    * The places of [circleId] by name, starting with [Loaded.Loading]. If they stop with an error,
-   * the places already shown stay with a message; with none shown yet, the error replaces the
-   * screen.
+   * the places already shown stay, marked [Loaded.Places.feedLost] until [retry]: the listener is
+   * gone, so nothing would update them. With none shown yet, the error replaces the screen.
    */
   private fun placesOf(circleId: String): Flow<Loaded> {
-    var shown = false
+    var shown: Loaded.Places? = null
     return placesRepository
         .observePlaces(circleId)
         .map<List<Place>, Loaded> { places ->
-          shown = true
-          Loaded.Places(circleId, places.sortedBy { it.name.lowercase() })
+          Loaded.Places(circleId, places.sortedBy { it.name.lowercase() }).also { shown = it }
         }
         .onStart { emit(Loaded.Loading) }
         .catch { e ->
           Log.e(TAG, "Error observing the places", e)
-          if (shown) errorMsgRes.value = R.string.savedPlacesErrorLoad
-          else emit(Loaded.Failed(R.string.savedPlacesErrorLoad))
+          emit(shown?.copy(feedLost = true) ?: Loaded.Failed(R.string.savedPlacesErrorLoad))
         }
   }
 
