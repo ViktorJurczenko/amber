@@ -35,9 +35,9 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
-
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Welcome to Amber</string>
@@ -165,6 +165,7 @@
     <string name="changeCareCircleCurrent">Current care circle:</string>
     <string name="changeCareCircleAll">All care circles:</string>
     <string name="changeCareCircleNone">No active care circle</string>
+    <string name="changeCareCircleInfo">Click on any circle in the list to switch to that Care Circle.</string>
     <string name="changeCareCircleEmpty">You are not linked to any care circle.\nYou can create one from %1$s &gt; %2$s, or join one from %1$s &gt; %3$s.</string>
     <string name="changeCareCircleErrorLoadProfile">Could not load your profile.</string>
     <string name="changeCareCircleErrorLoadCircle">Could not load your care circles.</string>
@@ -197,6 +198,9 @@
     <string name="createInvitationUsage">This code can only be used once.\nIt\'s active 30 days after its creation.</string>
     <string name="createInvitationListHeader">Code | Creation Time | Status</string>
     <string name="createInvitationListRow">%1$s | %2$s | %3$s</string>
+    <string name="createInvitationCopyCode">Copy code %1$s</string>
+    <string name="createInvitationClipboardLabel">Invitation code</string>
+    <string name="createInvitationCodeCopied">Code copied</string>
     <string name="createInvitationStatusActive">ACTIVE</string>
     <string name="createInvitationStatusExpired">EXPIRED</string>
     <string name="createInvitationStatusUsed">USED</string>
@@ -406,6 +410,17 @@
     <string name="seeAudiosErrorLoadCircle">Failed to load the care circle.</string>
     <string name="seeAudiosErrorLoadMedia">Failed to load the media.</string>
 
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">See Medias with this person</string>
+    <string name="seeMediasSpecificPersonEmpty">There are no medias with this person yet.</string>
+    <string name="seeMediasSpecificPersonUnknownName">this person</string>
+    <string name="seeMediasSpecificPersonRetry">Retry</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">No profile found.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Failed to load the profile.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">You\'re not in a care circle yet.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Failed to load the care circle.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Failed to load the media.</string>
+
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">show infos</string>
     <string name="mediaCardHideInfos">hide infos</string>
@@ -426,6 +441,7 @@
     <string name="audioPlaybackLoading">Loading</string>
     <string name="audioPlaybackRetry">Retry</string>
     <string name="audioPlaybackError">This memo could not be played.</string>
+
     <!-- MediaMap -->
     <string name="patientMapSearchHint">Look up a place</string>
     <string name="patientMapOverview">MAP OVERVIEW</string>
@@ -441,4 +457,33 @@
     <string name="mediaMapErrorLoadProfile">Failed to load the profile.</string>
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
     <string name="mediaMapErrorLoadMedia">Failed to load the memories of the map.</string>
+
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Appointment reminders</string>
+    <string name="appointmentReminderTitle">Upcoming appointment</string>
+    <string name="appointmentReminderToday">Today</string>
+    <string name="appointmentReminderTomorrow">Tomorrow</string>
+    <!-- %1$s is the day, %2$s the time, %3$s the title, %4$s the other people coming -->
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · with %4$s</string>
+    <!-- Patterns of java.time DateTimeFormatter: "Monday 30 November", "14:00" -->
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <!-- Between the names of the other people coming. The quotes keep the space -->
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <!-- %1$s is every name but the last, joined by the separator above; %2$s is the last name -->
+    <string name="appointmentReminderLastNames">%1$s and %2$s</string>
+
+    <!-- AddAppointment -->
+    <string name="addAppointmentTitle">Add an event</string>
+    <string name="addAppointmentTitleLabel">Title</string>
+    <string name="addAppointmentTitlePlaceholder">Enter a title</string>
+    <string name="addAppointmentNoteLabel">Note - Optional</string>
+    <string name="addAppointmentNotePlaceholder">Enter a note for yourself or the patient</string>
+    <string name="addAppointmentAddButton">Add event</string>
+    <string name="addAppointmentErrorTitleEmpty">The title cannot be empty</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Previous month</string>
+    <string name="calendarNextMonth">Next month</string>
 </resources>

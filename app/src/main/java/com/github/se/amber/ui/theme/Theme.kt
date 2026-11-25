@@ -49,7 +49,7 @@ private val DarkColorScheme =
         outline = Color.White,
         surface = darkCyan,
         onSurface = Color.White,
-        error = Color.White,
+        error = backCyan,
     )
 
 /**

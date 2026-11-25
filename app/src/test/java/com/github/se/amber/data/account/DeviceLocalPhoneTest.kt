@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
@@ -32,6 +33,7 @@ class DeviceLocalPhoneTest {
   private lateinit var picked: File
   private lateinit var captured: File
   private lateinit var otherFile: File
+  private lateinit var pickedNotAPicture: File
   private lateinit var recorded: File
   private lateinit var pickedMemo: File
   private lateinit var phone: DeviceLocalPhone
@@ -51,6 +53,7 @@ class DeviceLocalPhoneTest {
           writeText("photo")
         }
     otherFile = File(cacheDir, "other.txt").apply { writeText("kept") }
+    pickedNotAPicture = File(cacheDir, "picked_notes.txt").apply { writeText("kept") }
     recorded = File(cacheDir, "recording_123.m4a").apply { writeText("memo") }
     pickedMemo =
         File(cacheDir, "audio/picked_123.m4a").apply {
@@ -83,6 +86,8 @@ class DeviceLocalPhoneTest {
     assertFalse(recorded.exists())
     assertFalse(pickedMemo.exists())
     assertTrue(otherFile.exists())
+    // only the copies of picked pictures go, not any file with their prefix
+    assertTrue(pickedNotAPicture.exists())
     assertEquals(listOf("clearMedia", "clearMemory"), calls)
   }
 

@@ -1,6 +1,7 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.data.media
 
@@ -46,7 +47,13 @@ class MediaItemMappingTest {
       )
 
   private val text =
-      MediaItem.Text(id = "m3", authorId = "u1", createdAt = 1_700_000_000_002L, text = "Hi!")
+      MediaItem.Text(
+          id = "m3",
+          authorId = "u1",
+          createdAt = 1_700_000_000_002L,
+          title = "Hello",
+          text = "Hi!",
+      )
 
   @Test
   fun everyKindOfMediaComesBackUnchanged() {
@@ -77,6 +84,7 @@ class MediaItemMappingTest {
     assertEquals("picture", picture.toMap()["type"])
     assertEquals("audio", audio.toMap()["type"])
     assertEquals("text", text.toMap()["type"])
+    assertEquals("Hello", text.toMap()["title"])
     // the id is the document's id, or the outbox file's name
     for (item in listOf(picture, audio, text)) assertFalse("id" in item.toMap())
   }
@@ -108,8 +116,9 @@ class MediaItemMappingTest {
   @Test
   fun aFieldOfTheWrongKindCantBeRead() {
     val fields = picture.toMap()
+    // a list, not a map, so a key can be tried with several bad values
     val badFields =
-        mapOf(
+        listOf(
             "createdAt" to "yesterday",
             "description" to 42,
             "shownIds" to listOf("u2", 7),
@@ -117,6 +126,7 @@ class MediaItemMappingTest {
             "status" to "ARCHIVED", // unknown status
             "width" to 4032.5, // a fraction where a whole number is expected
             "height" to Long.MAX_VALUE, // too big for an Int
+            "height" to Long.MIN_VALUE, // too small for an Int
             "date" to "1974",
             "location" to mapOf("lat" to "north"),
         )
@@ -124,6 +134,17 @@ class MediaItemMappingTest {
     for ((key, value) in badFields) {
       assertNull("$key = $value was read", mediaItemFromMap("m1", fields + (key to value)))
     }
+  }
+
+  @Test
+  fun shortAndByteNumbersAreRead() {
+    val fields = picture.toMap()
+    val width: Short = 640
+    val height: Byte = 48
+
+    val read = mediaItemFromMap("m1", fields + ("width" to width) + ("height" to height))
+
+    assertEquals(picture.copy(width = width.toInt(), height = height.toInt()), read)
   }
 
   @Test

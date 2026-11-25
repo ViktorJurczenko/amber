@@ -7,10 +7,15 @@
 
 package com.github.se.amber.firestore
 
+import com.github.se.amber.data.circle.isValidToSave
 import com.github.se.amber.data.media.toMap
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.appointment.INVALID_REMINDER_LISTS
+import com.github.se.amber.model.appointment.VALID_REMINDER_LISTS
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.circle.Invitation
+import com.github.se.amber.model.location.MAX_LATITUDE
+import com.github.se.amber.model.location.MAX_LONGITUDE
 import com.github.se.amber.model.location.Place
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaStatus
@@ -19,6 +24,7 @@ import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.google.firebase.firestore.util.CustomClassMapper
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -131,25 +137,48 @@ class FirestoreSecurityRulesTest {
   }
 
   @Test
-  fun placesChangedOnlyByCaregiver_defersToMockedRole() {
-    val caregiverLookup =
-        MockDocumentLookup(userOf = { UserProfile(uid = it, role = Role.CAREGIVER) })
-    val patientLookup = MockDocumentLookup(userOf = { UserProfile(uid = it, role = Role.PATIENT) })
-    val before = emptyMap<String, Any>()
-    val after = mapOf("home" to "Home")
+  fun placesChangeIsValid_caregiverChangesOneValidPlacePerWrite() {
+    val caregiver =
+        FirestoreSecurityRules(
+            authUid = "c",
+            lookup = MockDocumentLookup(userOf = { UserProfile(uid = it, role = Role.CAREGIVER) }),
+        )
+    val patient =
+        FirestoreSecurityRules(
+            authUid = "p",
+            lookup = MockDocumentLookup(userOf = { UserProfile(uid = it, role = Role.PATIENT) }),
+        )
+    val home = SavedPlaceCases.HOME
+    val pharmacy = home.copy(id = "pharmacy", name = "Pharmacy")
+    val none = emptyMap<String, Place>()
+    val withHome = mapOf("home" to home)
 
+    assertTrue(patient.placesChangeIsValid(withHome, withHome))
+    assertFalse(patient.placesChangeIsValid(none, withHome))
+    assertTrue(caregiver.placesChangeIsValid(none, withHome))
     assertTrue(
-        FirestoreSecurityRules(authUid = "c", lookup = caregiverLookup)
-            .placesChangedOnlyByCaregiver(before, after),
+        caregiver.placesChangeIsValid(withHome, mapOf("home" to home.copy(name = "My home")))
     )
-    assertFalse(
-        FirestoreSecurityRules(authUid = "p", lookup = patientLookup)
-            .placesChangedOnlyByCaregiver(before, after),
-    )
-    assertTrue(
-        FirestoreSecurityRules(authUid = "p", lookup = patientLookup)
-            .placesChangedOnlyByCaregiver(before, before),
-    )
+    assertTrue(caregiver.placesChangeIsValid(withHome, none))
+    assertFalse(caregiver.placesChangeIsValid(none, withHome + ("pharmacy" to pharmacy)))
+    assertFalse(caregiver.placesChangeIsValid(none, mapOf("pharmacy" to home)))
+  }
+
+  @Test
+  fun placesChangeIsValid_agreesWithTheAppOnEveryPlace() {
+    val caregiver =
+        FirestoreSecurityRules(
+            authUid = "c",
+            lookup = MockDocumentLookup(userOf = { UserProfile(uid = it, role = Role.CAREGIVER) }),
+        )
+
+    for ((case, place) in SavedPlaceCases.ALL) {
+      assertEquals(
+          case,
+          place.isValidToSave(),
+          caregiver.placesChangeIsValid(emptyMap(), mapOf(place.id to place)),
+      )
+    }
   }
 
   @Test
@@ -206,6 +235,8 @@ class FirestoreSecurityRulesTest {
         )
     )
     assertFalse(rules.onlyEditableMediaFieldsChanged(picture, picture.copy(authorId = "u2")))
+    val story = MediaItem.Text(id = "m1", authorId = "u1", createdAt = 1L, text = "Hi")
+    assertTrue(rules.onlyEditableMediaFieldsChanged(story, story.copy(title = "A visit")))
     // a picture turned into a text would leave its file without a document
     assertFalse(
         rules.onlyEditableMediaFieldsChanged(
@@ -438,7 +469,7 @@ class FirestoreSecurityRulesTest {
     val nicknameEdit = joined.copy(nicknames = mapOf("pat" to mapOf("care" to "Dad")))
     assertTrue(db.rulesFor("pat").canUpdateCircle(joined, nicknameEdit))
 
-    val placesEdit = joined.copy(places = mapOf("home" to Place(id = "home", name = "Home")))
+    val placesEdit = joined.copy(places = mapOf(SavedPlaceCases.HOME.id to SavedPlaceCases.HOME))
     assertFalse(db.rulesFor("pat").canUpdateCircle(joined, placesEdit))
     assertTrue(db.rulesFor("care").canUpdateCircle(joined, placesEdit))
     assertFalse(db.rulesFor("care").canDeleteCircle())
@@ -671,7 +702,14 @@ class FirestoreSecurityRulesTest {
             circleIds = listOf("c9"),
         ),
     )
-    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "pat"), createdBy = "care"))
+    db.putCircle(
+        CareCircle(
+            id = "c1",
+            patientId = "pat",
+            memberIds = listOf("care", "pat"),
+            createdBy = "care",
+        )
+    )
 
     val picture =
         MediaItem.Picture(
@@ -820,7 +858,9 @@ class FirestoreSecurityRulesTest {
     db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
     db.putUser(UserProfile(uid = "care2", role = Role.CAREGIVER, circleIds = listOf("c1")))
     db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
-    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "care2", "pat")))
+    db.putCircle(
+        CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "care2", "pat"))
+    )
     val created = storedAppointment("care")
     val care = db.rulesFor("care")
     val care2 = db.rulesFor("care2")
@@ -881,6 +921,72 @@ class FirestoreSecurityRulesTest {
   }
 
   /**
+   * The reminder list of an appointment. The lists are the ones the app's validation test uses, so
+   * the rules and the app are checked on the same inputs.
+   */
+  @Test
+  fun appointments_reminderList_checkedLikeTheApp_enforcedByFakeStore() {
+    val db = FakeFirestore()
+    db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
+    db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+    val care = db.rulesFor("care")
+    val pat = db.rulesFor("pat")
+    val created = storedAppointment("care")
+    val edit = mapOf("updatedBy" to "pat")
+
+    // Created by a caregiver, then edited by the patient.
+    VALID_REMINDER_LISTS.forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertTrue("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertTrue("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
+    }
+    // Not a list, and not whole numbers, refused too.
+    (INVALID_REMINDER_LISTS + listOf(listOf("60"), listOf(60.5), 60, null)).forEach { reminders ->
+      val withReminders = created + ("reminderMinutesBefore" to reminders)
+      assertFalse("$reminders", care.canCreateAppointment("c1", "a1", withReminders))
+      assertFalse("$reminders", pat.canUpdateAppointment("c1", "a1", created, withReminders + edit))
+    }
+    // The field can't be left out.
+    assertFalse(care.canCreateAppointment("c1", "a1", created - "reminderMinutesBefore"))
+  }
+
+  /**
+   * The patient of an appointment: copied from the circle on create, then never changed. A circle
+   * without a patient can't have appointments.
+   */
+  @Test
+  fun appointments_patientIsTheCirclesAndNeverChanges_enforcedByFakeStore() {
+    val db = FakeFirestore()
+    db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
+    db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+    val care = db.rulesFor("care")
+    val created = storedAppointment("care")
+
+    assertTrue(care.canCreateAppointment("c1", "a1", created))
+    // another member, nobody, or no field at all
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "care")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created - "patientId"))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to null)))
+    // a circle whose patient hasn't joined yet, even with a matching ""
+    db.putCircle(CareCircle(id = "c1", memberIds = listOf("care", "pat")))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + ("patientId" to "")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+
+    // An edit keeps it, from a caregiver and from the patient
+    val edited = created + ("title" to "Dentist")
+    assertTrue(care.canUpdateAppointment("c1", "a1", created, edited))
+    assertTrue(
+        db.rulesFor("pat")
+            .canUpdateAppointment("c1", "a1", created, edited + ("updatedBy" to "pat"))
+    )
+    assertFalse(care.canUpdateAppointment("c1", "a1", created, edited + ("patientId" to "care")))
+    assertFalse(care.canUpdateAppointment("c1", "a1", created, edited + ("patientId" to "")))
+  }
+
+  /**
    * @return a valid appointment "a1" created and last saved by [savedBy], as Firestore stores it.
    *   The SDK's own mapper builds it, so it holds exactly the fields the repository writes.
    */
@@ -893,6 +999,7 @@ class FirestoreSecurityRulesTest {
               startAt = START,
               durationMinutes = 60,
               attendeeIds = listOf(savedBy),
+              patientId = "pat",
               lastEndAt = START + 60 * 60_000L,
               createdBy = savedBy,
               createdAt = START - 1,
@@ -1055,8 +1162,22 @@ private class FirestoreSecurityRules(
     return affected == setOf(uid)
   }
 
-  fun placesChangedOnlyByCaregiver(before: Map<*, *>, after: Map<*, *>): Boolean =
-      before == after || isCaregiver()
+  // Only caregivers change places, one place per write. An added or edited place is stored under
+  // its own id, with a name and a real point, not (0, 0).
+  fun placesChangeIsValid(before: Map<String, Place>, after: Map<String, Place>): Boolean {
+    if (before == after) return true
+    if (!isCaregiver()) return false
+    val affected = (before.keys + after.keys).filter { key -> before[key] != after[key] }
+    val key = affected.singleOrNull() ?: return false
+    val place = after[key] ?: return true
+    val lat = place.location.lat ?: return false
+    val lng = place.location.lng ?: return false
+    return place.id == key &&
+        place.name.isNotBlank() &&
+        lat in -MAX_LATITUDE..MAX_LATITUDE &&
+        lng in -MAX_LONGITUDE..MAX_LONGITUDE &&
+        !(lat == 0.0 && lng == 0.0)
+  }
 
   // One personPhotos entry per write. The key is read directly: the writer's uid, or a key of
   // people on the document before this write. A kept value is that key's photo path. A new path
@@ -1109,7 +1230,7 @@ private class FirestoreSecurityRules(
     val affected = affectedCircleKeys(before, after)
     return affected.all { it in setOf("name", "people", "nicknames", "places", "personPhotos") } &&
         onlyOwnNicknameChanged(before.nicknames, after.nicknames) &&
-        placesChangedOnlyByCaregiver(before.places, after.places) &&
+        placesChangeIsValid(before.places, after.places) &&
         personPhotosChangeIsValid(circleId, before, after)
   }
 
@@ -1188,7 +1309,16 @@ private class FirestoreSecurityRules(
     val old = before.toMap() + ("id" to before.id)
     val new = after.toMap() + ("id" to after.id)
     val editable =
-        setOf("description", "date", "location", "shownIds", "authorizedIds", "text", "transcript")
+        setOf(
+            "description",
+            "date",
+            "location",
+            "shownIds",
+            "authorizedIds",
+            "text",
+            "title",
+            "transcript",
+        )
     return (old.keys + new.keys).filter { old[it] != new[it] }.all { it in editable }
   }
 
@@ -1223,6 +1353,8 @@ private class FirestoreSecurityRules(
         data["notes"] is String &&
         hasValidAppointmentTime(data) &&
         isValidLocation(data["location"]) &&
+        isValidReminderList(data["reminderMinutesBefore"]) &&
+        data["patientId"] is String &&
         data["updatedBy"] == authUid &&
         data["updatedAt"] is Long &&
         memberIds.containsAll(attendeeIds)
@@ -1243,6 +1375,14 @@ private class FirestoreSecurityRules(
     return startAt > 0 && lastEndAt == startAt + duration * 60_000L
   }
 
+  // At most 5 whole numbers of minutes from 0 to 7 days. Ints and Longs both stand for the rules'
+  // ints.
+  private fun isValidReminderList(reminders: Any?): Boolean {
+    val list = reminders as? List<*> ?: return false
+    return list.size <= 5 &&
+        list.all { (it is Int || it is Long) && (it as Number).toLong() in 0L..7 * 24 * 60L }
+  }
+
   // Null, or a GeoLocation: only lat, lng and placeName, each unset or of its type.
   private fun isValidLocation(location: Any?): Boolean {
     if (location == null) return true
@@ -1261,9 +1401,11 @@ private class FirestoreSecurityRules(
       canWriteTo(circleId) &&
           isValidAppointment(circleId, appointmentId, resource) &&
           resource["createdBy"] == authUid &&
-          resource["createdAt"] is Long
+          resource["createdAt"] is Long &&
+          lookup.circle(circleId)?.patientId.orEmpty().isNotEmpty() &&
+          resource["patientId"] == lookup.circle(circleId)?.patientId
 
-  // Every member may edit any appointment, but not who created it or when.
+  // Every member may edit any appointment, but not who created it, when, or who it is for.
   fun canUpdateAppointment(
       circleId: String,
       appointmentId: String,
@@ -1273,7 +1415,8 @@ private class FirestoreSecurityRules(
       canWriteTo(circleId) &&
           isValidAppointment(circleId, appointmentId, after) &&
           after["createdBy"] == before["createdBy"] &&
-          after["createdAt"] == before["createdAt"]
+          after["createdAt"] == before["createdAt"] &&
+          after["patientId"] == before["patientId"]
 
   fun canDeleteAppointment(circleId: String): Boolean = canWriteTo(circleId)
 
@@ -1313,6 +1456,8 @@ private class FirestoreSecurityRules(
             "durationMinutes",
             "location",
             "attendeeIds",
+            "reminderMinutesBefore",
+            "patientId",
             "lastEndAt",
             "createdBy",
             "createdAt",

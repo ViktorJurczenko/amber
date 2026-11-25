@@ -6,6 +6,7 @@
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber
 
@@ -32,6 +33,7 @@ import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
 import com.github.se.amber.ui.navigation.CaregiverTab
+import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.OnboardingScreen
 import com.github.se.amber.ui.navigation.PatientScreen
@@ -47,6 +49,7 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val NAVIGATION_TIMEOUT_MS = 5_000L
+private const val PERSON_ID = "person123"
 
 /**
  * Instrumented tests for the navigation wiring of [AmberApp].
@@ -144,7 +147,7 @@ class AmberAppNavigationTest {
    * be below [Lifecycle.State.CREATED], and navigating in that same turn makes Navigation destroy
    * the new entry before it is created.
    */
-  private fun goTo(route: String) {
+  private fun goTo(route: String, expectedRoute: String = route) {
     composeRule.waitUntil(timeoutMillis = NAVIGATION_TIMEOUT_MS) {
       navController.currentBackStackEntry
           ?.lifecycle
@@ -155,10 +158,10 @@ class AmberAppNavigationTest {
       Handler(Looper.getMainLooper()).post { navController.navigate(route) }
     }
     composeRule.waitUntil(
-        conditionDescription = "navigated to $route",
+        conditionDescription = "navigated to $expectedRoute",
         timeoutMillis = NAVIGATION_TIMEOUT_MS,
     ) {
-      navController.currentDestination?.route == route
+      navController.currentDestination?.route == expectedRoute
     }
     composeRule.waitForIdle()
   }
@@ -667,6 +670,48 @@ class AmberAppNavigationTest {
     click(TopNavigationMenuTestTags.BACK_BUTTON)
 
     assertRoute(PatientScreen.SeeMedias.route)
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_receivesThePersonIdArgument() {
+    launch(NavGraphs.PATIENT)
+
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    assertEquals(
+        PERSON_ID,
+        navController.currentBackStackEntry?.arguments?.getString(NavArgs.PERSON_ID),
+    )
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_back_returnsToSeeMedias() {
+    launch(NavGraphs.PATIENT)
+    goTo(PatientScreen.SeeMedias.route)
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    click(TopNavigationMenuTestTags.BACK_BUTTON)
+
+    assertRoute(PatientScreen.SeeMedias.route)
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_homeTab_navigatesToPatientHome() {
+    launch(NavGraphs.PATIENT)
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    click(Tags.PATIENT_TAB_HOME)
+
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test

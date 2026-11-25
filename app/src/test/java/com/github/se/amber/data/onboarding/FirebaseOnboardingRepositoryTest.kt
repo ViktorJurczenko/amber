@@ -1,5 +1,6 @@
 // This file was written by Neha Chakraborty and Copilot
 // Modified by Alaabrine, with assistance from Cursor (Grok).
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.onboarding
 
@@ -126,6 +127,28 @@ class FirebaseOnboardingRepositoryTest {
     val result = repository.createInitialCareCircle("Family")
 
     assertFailure<OnboardingError.InvalidProfile>(result)
+    verify(exactly = 0) { transaction.set(circleDocument, any<CareCircle>()) }
+    verify(exactly = 0) { transaction.update(profileDocument, any<String>(), any<Any>()) }
+  }
+
+  @Test
+  fun createInitialCareCircle_rejectsEveryInvalidProfileWithoutWriting() = runBlocking {
+    val allFields = setOf("uid", "role", "person", "circleIds")
+    val invalidProfiles =
+        listOf(
+            null to allFields,
+            profile() to allFields - "uid",
+            profile() to allFields - "role",
+            profile() to allFields - "person",
+            profile().copy(uid = "someone-else") to allFields,
+            profile().copy(person = Person(id = "someone-else", firstName = "Ada")) to allFields,
+        )
+
+    invalidProfiles.forEach { (stored, fields) ->
+      stubTransactionWithProfile(profile = stored, validFields = fields)
+
+      assertFailure<OnboardingError.InvalidProfile>(repository.createInitialCareCircle("Family"))
+    }
     verify(exactly = 0) { transaction.set(circleDocument, any<CareCircle>()) }
     verify(exactly = 0) { transaction.update(profileDocument, any<String>(), any<Any>()) }
   }

@@ -105,7 +105,7 @@ class InvitationRedemptionViewModelTest {
     viewModel.onInviteCodeChange("ABCD")
     assertNull(viewModel.uiState.value.errorMessage) // still being typed
 
-    viewModel.onSubmit(onSuccess)
+    viewModel.onSubmit()
     advanceUntilIdle()
 
     assertEquals(

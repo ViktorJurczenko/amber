@@ -1,5 +1,7 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor Agent.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.data.media
 
@@ -362,7 +364,7 @@ class MediaRepositoryFirestoreTest {
 
     assertEquals("Edited", written.captured["text"])
     assertEquals(
-        setOf("description", "date", "location", "shownIds", "authorizedIds", "text"),
+        setOf("description", "date", "location", "shownIds", "authorizedIds", "text", "title"),
         written.captured.keys,
     )
   }
@@ -493,6 +495,28 @@ class MediaRepositoryFirestoreTest {
     assertNull(outbox.get("c1", "m1"))
     // the file moved into the cache: it opens without a download
     assertEquals("photo bytes", repository.getFile(circle, picture).readText())
+  }
+
+  @Test
+  fun aSentFileThatCantBeKeptOnThePhoneStillEndsTheSend() = runTest {
+    stubStoredDocument(noDocument())
+    val outbox = newOutbox()
+    val repository = newRepository(outbox = outbox)
+    repository.addMedia(circle, picture, source("photo bytes"))
+    // something in the way of the copy on the phone
+    File(File(cacheDir, "careCircles_c1_media_m1.jpg"), "inside")
+        .apply { parentFile!!.mkdirs() }
+        .writeText("x")
+
+    assertEquals(SendResult.DONE, repository.send("c1", "m1"))
+
+    assertEquals(
+        listOf("upload bucket-c1:careCircles/c1/media/m1.jpg", "create document"),
+        events,
+    )
+    assertNull(outbox.get("c1", "m1"))
+    // only the blocking folder: the sent file never made it into the cache
+    assertEquals(listOf("careCircles_c1_media_m1.jpg"), copiesOnPhone())
   }
 
   @Test
@@ -651,6 +675,22 @@ class MediaRepositoryFirestoreTest {
 
     assertTrue("failed with $error", error is NotImplementedError)
     // left SENDING, it would wait for the next start of the app
+    assertEquals(SendState.WAITING, outbox.stateOf("m1"))
+  }
+
+  @Test
+  fun aSendWhoseOutboxCantBeWrittenRetriesLaterWithoutUploading() = runTest {
+    val outbox = newOutbox()
+    val repository = newRepository(outbox = outbox)
+    repository.addMedia(circle, picture, source())
+    // something in the way of the new .json file: the entry can't be marked as sending
+    val json = File(File(outboxDir, "c1"), "m1.json")
+    json.delete()
+    File(json, "inside").apply { parentFile!!.mkdirs() }.writeText("x")
+
+    assertEquals(SendResult.RETRY, repository.send("c1", "m1"))
+
+    assertEquals(emptyList<String>(), events)
     assertEquals(SendState.WAITING, outbox.stateOf("m1"))
   }
 
