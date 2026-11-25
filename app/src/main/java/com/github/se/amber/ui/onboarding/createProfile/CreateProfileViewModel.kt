@@ -82,6 +82,9 @@ data class CreateProfileUIState(
  * ViewModel for [CreateProfileScreen]: validates name/surname/nickname and persists the profile on
  * role choice.
  *
+ * On start it reads the saved profile and, when the user has not typed yet, fills the nickname. A
+ * relaunch otherwise sends a blank nickname and clears the stored one.
+ *
  * @param profileRepository source of profile create/read operations.
  */
 class CreateProfileViewModel(
@@ -92,6 +95,29 @@ class CreateProfileViewModel(
   val uiState: StateFlow<CreateProfileUIState> = _uiState.asStateFlow()
 
   private var savedProfile: SavedOnboardingProfile? = null
+
+  /** True after a field edit, so a saved nickname does not replace text the user cleared. */
+  private var typed = false
+
+  init {
+    viewModelScope.launch { loadSavedProfile() }
+  }
+
+  /**
+   * Fills [CreateProfileUIState.nickname] from the saved profile unless the user already typed. A
+   * missing profile or a failed read leaves the field blank.
+   */
+  private suspend fun loadSavedProfile() {
+    val nickname =
+        profileRepository
+            .getCurrentProfile()
+            .getOrNull()
+            ?.person
+            ?.nickname
+            ?.takeIf { it.isNotBlank() }
+            .orEmpty()
+    if (!typed) _uiState.update { it.copy(nickname = nickname) }
+  }
 
   /**
    * Updates [CreateProfileUIState.name], cut at [InputValidation.NAME_MAX_LENGTH]; field error
@@ -261,6 +287,7 @@ class CreateProfileViewModel(
       surname: String? = null,
       nickname: String? = null,
   ) {
+    typed = true
     _uiState.update {
       it.copy(
           name = name ?: it.name,
