@@ -167,7 +167,7 @@ fun MediaCard(
                   modifier = Modifier.fillMaxWidth(),
               ) {
                 val description = media.description
-                if (!description.isBlank()) {
+                if (!description.isNullOrBlank()) {
                   Text(
                       text = description,
                       modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
