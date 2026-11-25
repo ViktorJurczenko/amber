@@ -3,12 +3,14 @@
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.res.Configuration
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
@@ -27,6 +29,10 @@ import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.media.MediaCardTestTags
+import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.audio.AudioPlaybackState
+import com.github.se.amber.ui.media.audio.AudioPlaybackTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
 import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
 import com.github.se.amber.ui.media.clickRelatedPerson
@@ -63,6 +69,13 @@ import org.robolectric.shadows.ShadowToast
 class SeeMediasSpecificPersonScreenTest {
   @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val profileRepository = mockk<ProfileRepository>()
+  private val circleRepository = mockk<CareCircleRepository>()
+  private val activeCircleRepository =
+      mockk<ActiveCircleRepository> {
+        every { activeCircleId(any(), any()) } returns flowOf("circle1")
+      }
 
   private val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
   private val circle = CareCircle(id = "circle1")
@@ -116,14 +129,36 @@ class SeeMediasSpecificPersonScreenTest {
           .config[SemanticsProperties.Text]
           .joinToString("") { it.text }
 
+  // MediaCard's ViewModel is provided without its Firebase defaults
+  private val mediaCardOwner =
+      object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+        override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory =
+            object : ViewModelProvider.Factory {
+              @Suppress("UNCHECKED_CAST")
+              override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                  MediaCardViewModel(profileRepository, circleRepository, activeCircleRepository)
+                      as T
+            }
+      }
+
+  private fun contentOf(vararg items: MediaItem, circle: CareCircle = this.circle) =
+      SeeGeneralMediasUIState.Content(profile, circle, items.toList())
+
   private fun setContent(
       state: SeeGeneralMediasUIState<MediaItem> = SeeGeneralMediasUIState.Empty(profile, circle),
+      uiState: MutableStateFlow<SeeGeneralMediasUIState<MediaItem>> = MutableStateFlow(state),
+      playbackStates: MutableStateFlow<Map<String, AudioPlaybackState>> =
+          MutableStateFlow(emptyMap()),
+      personName: MutableStateFlow<String?> = MutableStateFlow("Eva"),
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
       onPersonClick: (String) -> Unit = {},
   ): SeeMediasSpecificPersonViewModel {
     val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
-    every { viewModel.uiState } returns MutableStateFlow(state)
+    every { viewModel.uiState } returns uiState
+    every { viewModel.playbackStates } returns playbackStates
+    every { viewModel.personName } returns personName
     composeTestRule.setContent {
       CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
         AmberAppTheme(dynamicColor = false) {
@@ -153,6 +188,36 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.BOTTOM_NAVIGATION_MENU)
         .assertIsDisplayed()
+  }
+
+  @Test
+  fun title_contains_the_name_of_the_person() {
+    setContent(personName = MutableStateFlow("Eva"))
+
+    composeTestRule
+        .onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE)
+        .assertTextEquals(string(R.string.seeMediasSpecificPersonTitle, "Eva"))
+  }
+
+  @Test
+  fun title_uses_the_unknown_name_until_the_name_is_known() {
+    val personName = MutableStateFlow<String?>(null)
+    setContent(personName = personName)
+
+    composeTestRule
+        .onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE)
+        .assertTextEquals(
+            string(
+                R.string.seeMediasSpecificPersonTitle,
+                string(R.string.seeMediasSpecificPersonUnknownName),
+            )
+        )
+
+    composeTestRule.runOnIdle { personName.value = "Eva" }
+
+    composeTestRule
+        .onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE)
+        .assertTextEquals(string(R.string.seeMediasSpecificPersonTitle, "Eva"))
   }
 
   @Test
@@ -198,7 +263,7 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule
         .onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS)
         .assertIsDisplayed()
-        .assertTextEquals(string(R.string.seeMediasSpecificPersonEmpty))
+        .assertTextEquals(string(R.string.seeMediasSpecificPersonEmpty, "Eva"))
     composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.ERROR).assertDoesNotExist()
   }
 
@@ -220,6 +285,130 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performClick()
 
     verify(exactly = 1) { viewModel.retry() }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Content
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  fun content_shows_pictures_and_audios_with_their_cards() {
+    setContent(
+        state =
+            contentOf(
+                MediaItem.Picture(id = "p1", width = 400, height = 300),
+                MediaItem.Audio(id = "a1"),
+            )
+    )
+
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("p1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.mediaCard("p1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.mediaCard("a1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.LOADING).assertDoesNotExist()
+  }
+
+  @Test
+  fun a_text_media_is_not_displayed_yet_and_does_not_crash_the_screen() {
+    setContent(state = contentOf(MediaItem.Text(id = "t1"), MediaItem.Audio(id = "a1")))
+
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("t1")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a1")).assertExists()
+  }
+
+  @Test
+  fun content_follows_the_state() {
+    val uiState =
+        MutableStateFlow<SeeGeneralMediasUIState<MediaItem>>(
+            contentOf(MediaItem.Audio(id = "a1"), MediaItem.Audio(id = "a2"))
+        )
+    setContent(uiState = uiState)
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a1")).assertExists()
+
+    composeTestRule.runOnIdle { uiState.value = contentOf(MediaItem.Audio(id = "a2")) }
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a1")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a2")).assertExists()
+
+    composeTestRule.runOnIdle { uiState.value = SeeGeneralMediasUIState.Empty(profile, circle) }
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.media("a2")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS).assertIsDisplayed()
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Audio playback
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  fun play_and_restart_call_the_view_model_with_the_audio() {
+    val audio = MediaItem.Audio(id = "a1")
+    val viewModel = setContent(state = contentOf(audio))
+
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RESTART).performClick()
+
+    verify(exactly = 1) { viewModel.onPlayPause(audio) }
+    verify(exactly = 1) { viewModel.onRestart(audio) }
+  }
+
+  @Test
+  fun playback_state_updates_the_card_and_retry_calls_the_view_model() {
+    val audio = MediaItem.Audio(id = "a1")
+    val playbackStates =
+        MutableStateFlow<Map<String, AudioPlaybackState>>(
+            mapOf(audio.id to AudioPlaybackState.Playing(2_000L, 5_000L))
+        )
+    val viewModel = setContent(state = contentOf(audio), playbackStates = playbackStates)
+
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.TIME).assertTextEquals("0:02 / 0:05")
+
+    composeTestRule.runOnIdle {
+      playbackStates.value = mapOf(audio.id to AudioPlaybackState.Error())
+    }
+    composeTestRule
+        .onNodeWithTag(AudioPlaybackTestTags.ERROR)
+        .assertTextEquals(string(R.string.audioPlaybackError))
+
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
+    verify(exactly = 1) { viewModel.onPlayPause(audio) }
+  }
+
+  @Test
+  fun audio_without_playback_state_shows_its_own_duration() {
+    setContent(state = contentOf(MediaItem.Audio(id = "a1", durationMs = 65_000L)))
+
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.TIME).assertTextEquals("0:00 / 1:05")
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Related person
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+    val circleWithPerson =
+        CareCircle(id = "circle1", people = mapOf("p2" to Person(id = "p2", firstName = "Marc")))
+    val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p2"))
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+    var clickedId: String? = null
+    setContent(
+        state = contentOf(audio, circle = circleWithPerson),
+        onPersonClick = { clickedId = it },
+    )
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(MediaCardTestTags.relatedItem("a1", 0)).performClick()
+
+    assertEquals("p2", clickedId)
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -255,7 +444,7 @@ class SeeMediasSpecificPersonScreenTest {
 
     composeTestRule
         .onNodeWithTag(SeeMediasSpecificPersonTestTags.TITLE)
-        .assertTextEquals(string(R.string.seeMediasSpecificPersonTitle))
+        .assertTextEquals(string(R.string.seeMediasSpecificPersonTitle, "Eva"))
     composeTestRule
         .onNodeWithTag(SeeMediasSpecificPersonTestTags.NO_MEDIAS)
         .assertTextEquals(string(R.string.seeMediasSpecificPersonEmpty))
