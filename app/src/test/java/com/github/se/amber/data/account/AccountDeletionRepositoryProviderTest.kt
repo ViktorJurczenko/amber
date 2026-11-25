@@ -1,4 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.account
 
@@ -40,11 +41,12 @@ class AccountDeletionRepositoryProviderTest {
 
   @Test
   fun theDefaultFactoryBuildsAFirebaseRepository() {
-    // fakes: the app-wide media and auth repositories are left for their own tests to build
+    // fakes: the app-wide media, auth, and photo repositories are left for their own tests to build
     val repository =
         AccountDeletionRepositoryProvider.firebaseRepository(
             mediaRepository = mockk(),
             authRepository = mockk(),
+            photoRepository = mockk(),
         )
 
     assertTrue(repository is FirebaseAccountDeletionRepository)

@@ -7,6 +7,7 @@ import com.github.se.amber.data.media.MediaFileCache
 import com.github.se.amber.data.media.MediaFileStorage
 import com.github.se.amber.data.media.PHOTO_CONTENT_TYPE
 import com.github.se.amber.data.media.requirePhotoUploadable
+import com.github.se.amber.data.runEveryStep
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.google.firebase.firestore.DocumentReference
@@ -41,12 +42,14 @@ private const val CARE_CIRCLES_COLLECTION = "careCircles"
  * queuing the write. If the write fails, the new file is deleted and the old entry stays.
  *
  * The rules refuse a second upload to the same path. When an upload is refused and the file is
- * already there, the upload did land and [setPhoto] continues.
+ * already there, the upload did land and [setPhoto] continues. The pending photo is [pendingPhoto],
+ * a file chosen by the caller.
  *
  * @param fileStorage uploads, downloads and deletes photo files in the circle's bucket.
  * @param cache local copies of those files. A file it already has is returned without a download.
  * @param firestore the circle documents, where `personPhotos` is stored.
  * @param authRepository the signed-in user, read when a call needs one.
+ * @param pendingPhoto where [savePendingPhoto] keeps a JPEG until [uploadPendingPhoto].
  * @param newPhotoId a new photo id. The default is a Firestore auto-id, generated on the device.
  */
 class PersonPhotoRepositoryFirebase(
@@ -54,6 +57,7 @@ class PersonPhotoRepositoryFirebase(
     private val cache: MediaFileCache,
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
+    private val pendingPhoto: File,
     private val newPhotoId: () -> String = {
       firestore.collection(CARE_CIRCLES_COLLECTION).document().id
     },
@@ -88,6 +92,24 @@ class PersonPhotoRepositoryFirebase(
         fileStorage.download(circle, storagePath, destination)
       }
     }
+  }
+
+  override suspend fun savePendingPhoto(file: File): Result<Unit> = photoCall {
+    prepareJpeg(file, pendingPhoto)
+  }
+
+  override suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit> {
+    if (!pendingPhoto.isFile) return Result.success(Unit)
+    if (circle.storageBucket.isBlank()) return Result.success(Unit)
+    val uid = signedInUid() ?: return Result.failure(PersonPhotoError.NotAuthenticated)
+    if (uid in circle.personPhotos) return Result.success(Unit)
+    val uploaded = setPhoto(circle, uid, pendingPhoto)
+    if (uploaded.isFailure) return uploaded
+    return photoCall { deletePendingPhoto() }
+  }
+
+  override suspend fun clearLocalPhotos(): Result<Unit> = photoCall {
+    runEveryStep({ cache.clear() }, { deletePendingPhoto() })
   }
 
   /**
@@ -208,6 +230,19 @@ class PersonPhotoRepositoryFirebase(
       throw e
     } catch (e: Exception) {
       Log.w(TAG, "Couldn't delete the photo $storagePath", e)
+    }
+  }
+
+  /**
+   * Deletes [pendingPhoto]. A file that is already gone is the result this wants.
+   *
+   * @throws IOException if the file is still there afterwards.
+   */
+  private suspend fun deletePendingPhoto() {
+    withContext(Dispatchers.IO) {
+      if (!pendingPhoto.delete() && pendingPhoto.exists()) {
+        throw IOException("Could not delete the pending photo ${pendingPhoto.path}")
+      }
     }
   }
 

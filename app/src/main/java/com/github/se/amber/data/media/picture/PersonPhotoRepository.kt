@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
-/** Stores a person's profile photo. */
+/** Stores a person's profile photo, including one picked before the circle has a bucket. */
 interface PersonPhotoRepository {
 
   /**
@@ -35,6 +35,29 @@ interface PersonPhotoRepository {
    * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
    */
   suspend fun getPhotoFile(circle: CareCircle, storagePath: String): Result<File>
+
+  /**
+   * Keeps a prepared JPEG of [file] until [uploadPendingPhoto]. Captured pictures are deleted, so
+   * this has to be a copy.
+   *
+   * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
+   */
+  suspend fun savePendingPhoto(file: File): Result<Unit>
+
+  /**
+   * Uploads the pending photo into [circle] and then deletes it. Does nothing when there is no
+   * pending photo, [circle] has no bucket, or the signed-in user already has a photo there.
+   *
+   * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
+   */
+  suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit>
+
+  /**
+   * Deletes the cached photos and the pending photo. Nothing stored in a bucket is deleted.
+   *
+   * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
+   */
+  suspend fun clearLocalPhotos(): Result<Unit>
 }
 
 /** Typed failures returned by [PersonPhotoRepository]. */

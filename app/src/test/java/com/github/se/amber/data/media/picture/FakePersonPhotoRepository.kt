@@ -8,10 +8,12 @@ import java.io.File
 /**
  * An in-memory [PersonPhotoRepository] for unit tests. No Firebase.
  *
- * [calls] records every call, in order: "setPhoto {circleId}:{personId}" or "getPhotoFile
- * {circleId}:{storagePath}". A photo passed to [setPhoto] is kept under the path it records in
- * [photos] and [files], and [getPhotoFile] returns that file. Set [error] to make every call return
- * that failure and change nothing.
+ * [calls] records every call, in order: "setPhoto {circleId}:{personId}", "getPhotoFile
+ * {circleId}:{storagePath}", "savePendingPhoto", "uploadPendingPhoto {circleId}", or
+ * "clearLocalPhotos". A photo passed to [setPhoto] is kept under the path it records in [photos]
+ * and [files], and [getPhotoFile] returns that file. [savePendingPhoto] keeps its file in
+ * [pendingPhoto] until [uploadPendingPhoto] or [clearLocalPhotos]. Set [error] to make every call
+ * return that failure and change nothing.
  */
 class FakePersonPhotoRepository : PersonPhotoRepository {
 
@@ -26,6 +28,9 @@ class FakePersonPhotoRepository : PersonPhotoRepository {
 
   /** Storage path to the file [setPhoto] stored, or one a test put here for [getPhotoFile]. */
   val files = mutableMapOf<String, File>()
+
+  /** The file from the last successful [savePendingPhoto], or null when there is none. */
+  var pendingPhoto: File? = null
 
   private var nextPhotoId = 0
 
@@ -51,5 +56,34 @@ class FakePersonPhotoRepository : PersonPhotoRepository {
     } else {
       Result.success(file)
     }
+  }
+
+  override suspend fun savePendingPhoto(file: File): Result<Unit> {
+    calls += "savePendingPhoto"
+    error?.let {
+      return Result.failure(it)
+    }
+    pendingPhoto = file
+    return Result.success(Unit)
+  }
+
+  override suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit> {
+    calls += "uploadPendingPhoto ${circle.id}"
+    error?.let {
+      return Result.failure(it)
+    }
+    pendingPhoto = null
+    return Result.success(Unit)
+  }
+
+  override suspend fun clearLocalPhotos(): Result<Unit> {
+    calls += "clearLocalPhotos"
+    error?.let {
+      return Result.failure(it)
+    }
+    photos.clear()
+    files.clear()
+    pendingPhoto = null
+    return Result.success(Unit)
   }
 }

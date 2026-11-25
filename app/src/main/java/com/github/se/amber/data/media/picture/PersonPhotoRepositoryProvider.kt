@@ -26,6 +26,7 @@ class PersonPhotoRepositoryProvider(
           cache = MediaFileCache(File(context.cacheDir, "people")),
           firestore = Firebase.firestore,
           authRepository = AuthRepositoryProvider.repository,
+          pendingPhoto = File(context.filesDir, "pending-person-photo.jpg"),
       )
     },
 ) {

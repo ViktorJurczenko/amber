@@ -1,10 +1,13 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.account
 
 import coil3.SingletonImageLoader
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.PersonPhotoRepository
+import com.github.se.amber.data.media.picture.PersonPhotoRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.media.MediaRepository
@@ -31,12 +34,13 @@ class AccountDeletionRepositoryProvider(
     val default = AccountDeletionRepositoryProvider()
 
     /**
-     * Builds the Firebase repository. Its tests pass their own [mediaRepository] and
-     * [authRepository], so they don't build the app-wide ones that other tests check.
+     * Builds the Firebase repository. Its tests pass their own [mediaRepository], [authRepository],
+     * and [photoRepository], so they don't build the app-wide ones that other tests check.
      */
     internal fun firebaseRepository(
         mediaRepository: MediaRepository = MediaRepositoryProvider.repository,
         authRepository: AuthRepository = AuthRepositoryProvider.repository,
+        photoRepository: PersonPhotoRepository = PersonPhotoRepositoryProvider.default.repository,
     ): AccountDeletionRepository {
       val context = Firebase.app.applicationContext
       val marker = SharedPreferencesDeletionMarker(context)
@@ -46,6 +50,7 @@ class AccountDeletionRepositoryProvider(
               mediaRepository = mediaRepository,
               imageMemory = MediaImageMemory(SingletonImageLoader.get(context)),
               cacheDir = context.cacheDir,
+              photoRepository = photoRepository,
           )
       return FirebaseAccountDeletionRepository(
           DeviceLocalAccountData(

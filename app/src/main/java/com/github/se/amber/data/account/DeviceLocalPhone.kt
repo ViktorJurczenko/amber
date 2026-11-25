@@ -1,8 +1,10 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.account
 
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.PersonPhotoRepository
 import com.github.se.amber.data.runEveryStep
 import com.github.se.amber.model.media.MediaRepository
 import java.io.File
@@ -18,12 +20,14 @@ import kotlinx.coroutines.withContext
  * @param mediaRepository Holds the media kept on the phone and their pending sends.
  * @param imageMemory Holds the decoded pictures; clearLocalMedia doesn't clear these.
  * @param cacheDir The application cache, where the upload screens leave their temporary files.
+ * @param photoRepository Holds the profile photos kept on the phone, including a pending one.
  * @param ioDispatcher The dispatcher used for file operations.
  */
 class DeviceLocalPhone(
     private val mediaRepository: MediaRepository,
     private val imageMemory: MediaImageMemory,
     private val cacheDir: File,
+    private val photoRepository: PersonPhotoRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
@@ -38,6 +42,7 @@ class DeviceLocalPhone(
   suspend fun clear() {
     runEveryStep(
         { mediaRepository.clearLocalMedia() },
+        { photoRepository.clearLocalPhotos() },
         { imageMemory.clearAll() },
         { deleteTemporaryFiles() },
     )
