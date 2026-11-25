@@ -2,6 +2,7 @@
 // Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor (Grok).
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 const {state, storedBucket} = require("../support/fakes");
 
 const BUCKET = "amber-family-test";
@@ -41,6 +42,8 @@ const GONE_LEFTOVER_PHOTO = "careCircles/shared/people/gone/leftover.jpg";
 function setupAccounts() {
   state.store = new Map(Object.entries({
     "users/gone": {uid: "gone", role: "CAREGIVER", circleIds: ["shared", "alone"]},
+    "walkingRouteCalls/gone": {day: "2026-11-25", count: 3},
+    "walkingRouteCalls/other": {day: "2026-11-25", count: 1},
     "users/other": {uid: "other", role: "CAREGIVER", circleIds: ["shared", "unrelated"]},
     "users/patient": {uid: "patient", role: "PATIENT", circleIds: ["shared"]},
     "careCircles/shared": {
