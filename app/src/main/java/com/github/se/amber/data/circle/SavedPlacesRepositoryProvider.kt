@@ -5,6 +5,10 @@ package com.github.se.amber.data.circle
 /**
  * Holds a single [SavedPlacesRepository], built lazily by `factory` on first access, like
  * [CareCircleRepositoryProvider].
+ *
+ * There must be one repository for the app: its [SavedPlacesRepository.writeFailures] only reports
+ * the writes made through it. So the app writes places and collects their failures through
+ * [default] only.
  */
 class SavedPlacesRepositoryProvider(
     factory: () -> SavedPlacesRepository = { FirebaseCareCircleRepository() },
