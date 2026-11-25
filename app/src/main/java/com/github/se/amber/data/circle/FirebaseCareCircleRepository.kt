@@ -5,22 +5,30 @@
 
 package com.github.se.amber.data.circle
 
+import android.util.Log
 import com.github.se.amber.data.isValidDocumentId
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.location.Place
 import com.github.se.amber.model.user.Person
+import com.google.android.gms.tasks.Task
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.firestore
+import java.util.concurrent.Executor
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
@@ -28,6 +36,16 @@ import kotlinx.coroutines.tasks.await
 class FirebaseCareCircleRepository(
     private val firestore: FirebaseFirestore = Firebase.firestore,
 ) : CareCircleRepository, SavedPlacesRepository {
+
+  // No replay: a refusal nobody collects is dropped. The buffer keeps a slow collector from losing
+  // a burst of refusals, up to FAILURE_BUFFER of them.
+  private val failures =
+      MutableSharedFlow<PlaceWriteFailure>(
+          extraBufferCapacity = FAILURE_BUFFER,
+          onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+
+  override val writeFailures: Flow<PlaceWriteFailure> = failures.asSharedFlow()
 
   override fun newId(): String = newId(firestore.collection(CARE_CIRCLES_COLLECTION))
 
@@ -80,30 +98,46 @@ class FirebaseCareCircleRepository(
     }
 
     return callbackFlow {
-      val circleDocument = firestore.collection(CARE_CIRCLES_COLLECTION).document(circleId)
-      val registration = circleDocument.addSnapshotListener { snapshot, error ->
-        when {
-          error != null -> close(error.toCareCircleError())
-          snapshot != null ->
-              runCatching { snapshot.toObject(CareCircle::class.java)?.places.orEmpty() }
-                  .onSuccess { places ->
-                    // The key is the place's id, even if the stored id field differs
-                    trySend(places.map { (placeId, place) -> place.copy(id = placeId) })
-                  }
-                  .onFailure { close(CareCircleError.Unknown(it)) }
-        }
-      }
+      val registration =
+          circleDocument(circleId).addSnapshotListener { snapshot, error ->
+            when {
+              error != null -> close(error.toCareCircleError())
+              snapshot != null -> trySend(snapshot.readPlaces())
+            }
+          }
       awaitClose { registration.remove() }
     }
+        // The listener is on the whole circle: a nickname change sends the same places again
+        .distinctUntilChanged()
         .conflate()
   }
+
+  /**
+   * Reads only CareCircle.places, one place at a time, so another field of the circle or one
+   * unreadable place can't stop the list. A place this version of the app can't read is logged and
+   * left out. The key is the place's id, even if the stored id field differs.
+   */
+  private fun DocumentSnapshot.readPlaces(): List<Place> =
+      (get(PLACES_FIELD) as? Map<*, *>).orEmpty().keys.filterIsInstance<String>().mapNotNull {
+          placeId ->
+        try {
+          get(FieldPath.of(PLACES_FIELD, placeId), Place::class.java)?.copy(id = placeId)
+        } catch (exception: RuntimeException) {
+          Log.w(TAG, "Couldn't read place $placeId of ${reference.path}", exception)
+          null
+        }
+      }
 
   override suspend fun addPlace(circleId: String, place: Place): Result<Place> {
     if (!isValidDocumentId(circleId)) {
       return Result.failure(CareCircleError.InvalidCircleId)
     }
     return circleCall {
-      writePlace(circleId, place.copy(id = newId(firestore.collection(CARE_CIRCLES_COLLECTION))))
+      writePlace(
+          circleId,
+          place.copy(id = newId(firestore.collection(CARE_CIRCLES_COLLECTION))),
+          PlaceWrite.ADD,
+      )
     }
   }
 
@@ -114,7 +148,7 @@ class FirebaseCareCircleRepository(
     if (!isValidDocumentId(place.id)) {
       return Result.failure(CareCircleError.InvalidPlaceId)
     }
-    return circleCall { writePlace(circleId, place) }
+    return circleCall { writePlace(circleId, place, PlaceWrite.UPDATE) }
   }
 
   override suspend fun deletePlace(circleId: String, placeId: String): Result<Unit> {
@@ -125,26 +159,37 @@ class FirebaseCareCircleRepository(
       return Result.failure(CareCircleError.InvalidPlaceId)
     }
     return circleCall {
-      // Not awaited: the phone saves it at once and sends it once online
-      firestore
-          .collection(CARE_CIRCLES_COLLECTION)
-          .document(circleId)
-          .update(FieldPath.of("places", placeId), FieldValue.delete())
+      startPlaceWrite(placeId, PlaceWrite.DELETE) {
+        circleDocument(circleId).update(FieldPath.of(PLACES_FIELD, placeId), FieldValue.delete())
+      }
       Result.success(Unit)
     }
   }
 
   /** Writes one entry of CareCircle.places, without waiting for the server (see [addPlace]). */
-  private fun writePlace(circleId: String, place: Place): Result<Place> {
+  private fun writePlace(circleId: String, place: Place, write: PlaceWrite): Result<Place> {
     if (!place.isValidToSave()) {
       return Result.failure(CareCircleError.InvalidPlace)
     }
     val savedPlace = place.copy(name = place.name.trim())
-    firestore
-        .collection(CARE_CIRCLES_COLLECTION)
-        .document(circleId)
-        .update(FieldPath.of("places", savedPlace.id), savedPlace)
+    startPlaceWrite(savedPlace.id, write) {
+      circleDocument(circleId).update(FieldPath.of(PLACES_FIELD, savedPlace.id), savedPlace)
+    }
     return Result.success(savedPlace)
+  }
+
+  private fun circleDocument(circleId: String) =
+      firestore.collection(CARE_CIRCLES_COLLECTION).document(circleId)
+
+  /**
+   * Starts a write without waiting for the server: the phone saves it at once and sends it once
+   * online. A refusal that comes later is reported in [writeFailures]. An exception thrown while
+   * starting reaches the caller, through [circleCall].
+   */
+  private fun startPlaceWrite(placeId: String, write: PlaceWrite, start: () -> Task<Void>) {
+    start().addOnFailureListener(DIRECT_EXECUTOR) { error ->
+      failures.tryEmit(PlaceWriteFailure(placeId, write, error.toCareCircleError()))
+    }
   }
 
   // To be used any time the same error catching pattern arises
@@ -163,6 +208,13 @@ class FirebaseCareCircleRepository(
 
   private fun newId(collection: CollectionReference): String = collection.document().id
 
+  private fun Exception.toCareCircleError(): CareCircleError =
+      when (this) {
+        is CareCircleError -> this
+        is FirebaseFirestoreException -> toCareCircleError()
+        else -> CareCircleError.Unknown(this)
+      }
+
   private fun FirebaseFirestoreException.toCareCircleError(): CareCircleError =
       when (code) {
         FirebaseFirestoreException.Code.NOT_FOUND -> CareCircleError.NotFound
@@ -174,6 +226,14 @@ class FirebaseCareCircleRepository(
       }
 
   private companion object {
+    const val TAG = "FirebaseCareCircleRepository"
     const val CARE_CIRCLES_COLLECTION = "careCircles"
+    const val PLACES_FIELD = "places"
+
+    /** How many refusals wait for a slow collector before the oldest is dropped. */
+    const val FAILURE_BUFFER = 16
+
+    // Runs the failure listener on the thread that completes the task: it only emits
+    val DIRECT_EXECUTOR = Executor(Runnable::run)
   }
 }
