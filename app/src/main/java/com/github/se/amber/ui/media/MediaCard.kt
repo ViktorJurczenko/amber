@@ -1,7 +1,6 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.media
 
@@ -167,11 +166,13 @@ fun MediaCard(
                   verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
                   modifier = Modifier.fillMaxWidth(),
               ) {
-                Text(
-                    // A text can have no description
-                    text = media.description.orEmpty(),
-                    modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
-                )
+                val description = media.description
+                if (!description.isNullOrBlank()) {
+                  Text(
+                      text = description,
+                      modifier = Modifier.testTag(MediaCardTestTags.description(media.id)),
+                  )
+                }
                 Text(
                     text = stringResource(R.string.mediaCardAddedBy, uiState.addedByName),
                     modifier =
