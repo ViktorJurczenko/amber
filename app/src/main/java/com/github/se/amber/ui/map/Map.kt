@@ -40,6 +40,7 @@ import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -62,6 +63,7 @@ private const val INITIAL_ZOOM = 14f
  *
  * @param modifier modifier applied to the screen
  * @param onTabSelected Called when the user selects a patient navigation tab.
+ * @param cameraPositionState Camera state shared with the map; callers can observe camera moves.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +71,14 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     onTabSelected: (Tab) -> Unit = {},
     viewModel: MediaMapViewModel = viewModel(),
+    // Lausanne is the fallback while GPS is searching or location access is unavailable.
+    cameraPositionState: CameraPositionState = rememberCameraPositionState {
+      position =
+          CameraPosition.fromLatLngZoom(
+              LatLng(INITIAL_LATITUDE, INITIAL_LONGITUDE),
+              INITIAL_ZOOM,
+          )
+    },
 ) {
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
   val locationState by viewModel.locationState.collectAsStateWithLifecycle()
@@ -84,15 +94,6 @@ fun MapScreen(
         // updates locationState
         viewModel.refreshPermission()
       }
-
-  // Lausanne is a fallback while GPS is searching or location access is unavailable
-  val cameraPositionState = rememberCameraPositionState {
-    position =
-        CameraPosition.fromLatLngZoom(
-            LatLng(INITIAL_LATITUDE, INITIAL_LONGITUDE),
-            INITIAL_ZOOM,
-        )
-  }
 
   // Check permissions when this screen enters composition, not on every recomposition.
   LaunchedEffect(Unit) {

@@ -1,11 +1,11 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Alaabrine, with assistance from Cursor.
-// Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber
 
@@ -27,6 +27,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.se.amber.ui.authentication.signOut.SignOutTestTags
 import com.github.se.amber.ui.caregiver.parameters.CaregiverParametersTestTags
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags
+import com.github.se.amber.ui.map.MapScreenTestTags
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
@@ -97,6 +98,7 @@ class AmberAppNavigationTest {
     // Patient
     val PATIENT_TAB_HOME = tabTag(PatientTab.Home)
     val PATIENT_TAB_SEE_MEDIAS = tabTag(PatientTab.SeeMedias)
+    val PATIENT_TAB_MAP = tabTag(PatientTab.Map)
     val PATIENT_TAB_PARAMETERS = tabTag(PatientTab.Setting)
     const val PATIENT_PARAMETERS_SIGN_OUT = PatientParameterTestTags.SIGN_OUT_BUTTON
     const val PATIENT_PARAMETERS_DELETE_ACCOUNT = PatientParameterTestTags.DELETE_BUTTON
@@ -547,6 +549,27 @@ class AmberAppNavigationTest {
     click(Tags.PATIENT_TAB_PARAMETERS)
 
     assertRoute(PatientScreen.Parameters.route)
+  }
+
+  @Test
+  fun patientHome_mapTab_opensMapAndHomeTabReturns() {
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+    )
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+    )
+    launch(NavGraphs.PATIENT)
+
+    click(Tags.PATIENT_TAB_MAP)
+    assertRoute(PatientScreen.Map.route)
+    composeRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertExists()
+
+    click(Tags.PATIENT_TAB_HOME)
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test

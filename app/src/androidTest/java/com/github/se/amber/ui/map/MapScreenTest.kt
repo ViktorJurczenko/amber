@@ -27,6 +27,9 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -116,7 +119,10 @@ class MapScreenTest {
   fun locationChangesKeepRecenterAvailable() {
     val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
     val viewModel = createViewModel(updates)
-    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+    val cameraPositionState = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    composeTestRule.setContent {
+      AmberAppTheme { MapScreen(viewModel = viewModel, cameraPositionState = cameraPositionState) }
+    }
     val recenter =
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.patientMapRecenter)
@@ -142,6 +148,9 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
         .assertIsDisplayed()
+    composeTestRule.waitUntil(5_000) {
+      cameraPositionState.position.target == LatLng(lastKnown.lat, lastKnown.lng)
+    }
 
     val fresh = DevicePosition(46.53, 6.64)
     updates.value = LocationUpdate.Position(fresh)
@@ -151,6 +160,15 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
+    composeTestRule.waitUntil(5_000) {
+      cameraPositionState.position.target == LatLng(fresh.lat, fresh.lng)
+    }
+    updates.value = LocationUpdate.Position(DevicePosition(46.54, 6.65))
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position?.lat == 46.54
+    }
+    composeTestRule.waitForIdle()
+    assertEquals(LatLng(fresh.lat, fresh.lng), cameraPositionState.position.target)
     recenter.performClick()
   }
 
