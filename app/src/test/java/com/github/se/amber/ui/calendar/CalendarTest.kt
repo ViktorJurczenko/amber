@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -286,7 +287,7 @@ class CalendarTest {
     }
   }
 
-  private fun fontSizeOf(textNode: androidx.compose.ui.test.SemanticsNodeInteraction): TextUnit {
+  private fun fontSizeOf(textNode: SemanticsNodeInteraction): TextUnit {
     val results = mutableListOf<TextLayoutResult>()
     textNode
         .fetchSemanticsNode()
@@ -307,7 +308,8 @@ class CalendarTest {
       )
 
   @Test
-  fun partsAreDrawnForAPatientByDefault_andPatientTitleUsesTheLargeTitle_body_andIconStyle() {
+  // Check that the Patient title uses the correct font Size and the correct Icon Style.
+  fun patientSizesAreUsedByDefault() {
     launchParts(isPatient = null)
     assertEquals(typography!!.headlineMedium.fontSize, titleFontSize())
     assertEquals(typography!!.bodyLarge.fontSize, weekdayFontSize())

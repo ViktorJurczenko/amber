@@ -132,7 +132,7 @@ class CalendarUtilsTest {
 
     // Every style the helpers can return has its own size.
     private val testTypography =
-        androidx.compose.material3.Typography(
+        Typography(
             titleLarge = TextStyle(fontSize = 21.sp),
             headlineMedium = TextStyle(fontSize = 22.sp),
             bodyMedium = TextStyle(fontSize = 23.sp),

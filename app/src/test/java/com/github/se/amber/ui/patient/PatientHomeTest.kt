@@ -6,6 +6,8 @@
 package com.github.se.amber.ui.patient
 
 import android.content.Context
+import androidx.compose.material3.Typography
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -17,6 +19,8 @@ import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.TextUnit
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.model.user.Person
@@ -299,9 +303,23 @@ class PatientHomeScreenTest {
         .assertTextEquals("Bonjour Alice\u00A0!")
   }
 
+  /** Font size of the month title of the calendar, as it is drawn. */
+  private fun monthTitleFontSize(): TextUnit {
+    val results = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithTag(CalendarTestTags.MONTH_TITLE)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(results)
+    return results.first().layoutInput.style.fontSize
+  }
+
+  // The screen is launched once: the calendar is displayed, and it has the sizes of the patient.
   @Test
   fun displaysTheCalendar() {
     setScreen()
     composeTestRule.onNodeWithTag(CalendarTestTags.CALENDAR).assertIsDisplayed()
+    assertEquals(Typography().headlineMedium.fontSize, monthTitleFontSize())
   }
 }
