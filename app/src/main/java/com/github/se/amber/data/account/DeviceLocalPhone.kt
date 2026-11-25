@@ -1,7 +1,9 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
+import com.github.se.amber.data.appointment.reminder.LocalReminders
 import com.github.se.amber.data.media.image.MediaImageMemory
 import com.github.se.amber.data.runEveryStep
 import com.github.se.amber.model.media.MediaRepository
@@ -12,25 +14,28 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Clears the media this device keeps for the signed-in user. Account deletion and sign-out share
- * it, so the steps are not copied into each flow.
+ * Clears the media and the appointment reminders this device keeps for the signed-in user. Account
+ * deletion and sign-out share it, so the steps are not copied into each flow.
  *
  * @param mediaRepository Holds the media kept on the phone and their pending sends.
  * @param imageMemory Holds the decoded pictures; clearLocalMedia doesn't clear these.
  * @param cacheDir The application cache, where the upload screens leave their temporary files.
+ * @param reminders Holds the appointment reminders of this phone. Without clearing them, the next
+ *   user of the phone would get the old user's reminders.
  * @param ioDispatcher The dispatcher used for file operations.
  */
 class DeviceLocalPhone(
     private val mediaRepository: MediaRepository,
     private val imageMemory: MediaImageMemory,
     private val cacheDir: File,
+    private val reminders: LocalReminders,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
   /**
    * Cancels the send jobs and clears the outbox and media cache, then clears the decoded pictures,
-   * then deletes the temporary upload files. Every step is still attempted when an earlier one
-   * fails. A cancellation stops at once and is rethrown.
+   * then deletes the temporary upload files, then clears the appointment reminders. Every step is
+   * still attempted when an earlier one fails. A cancellation stops at once and is rethrown.
    *
    * @throws Exception if something couldn't be cleared: it may still be on the device. The first
    *   failure is thrown, and any later ones are added to it. Clearing can run again.
@@ -40,6 +45,7 @@ class DeviceLocalPhone(
         { mediaRepository.clearLocalMedia() },
         { imageMemory.clearAll() },
         { deleteTemporaryFiles() },
+        { reminders.clearAll() },
     )
   }
 
