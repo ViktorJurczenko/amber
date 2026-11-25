@@ -1,9 +1,11 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.navigation
 
+import android.os.Bundle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
@@ -183,5 +185,59 @@ class NavigationActionsTest {
 
     assertEquals(42, options.popUpToId)
     assertTrue(options.isPopUpToInclusive())
+  }
+
+  // ---- navigateToSeeMediasSpecificPerson ----
+
+  @Test
+  fun navigateToSeeMediasSpecificPerson_navigatesToTheRouteOfThePerson() {
+    actions.navigateToSeeMediasSpecificPerson("person123")
+
+    verify(exactly = 1) { navController.navigate("patient_see_medias_specific_person/person123") }
+  }
+
+  @Test
+  fun navigateToSeeMediasSpecificPerson_isSimplyPushed() {
+    actions.navigateToSeeMediasSpecificPerson("person123")
+
+    // No NavOptions: no launchSingleTop and no popUpTo, so each click stacks a new screen
+    verify(exactly = 0) {
+      navController.navigate(any<String>(), any<NavOptionsBuilder.() -> Unit>())
+    }
+  }
+
+  // ---- SeeMediasSpecificPerson route ----
+
+  @Test
+  fun seeMediasSpecificPerson_routeFor_replacesThePlaceholderWithThePersonId() {
+    val screen = PatientScreen.SeeMediasSpecificPerson
+
+    assertTrue(screen.route.contains("{${NavArgs.PERSON_ID}}"))
+    assertEquals("patient_see_medias_specific_person/abc", screen.routeFor("abc"))
+    assertFalse(screen.routeFor("abc").contains("{"))
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_isNotATopLevelDestination() {
+    assertFalse(PatientScreen.SeeMediasSpecificPerson.isTopLevelDestination)
+  }
+
+  @Test
+  fun personIdFrom_readsTheArgument() {
+    val arguments = mockk<Bundle> { every { getString(NavArgs.PERSON_ID) } returns "abc" }
+
+    assertEquals("abc", actions.personIdFrom(arguments))
+  }
+
+  @Test
+  fun personIdFrom_isEmptyWhenTheArgumentIsMissing() {
+    val arguments = mockk<Bundle> { every { getString(NavArgs.PERSON_ID) } returns null }
+
+    assertEquals("", actions.personIdFrom(arguments))
+  }
+
+  @Test
+  fun personIdFrom_isEmptyWithoutArguments() {
+    assertEquals("", actions.personIdFrom(null))
   }
 }
