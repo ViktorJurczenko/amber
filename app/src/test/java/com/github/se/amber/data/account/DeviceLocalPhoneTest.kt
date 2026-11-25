@@ -168,15 +168,17 @@ class DeviceLocalPhoneTest {
   }
 
   @Test
-  fun aPhotoClearFailureStillRunsTheLaterSteps() = runBlocking {
+  fun aPhotoClearFailureStillRunsTheLaterSteps() {
+    val photoFailure = IOException("Photos left")
     coEvery { photoRepository.clearLocalPhotos() } answers
         {
           calls += "clearPhotos"
-          Result.failure(IOException("Photos left"))
+          Result.failure(photoFailure)
         }
 
-    phone.clear()
+    val error = assertThrows(IOException::class.java) { runBlocking { phone.clear() } }
 
+    assertEquals(photoFailure.message, error.message)
     assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
     assertFalse(picked.exists())
     assertFalse(captured.parentFile!!.exists())

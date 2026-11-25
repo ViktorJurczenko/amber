@@ -42,7 +42,7 @@ class DeviceLocalPhone(
   suspend fun clear() {
     runEveryStep(
         { mediaRepository.clearLocalMedia() },
-        { photoRepository.clearLocalPhotos() },
+        { photoRepository.clearLocalPhotos().getOrThrow() },
         { imageMemory.clearAll() },
         { deleteTemporaryFiles() },
     )
