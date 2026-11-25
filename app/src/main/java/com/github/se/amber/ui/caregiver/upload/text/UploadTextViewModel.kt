@@ -45,8 +45,7 @@ enum class UploadTextViewModelErrorMessage(@param:StringRes val messageRes: Int)
 /**
  * UI state of the text upload screen.
  *
- * @property title the story title typed by the caregiver. [MediaItem.Text] has no title yet, so it
- *   stays in this state until that parameter exists.
+ * @property title the story title typed by the caregiver. It is [MediaItem.Text.title].
  * @property text the story body typed in the description box. This is [MediaItem.Text.text].
  * @property common the date, place and people shared with the other upload screens. A text story
  *   keeps [CommonMediaUIState.description] empty.
@@ -105,8 +104,6 @@ open class UploadTextViewModel(
   override val requiresCommonDescription: Boolean
     get() = false
 
-  // FIXME: MediaItem.Text needs a title parameter. Save this field there once that parameter
-  // exists.
   /** Stores [title] as the story title, cut at [InputValidation.SHORT_TEXT]'s maximum length. */
   fun setTitle(title: String) {
     val cleaned = InputValidation.SHORT_TEXT.clean(title)
@@ -143,8 +140,7 @@ open class UploadTextViewModel(
   override fun fileOf(state: UploadTextUIState): File? = null
 
   /**
-   * Builds the text story from the body typed on the screen. The title stays in the UI state until
-   * [MediaItem.Text] has a title parameter.
+   * Builds the text story from the title and body typed on the screen.
    *
    * @param id The new media ID, from [MediaRepository.newMediaId].
    * @param state The screen state to upload.
@@ -169,6 +165,7 @@ open class UploadTextViewModel(
           date = date,
           location = state.common.location.pickedPlace,
           shownIds = shownIds,
+          title = state.title.trim(),
           text = state.text.trim(),
       )
 }

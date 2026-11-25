@@ -214,6 +214,7 @@ class UploadTextViewModelTest {
     assertEquals(MemoryDate(year = 2024), text.date)
     assertEquals(lausanne, text.location)
     assertEquals(listOf("person1"), text.shownIds)
+    assertEquals("Market day", text.title)
     assertEquals("We bought bread.", text.text)
   }
 
@@ -233,6 +234,7 @@ class UploadTextViewModelTest {
     assertEquals("media1", text.id)
     assertEquals("user1", text.authorId)
     assertEquals("", text.description)
+    assertEquals("Market day", text.title)
     assertEquals("We bought bread.", text.text)
     assertEquals(lausanne, text.location)
     assertEquals(MediaEvent.Uploaded, viewModel.events.first())

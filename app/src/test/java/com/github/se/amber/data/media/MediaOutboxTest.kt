@@ -789,4 +789,30 @@ class MediaOutboxTest {
     assertTrue(fileOnDisk("c1", "m2.bin").exists())
     assertTrue(fileOnDisk("c1", "m3.json").exists())
   }
+
+  @Test
+  fun anEntryWithAnUnknownStateIsSkippedButKept() = runTest {
+    val first = newOutbox()
+    first.add("c1", picture("m1"), source())
+    first.add("c2", picture("m2"), source())
+    // a state added by a newer app version
+    rewriteJson("c2", "m2") { put("state", "SCHEDULED") }
+
+    val restarted = newOutbox()
+
+    assertEquals(listOf("c1" to "m1"), restarted.waitingIds())
+    assertNull(restarted.get("c2", "m2"))
+    assertTrue(fileOnDisk("c2", "m2.json").exists())
+  }
+
+  @Test
+  fun aFieldStoredAsJsonNullReadsAsMissing() = runTest {
+    val first = newOutbox()
+    first.add("c1", picture("m1").copy(description = "Beach"), source())
+    rewriteJson("c1", "m1") { getJSONObject("item").put("description", JSONObject.NULL) }
+
+    val restarted = newOutbox()
+
+    assertEquals(picture("m1"), restarted.get("c1", "m1")?.item)
+  }
 }

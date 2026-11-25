@@ -71,9 +71,9 @@ object UploadTextTestTags {
  * Displays the text upload screen.
  *
  * The form matches the picture upload screen, with a title field in place of the camera and gallery
- * buttons. The title box is not stored on [MediaItem.Text] yet. The description box keeps that
- * label, but its text is the story body, [MediaItem.Text.text]. A text story has no shared caption,
- * so [MediaItem.description] stays empty. What is typed is sent to [viewModel]. [onUpload] and
+ * buttons. The title box is [MediaItem.Text.title]. The description box keeps that label, but its
+ * text is the story body, [MediaItem.Text.text]. A text story has no shared caption, so
+ * [MediaItem.description] stays empty. What is typed is sent to [viewModel]. [onUpload] and
  * [goBack] only move between screens.
  *
  * @param viewModel the view model that owns the story being typed.

@@ -157,7 +157,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data)
              .affectedKeys().hasOnly(['name', 'people', 'nicknames', 'places', 'personPhotos'])
         && onlyOwnNicknameChanged()
-        && placesChangedOnlyByCaregiver()
+        && placesChangeIsValid()
         && personPhotosChangeIsValid(circleId);
     }
 
@@ -167,9 +167,48 @@ service cloud.firestore {
              .affectedKeys().hasOnly([request.auth.uid]);
     }
 
-    function placesChangedOnlyByCaregiver() {
-      return request.resource.data.places == resource.data.places
-        || isCaregiver();
+    // Only caregivers change places, one place per write: added, edited or removed. A missing
+    // field counts as {}, like personPhotos.
+    function placesChangeIsValid() {
+      let before = resource.data.get('places', {});
+      let after = request.resource.data.get('places', {});
+      return before == after
+        || (isCaregiver() && onePlaceChanged(before, after));
+    }
+
+    // A removal leaves no new value. An added or edited place is the one new value, and it must
+    // be stored under its own id.
+    function onePlaceChanged(before, after) {
+      let affected = after.diff(before).affectedKeys();
+      let removed = after.diff(before).removedKeys();
+      let newValues = after.values().removeAll(before.values());
+      return affected.size() == 1
+        && (removed.size() == 1
+          || (newValues.size() == 1 && isValidPlace(affected, newValues[0])));
+    }
+
+    // The fields of Place: a name to show, and a real point the patient can be walked to. Must
+    // agree with Place.isValidToSave() in the app.
+    function isValidPlace(affected, place) {
+      return place is map
+        && place.keys().hasOnly(['id', 'name', 'location'])
+        && place.id is string
+        && affected.hasOnly([place.id])
+        && place.name is string
+        && place.name.trim().size() > 0
+        && isValidPoint(place.location);
+    }
+
+    // (0, 0) is where a lost position lands, so it is no real point.
+    function isValidPoint(location) {
+      return location is map
+        && location.keys().hasOnly(['lat', 'lng', 'placeName'])
+        && location.lat is number
+        && location.lat >= -90 && location.lat <= 90
+        && location.lng is number
+        && location.lng >= -180 && location.lng <= 180
+        && !(location.lat == 0 && location.lng == 0)
+        && (location.get('placeName', null) == null || location.placeName is string);
     }
 
     // A text has no file: its storagePath must be empty. Any other media's file is in the
@@ -186,7 +225,7 @@ service cloud.firestore {
     // time never change, so no edit can approve a media or leave its file without a document.
     function onlyEditableMediaFieldsChanged() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'description', 'date', 'location', 'shownIds', 'authorizedIds', 'text', 'transcript'
+        'description', 'date', 'location', 'shownIds', 'authorizedIds', 'text', 'title', 'transcript'
       ]);
     }
 
@@ -199,13 +238,16 @@ service cloud.firestore {
       return data.id == appointmentId
         && data.keys().hasOnly([
           'id', 'title', 'notes', 'startAt', 'durationMinutes', 'location', 'attendeeIds',
-          'lastEndAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+          'reminderMinutesBefore', 'patientId', 'lastEndAt', 'createdBy', 'createdAt', 'updatedBy',
+          'updatedAt'
         ])
         && data.title is string
         && data.title.trim().size() > 0
         && data.notes is string
         && hasValidAppointmentTime(data)
         && isValidLocation(data.get('location', null))
+        && isValidReminderList(data.reminderMinutesBefore)
+        && data.patientId is string
         && data.updatedBy == request.auth.uid
         && data.updatedAt is int
         && data.attendeeIds is list
@@ -227,6 +269,27 @@ service cloud.firestore {
             && minutes >= 1
             && minutes <= 24 * 60
             && data.lastEndAt == data.startAt + minutes * 60000));
+    }
+
+    // The reminders of an appointment: a list of at most 5 values, the same limits as
+    // validationError() in the app. Rules can't loop over a list, so each of the 5 places is
+    // checked on its own.
+    function isValidReminderList(reminders) {
+      return reminders is list
+        && reminders.size() <= 5
+        && isValidReminderAt(reminders, 0)
+        && isValidReminderAt(reminders, 1)
+        && isValidReminderAt(reminders, 2)
+        && isValidReminderAt(reminders, 3)
+        && isValidReminderAt(reminders, 4);
+    }
+
+    // The value at this index is missing, or a whole number of minutes from 0 to 7 days.
+    function isValidReminderAt(reminders, index) {
+      return reminders.size() <= index
+        || (reminders[index] is int
+          && reminders[index] >= 0
+          && reminders[index] <= 7 * 24 * 60);
     }
 
     // Null, or a GeoLocation: only lat, lng and placeName, each unset or of its type.
@@ -334,16 +397,21 @@ service cloud.firestore {
       match /appointments/{appointmentId} {
         allow read: if isMember(circleId);
 
+        // The patient is the circle's. A circle without a patient yet can't have appointments.
         allow create: if canWriteTo(circleId)
           && isValidAppointment(circleId, appointmentId)
           && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.createdAt is int;
+          && request.resource.data.createdAt is int
+          && circleDoc(circleId).patientId != ''
+          && request.resource.data.patientId == circleDoc(circleId).patientId;
 
-        // Every member may edit any appointment, but nobody may change who created it or when
+        // Every member may edit any appointment, but nobody may change who created it, when, or
+        // who it is for.
         allow update: if canWriteTo(circleId)
           && isValidAppointment(circleId, appointmentId)
           && request.resource.data.createdBy == resource.data.createdBy
-          && request.resource.data.createdAt == resource.data.createdAt;
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.patientId == resource.data.patientId;
 
         allow delete: if canWriteTo(circleId);
       }

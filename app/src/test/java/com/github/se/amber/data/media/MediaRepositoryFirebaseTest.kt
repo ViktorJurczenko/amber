@@ -1,5 +1,6 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor Agent.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.media
 
@@ -280,7 +281,7 @@ class MediaRepositoryFirebaseTest {
     scheduler.calls.clear()
 
     // the outbox accepts '_' and the cache '.': neither may clear anything for such an id
-    for (badId in listOf("", "c_1", ".", "c1/..")) {
+    for (badId in listOf("", "c_1", ".", "..", "c1/..")) {
       val error = runCatching { repository.clearLocalMedia(badId) }.exceptionOrNull()
       assertTrue("'$badId': failed with $error", error is IllegalArgumentException)
     }

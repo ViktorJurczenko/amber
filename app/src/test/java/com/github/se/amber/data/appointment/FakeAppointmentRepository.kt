@@ -6,6 +6,7 @@ import com.github.se.amber.data.Synced
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.calendar.dayWindow
 import com.github.se.amber.model.calendar.overlaps
+import com.github.se.amber.model.circle.CareCircle
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -20,9 +21,12 @@ import kotlinx.coroutines.flow.update
 /**
  * An [AppointmentRepository] that keeps the appointments in memory, for ViewModel tests.
  *
- * It saves what it is given as is: it doesn't check, trim or fill in any field. Set [failWith] to
- * make every write fail with that error, without saving anything. Call [emitWriteFailure] to act as
- * if the server refused a write.
+ * It saves what it is given as is: it doesn't check, trim or fill in any field, with one exception.
+ * [addAppointment] handles the patient like the real repository. It refuses a circle without a
+ * patient with [AppointmentError.NoPatient], and copies the circle's patientId into the
+ * appointment. A ViewModel has no other way to get either, so its tests need the fake to do it. Set
+ * [failWith] to make every write fail with that error, without saving anything. Call
+ * [emitWriteFailure] to act as if the server refused a write.
  *
  * [observeAppointments] uses `endAt()` where the real repository uses [Appointment.lastEndAt],
  * since the fake doesn't fill it in. Every appointment it lists is synced. Its days are counted in
@@ -88,19 +92,23 @@ class FakeAppointmentRepository(private val zone: ZoneId = ZoneOffset.UTC) : App
   override fun newId(): String = "appointment-${++lastId}"
 
   /**
-   * Saves [appointment] as given, unless [failWith] is set.
+   * Saves [appointment] with the patientId of [circle], unless [failWith] is set. Nothing else is
+   * filled in.
    *
-   * @return the saved appointment, or a failure with [failWith].
+   * @return the saved appointment, or a failure with [failWith]. Without [failWith], a circle
+   *   without a patient fails with [AppointmentError.NoPatient].
    */
   override suspend fun addAppointment(
-      circleId: String,
+      circle: CareCircle,
       appointment: Appointment,
   ): Result<Appointment> {
     failWith?.let {
       return Result.failure(it)
     }
-    save(circleId, appointment)
-    return Result.success(appointment)
+    if (circle.patientId.isEmpty()) return Result.failure(AppointmentError.NoPatient())
+    val saved = appointment.copy(patientId = circle.patientId)
+    save(circle.id, saved)
+    return Result.success(saved)
   }
 
   /**

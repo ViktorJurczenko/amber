@@ -64,6 +64,13 @@ class AppointmentErrorTest {
   }
 
   @Test
+  fun noPatientIsItsOwnError() {
+    assertEquals(AppointmentError.NoPatient(), AppointmentError.NoPatient())
+    assertNotEquals(AppointmentError.NoPatient(), AppointmentError.InvalidCircleId())
+    assertEquals("The care circle has no patient yet", AppointmentError.NoPatient().message)
+  }
+
+  @Test
   fun eachFailureRecordsWhereItWasCreated() {
     assertEquals("createdInA", createdInA().stackTrace.first().methodName)
     assertEquals("createdInB", createdInB().stackTrace.first().methodName)

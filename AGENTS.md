@@ -24,7 +24,36 @@
 - If GitHub access is unavailable, report that instead of claiming a PR was opened.
 
 ## PRs
-- Include a brief feature/fix summary and relevant check results in each PR description.
+- The pull request description MUST use the template below. Fill every section. Do not leave a short or vague description.
+- Run `./gradlew ktfmtCheck`, `./gradlew check`, and `./gradlew build` before opening the pull request, and put the results in the description.
+
+```markdown
+## Description
+<!-- Provide a detailed description of the changes made. Do NOT leave a short or vague description. -->
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactoring / Code style update
+- [ ] Documentation update
+- [ ] CI/CD update
+
+## Visual Evidence
+<!-- MANDATORY FOR UI & NAVIGATION CHANGES -->
+### Screenshot of Screen
+<!-- Insert screenshot here -->
+
+### Navigation Video
+<!-- Insert video/GIF of navigation here -->
+
+## Encountered Bugs & Edge Cases
+<!-- Detail any bugs encountered during implementation/testing and how they were resolved. -->
+
+## Packages / External Files Imported
+<!-- Any backend files that were imported, not written by us nor AI. -->
+
+🤖 Co-authored-by: Agent-Name <agent@domain.com>
+```
 
 ## Crediting
 - Credit file authors using the following format: "// Written by [author], with assistance from [AI agent, if any]"
