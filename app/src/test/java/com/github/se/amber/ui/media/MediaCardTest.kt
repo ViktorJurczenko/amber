@@ -142,7 +142,7 @@ class MediaCardTest {
           shownIds = shownIds,
       )
 
-  private fun text(description: String?) =
+  private fun text(description: String? = null) =
       MediaItem.Text(id = "m1", authorId = "author", description = description)
 
   /** Clicks the toggle button. Set [expanded] to true if the card is currently expanded. */
@@ -157,6 +157,10 @@ class MediaCardTest {
   /**
    * Lets MediaCard use its default `viewModel(key = media.id)` without touching Firebase: the
    * default factory of this owner returns [viewModel].
+   *
+   * @param viewModel the (fake or mocked) ViewModel handed to MediaCard. It is deliberately
+   *   required, with no default: a default would have to build a real [MediaCardViewModel] and hit
+   *   Firebase, which is exactly what this helper avoids.
    */
   private fun viewModelOwner(viewModel: MediaCardViewModel) =
       object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
