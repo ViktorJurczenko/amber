@@ -19,7 +19,6 @@ import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaRepository
 import com.github.se.amber.model.media.MediaRepositoryProvider
-import com.github.se.amber.model.media.MediaStatus
 import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.model.validation.InputValidation
 import com.github.se.amber.ui.caregiver.upload.media.CommonMediaUIState
@@ -115,19 +114,11 @@ open class UploadTextViewModel(
   }
 
   /**
-   * The description saved on a text story.
-   *
-   * A text story has no shared description: [MediaItem.description] stays empty. The words typed in
-   * the description box are [UploadTextUIState.text].
-   */
-  fun mediaDescription(): String = ""
-
-  /**
-   * Stores [text] as the story body from the description box, cut at
-   * [InputValidation.DESCRIPTION]'s maximum length.
+   * Stores [text] as the story body from the description box, cut at [InputValidation.TEXT]'s
+   * maximum length.
    */
   fun setText(text: String) {
-    val cleaned = InputValidation.DESCRIPTION.clean(text)
+    val cleaned = InputValidation.TEXT.clean(text)
     _uiState.update { it.copy(text = cleaned) }
   }
 
@@ -143,7 +134,7 @@ open class UploadTextViewModel(
       when {
         !InputValidation.SHORT_TEXT.isValid(state.title) ->
             UploadTextViewModelErrorMessage.TITLE_EMPTY.messageRes
-        !InputValidation.DESCRIPTION.isValid(state.text) ->
+        !InputValidation.TEXT.isValid(state.text) ->
             UploadTextViewModelErrorMessage.TEXT_EMPTY.messageRes
         else -> null
       }
@@ -175,12 +166,9 @@ open class UploadTextViewModel(
           id = id,
           authorId = authorId,
           createdAt = System.currentTimeMillis(),
-          description = mediaDescription(),
           date = date,
           location = state.common.location.pickedPlace,
           shownIds = shownIds,
-          authorizedIds = emptyList(),
-          status = MediaStatus.APPROVED,
           text = state.text.trim(),
       )
 }

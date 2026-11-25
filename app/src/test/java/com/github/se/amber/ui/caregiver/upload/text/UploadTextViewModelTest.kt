@@ -130,13 +130,13 @@ class UploadTextViewModelTest {
   }
 
   @Test
-  fun setTextCutsAtTheDescriptionLimit() {
+  fun setTextCutsAtTheTextLimit() {
     val viewModel = openViewModel()
-    val tooLong = "a".repeat(InputValidation.DESCRIPTION_MAX_LENGTH + 5)
+    val tooLong = "a".repeat(InputValidation.TEXT_MAX_LENGTH + 5)
 
     viewModel.setText(tooLong)
 
-    assertEquals(InputValidation.DESCRIPTION_MAX_LENGTH, viewModel.uiState.value.text.length)
+    assertEquals(InputValidation.TEXT_MAX_LENGTH, viewModel.uiState.value.text.length)
   }
 
   @Test
@@ -182,7 +182,6 @@ class UploadTextViewModelTest {
     viewModel.setTitle("Market day")
     viewModel.setText("We bought bread.")
 
-    assertEquals("", viewModel.mediaDescription())
     assertEquals("", viewModel.uiState.value.common.description)
   }
 

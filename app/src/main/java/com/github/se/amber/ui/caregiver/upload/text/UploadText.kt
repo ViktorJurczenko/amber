@@ -50,8 +50,8 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.MAX_CHAR_DESCRIPTION
 import com.github.se.amber.ui.theme.MAX_CHAR_NAME
+import com.github.se.amber.ui.theme.MAX_CHAR_TEXT
 import com.github.se.amber.ui.theme.MAX_LINE_DESCRIPTION
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
 import com.github.se.amber.ui.theme.TEXT_FIELD_DEFAULT
@@ -157,7 +157,7 @@ fun UploadTextScreen(
                 placeholder = stringResource(R.string.uploadTextDescriptionPlaceholder),
                 emptyErrorMessage = stringResource(R.string.uploadTextDescriptionEmpty),
                 maxLines = MAX_LINE_DESCRIPTION,
-                maxChar = MAX_CHAR_DESCRIPTION,
+                maxChar = MAX_CHAR_TEXT,
             )
           }
 
