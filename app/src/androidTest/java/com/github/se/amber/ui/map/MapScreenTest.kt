@@ -9,6 +9,9 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -33,6 +36,9 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import io.mockk.mockk
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -98,9 +104,21 @@ class MapScreenTest {
   @Test
   fun mapDisplaysControlsAndRoutesSearchAndTabActions() {
     val viewModel = createViewModel()
+    val alternateViewModel = createViewModel()
+    val useAlternateCamera = mutableStateOf(false)
+    val firstCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val secondCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
     var chosenTab: Tab? = null
     composeTestRule.setContent {
-      AmberAppTheme { MapScreen(viewModel = viewModel, onTabSelected = { chosenTab = it }) }
+      AmberAppTheme {
+        MapScreen(
+            modifier =
+                Modifier.testTag(if (useAlternateCamera.value) "map_second" else "map_first"),
+            viewModel = if (useAlternateCamera.value) alternateViewModel else viewModel,
+            onTabSelected = { chosenTab = it },
+            cameraPositionState = if (useAlternateCamera.value) secondCamera else firstCamera,
+        )
+      }
     }
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
@@ -114,6 +132,8 @@ class MapScreenTest {
 
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performTextInput("Lausanne")
     assertEquals("Lausanne", viewModel.searchQuery.value)
+    composeTestRule.runOnIdle { useAlternateCamera.value = true }
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
         .performClick()
@@ -134,7 +154,17 @@ class MapScreenTest {
   fun locationFixesUpdateTheMapAndRecenterUsesTheFreshPosition() {
     val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
     val viewModel = createViewModel(updates)
-    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+    val useSecondCamera = mutableStateOf(false)
+    val firstCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val secondCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    composeTestRule.setContent {
+      AmberAppTheme {
+        MapScreen(
+            viewModel = viewModel,
+            cameraPositionState = if (useSecondCamera.value) secondCamera else firstCamera,
+        )
+      }
+    }
 
     val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
     updates.value = LocationUpdate.Position(lastKnown)
@@ -159,6 +189,17 @@ class MapScreenTest {
         .performClick()
     composeTestRule.waitForIdle()
     assertEquals(MapRecenterAction.MoveTo(fresh), viewModel.recenter())
+
+    composeTestRule.runOnIdle { useSecondCamera.value = true }
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    val later = DevicePosition(46.54, 6.65)
+    updates.value = LocationUpdate.Position(later)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == later
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
+        .assertIsDisplayed()
   }
 
   // ActivityResultRegistry that answers deterministically and counts requests
