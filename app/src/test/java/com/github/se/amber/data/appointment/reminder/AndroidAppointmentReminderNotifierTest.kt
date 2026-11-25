@@ -5,12 +5,14 @@ package com.github.se.amber.data.appointment.reminder
 import android.Manifest
 import android.app.Application
 import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import java.time.LocalDate
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +20,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** Checks the reminder notification: its text in English and French, and its channel. */
+/**
+ * Checks the reminder notification: its text in English and French, its channel, and that sign-out
+ * removes the reminders only.
+ */
 @RunWith(RobolectricTestRunner::class)
 class AndroidAppointmentReminderNotifierTest {
 
@@ -122,6 +127,27 @@ class AndroidAppointmentReminderNotifierTest {
     notifier.show(reminder())
 
     assertEquals(0, manager.activeNotifications.size)
+  }
+
+  @Test
+  fun cancelAllRemovesTheRemindersButNoOtherNotification() {
+    notifier.show(reminder(tag = "t1"))
+    notifier.show(reminder(tag = "t2"))
+    manager.createNotificationChannel(
+        NotificationChannel("other", "Other", NotificationManager.IMPORTANCE_DEFAULT)
+    )
+    manager.notify(
+        "other",
+        1,
+        Notification.Builder(context, "other")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .build(),
+    )
+
+    notifier.cancelAll()
+
+    assertEquals(listOf("other"), manager.activeNotifications.map { it.tag })
+    assertNull(manager.activeNotifications.find { it.tag == "t1" })
   }
 
   private companion object {

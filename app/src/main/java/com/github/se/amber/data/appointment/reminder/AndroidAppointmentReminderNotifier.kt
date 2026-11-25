@@ -58,6 +58,16 @@ class AndroidAppointmentReminderNotifier(context: Context) : AppointmentReminder
     manager.notify(reminder.tag, NOTIFICATION_ID, notification)
   }
 
+  /**
+   * Removes every reminder shown, for sign-out. Notifications on other channels stay, should the
+   * app get some.
+   */
+  fun cancelAll() {
+    manager.activeNotifications
+        .filter { it.notification.channelId == CHANNEL_ID }
+        .forEach { manager.cancel(it.tag, it.id) }
+  }
+
   private fun canPost(): Boolean =
       Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
           ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
