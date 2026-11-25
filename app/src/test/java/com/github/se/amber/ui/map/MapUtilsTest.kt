@@ -119,11 +119,10 @@ class MapUtilsTest {
         .onNodeWithText(context.getString(R.string.locationSearching))
         .assertDoesNotExist()
     composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(2)
-    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION)[0].performClick()
-    assertEquals(lausanne, selected)
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION)[1].performClick()
+    assertEquals(geneva, selected)
 
-    state.value =
-        MapPlaceSearchState(query = lausanne.placeName.orEmpty(), selectedPlace = lausanne)
+    state.value = MapPlaceSearchState(query = geneva.placeName.orEmpty(), selectedPlace = geneva)
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
 
@@ -140,12 +139,9 @@ class MapUtilsTest {
   }
 
   @Test
-  fun searchPopup_showsShortEmptyAndFailedStatesWithRetry() {
+  fun searchPopup_showsGuidanceOnlyUntilSearchCompletes() {
     val state = mutableStateOf(MapPlaceSearchState(query = "La"))
-    var retries = 0
-    composeTestRule.setContent {
-      AmberAppTheme { MapSearchField(state = state.value, onRetrySearch = { retries++ }) }
-    }
+    composeTestRule.setContent { AmberAppTheme { MapSearchField(state = state.value) } }
 
     val shortHint =
         context.resources.getQuantityString(
@@ -155,18 +151,63 @@ class MapUtilsTest {
         )
     composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
 
+    // Whitespace is not a search, while padded short text still shows query guidance.
+    state.value = MapPlaceSearchState(query = "   ")
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+
+    state.value = MapPlaceSearchState(query = " La ")
+    composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
+
+    // A long query with no completed lookup should not claim that no place exists.
+    state.value = MapPlaceSearchState(query = "Geneva")
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertExists()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapNoPlaceFound))
+        .assertDoesNotExist()
+
     state.value = MapPlaceSearchState(query = "Geneva", hasSearched = true)
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapNoPlaceFound))
         .assertIsDisplayed()
     composeTestRule.onNodeWithText(shortHint).assertDoesNotExist()
 
-    state.value = MapPlaceSearchState(query = "Geneva", searchFailed = true)
+    state.value = MapPlaceSearchState()
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  @Test
+  fun searchPopup_failedSearchCanRetryAndLoadingHidesPriorFailure() {
+    val state = mutableStateOf(MapPlaceSearchState())
+    var retries = 0
+    composeTestRule.setContent {
+      AmberAppTheme { MapSearchField(state = state.value, onRetrySearch = { retries++ }) }
+    }
+
+    // A failed search takes priority over suggestions left from an earlier response.
+    state.value =
+        MapPlaceSearchState(
+            query = "Geneva",
+            suggestions = listOf(GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")),
+            searchFailed = true,
+        )
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapSearchFailed))
         .assertIsDisplayed()
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(0)
     composeTestRule.onNodeWithText(context.getString(R.string.locationTryAgain)).performClick()
     assertEquals(1, retries)
+
+    // During retry, the loading status hides the prior failure and retry action.
+    state.value = MapPlaceSearchState(query = "Geneva", isSearching = true, searchFailed = true)
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchFailed))
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationTryAgain))
+        .assertDoesNotExist()
 
     state.value = MapPlaceSearchState()
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
@@ -225,17 +266,17 @@ class MapUtilsTest {
                 R.string.patientMapLastKnown,
         )
     var previousMessage: Int? = null
-    statesAndMessages.forEach { (state, message) ->
+    statesAndMessages.forEachIndexed { index, (state, message) ->
       location.value = state
       composeTestRule.onNodeWithText(context.getString(message)).assertIsDisplayed()
       previousMessage?.let { oldMessage ->
         composeTestRule.onNodeWithText(context.getString(oldMessage)).assertDoesNotExist()
       }
+      // The action stays available even before a fresh position is found.
+      recenterButton.performClick()
+      assertEquals(index + 1, recenters)
       previousMessage = message
     }
-
-    recenterButton.performClick()
-    assertEquals(1, recenters)
   }
 
   @Test

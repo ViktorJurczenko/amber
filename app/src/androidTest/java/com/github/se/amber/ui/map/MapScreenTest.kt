@@ -31,8 +31,10 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
 import io.mockk.mockk
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -55,7 +57,7 @@ class MapScreenTest {
 
   /** The map gets no live profile, GPS or place service during these tests. */
   private fun createViewModel(
-      updates: MutableStateFlow<LocationUpdate> = MutableStateFlow(LocationUpdate.Searching),
+      updates: Flow<LocationUpdate> = MutableStateFlow(LocationUpdate.Searching),
       permissionStatus: () -> Boolean = { true },
   ): MediaMapViewModel {
     val profiles =
@@ -215,5 +217,29 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapSearching))
         .assertIsDisplayed()
+  }
+
+  @Test
+  fun unavailableLocationKeepsMapVisibleAndRecenterDoesNotChangeStatus() {
+    // A failed GPS stream should leave the map usable and show the unavailable status.
+    val updates =
+        flow<LocationUpdate> {
+          emit(LocationUpdate.Searching)
+          throw IllegalStateException()
+        }
+    val viewModel = createViewModel(updates = updates)
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+
+    composeTestRule.waitUntil(5_000) {
+      viewModel.locationState.value == MediaMapLocationState.Unavailable
+    }
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationUnavailable))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
+        .performClick()
+    assertEquals(MediaMapLocationState.Unavailable, viewModel.locationState.value)
   }
 }
