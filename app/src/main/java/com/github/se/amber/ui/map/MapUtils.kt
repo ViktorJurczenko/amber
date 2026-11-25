@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -71,6 +72,7 @@ object MapTestTags {
  * @param onRetrySearch Called when the user retries a failed place search.
  * @param onSearch Called when the user presses Search on the keyboard.
  */
+@NonRestartableComposable
 @Composable
 internal fun MapSearchField(
     modifier: Modifier = Modifier,
@@ -148,6 +150,7 @@ internal fun MapSearchField(
  * @param place Suggestion whose name is shown in the row.
  * @param onClick Called when the user taps this suggestion.
  */
+@NonRestartableComposable
 @Composable
 internal fun MapPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick: () -> Unit = {}) {
   Row(
@@ -169,6 +172,7 @@ internal fun MapPlaceSuggestion(place: GeoLocation = GeoLocation(), onClick: () 
  *
  * @param text Localized hint, loading message, failure, or empty result message.
  */
+@NonRestartableComposable
 @Composable
 private fun MapSearchHint(text: String = "") {
   Text(
