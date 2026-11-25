@@ -191,6 +191,6 @@ fun MapScreen(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-private fun MapScreenPreview() {
+internal fun MapScreenPreview() {
   AmberAppTheme { MapScreen() }
 }

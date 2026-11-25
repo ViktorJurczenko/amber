@@ -116,10 +116,21 @@ class MapScreenTest {
   }
 
   @Test
+  fun mapPreviewDisplaysMapAndPatientNavigation() {
+    composeTestRule.setContent { MapScreenPreview() }
+
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Map))
+        .assertIsSelected()
+  }
+
+  @Test
   fun locationChangesKeepRecenterAvailable() {
     val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
     val viewModel = createViewModel(updates)
-    val cameraPositionState = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val cameraPositionState =
+        CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
     composeTestRule.setContent {
       AmberAppTheme { MapScreen(viewModel = viewModel, cameraPositionState = cameraPositionState) }
     }
