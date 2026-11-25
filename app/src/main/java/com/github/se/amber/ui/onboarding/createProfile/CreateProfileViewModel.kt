@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.createProfile
 
@@ -29,11 +30,12 @@ import kotlinx.coroutines.launch
  * UI state for the create-profile step.
  *
  * Field errors are derived from the value: a name with characters a name can't have shows its error
- * at once, while a blank one only does once validation has been attempted, matching the bootcamp B2
- * pattern. [errorMsgRes] carries mapped repository failures.
+ * at once, while a blank required one only does once validation has been attempted, matching the
+ * bootcamp B2 pattern. [nickname] is optional. [errorMsgRes] carries mapped repository failures.
  *
  * @param name first name entered by the user.
  * @param surname last name entered by the user.
+ * @param nickname optional nickname entered by the user.
  * @param validationAttempted true after the user has pressed Patient or Caregiver at least once.
  * @param isSaving true while a create-profile request is in flight.
  * @param errorMsgRes actionable repository failure message, or null when there is none.
@@ -41,23 +43,33 @@ import kotlinx.coroutines.launch
 data class CreateProfileUIState(
     val name: String = "",
     val surname: String = "",
+    val nickname: String = "",
     val validationAttempted: Boolean = false,
     val isSaving: Boolean = false,
     @param:StringRes val errorMsgRes: Int? = null,
 ) {
   /** Why [name] is refused, or null; a blank or unfinished one only once validation ran. */
   val nameError: UiText?
-    get() = errorOf(name)
+    get() = requiredNameError(name)
 
   /** Why [surname] is refused, or null; a blank or unfinished one only once validation ran. */
   val surnameError: UiText?
-    get() = errorOf(surname)
+    get() = requiredNameError(surname)
+
+  /** Why [nickname] is refused, or null; blank is allowed, format errors show at once. */
+  val nicknameError: UiText?
+    get() =
+        InputValidation.OPTIONAL_NAME.errorText(
+            nickname,
+            submitted = validationAttempted,
+            formatRes = R.string.inputErrorNameFormat,
+        )
 
   /** Whether the role buttons can be pressed: no save in progress and no error shown. */
   val canSubmit: Boolean
-    get() = !isSaving && nameError == null && surnameError == null
+    get() = !isSaving && nameError == null && surnameError == null && nicknameError == null
 
-  private fun errorOf(value: String): UiText? =
+  private fun requiredNameError(value: String): UiText? =
       InputValidation.NAME.errorText(
           value,
           submitted = validationAttempted,
@@ -67,8 +79,8 @@ data class CreateProfileUIState(
 }
 
 /**
- * ViewModel for [CreateProfileScreen]: validates name/surname and persists the profile on role
- * choice.
+ * ViewModel for [CreateProfileScreen]: validates name/surname/nickname and persists the profile on
+ * role choice.
  *
  * @param profileRepository source of profile create/read operations.
  */
@@ -98,7 +110,15 @@ class CreateProfileViewModel(
   }
 
   /**
-   * Validates name and surname, then saves the profile with [role].
+   * Updates [CreateProfileUIState.nickname], cut at [InputValidation.NAME_MAX_LENGTH]; field error
+   * clears automatically once the nickname is valid or blank.
+   */
+  fun onNicknameChange(value: String) {
+    updateNameField(nickname = InputValidation.NAME.clean(value))
+  }
+
+  /**
+   * Validates name, surname and optional nickname, then saves the profile with [role].
    *
    * The first successful choice creates the profile. Pressing the same role again only navigates.
    * Pressing the other role updates the stored onboarding profile, so a wrong choice can be
@@ -108,34 +128,40 @@ class CreateProfileViewModel(
    *
    * [onSuccess] runs after the profile matches [role], so the navigation owner can move forward
    * without observing UI state. Does nothing while a save is already in progress. Does not call the
-   * repository when a field is blank after trim or isn't a valid name.
+   * repository when a required field is blank after trim or isn't a valid name.
    */
   fun onRoleSelected(role: Role, onSuccess: (Role) -> Unit = {}) {
     if (_uiState.value.isSaving) return
 
     val trimmedName = _uiState.value.name.trim()
     val trimmedSurname = _uiState.value.surname.trim()
+    val trimmedNickname = _uiState.value.nickname.trim()
 
     _uiState.update {
       it.copy(
           name = trimmedName,
           surname = trimmedSurname,
+          nickname = trimmedNickname,
           validationAttempted = true,
           errorMsgRes = null,
       )
     }
 
     if (
-        !InputValidation.NAME.isValid(trimmedName) || !InputValidation.NAME.isValid(trimmedSurname)
+        !InputValidation.NAME.isValid(trimmedName) ||
+            !InputValidation.NAME.isValid(trimmedSurname) ||
+            !InputValidation.OPTIONAL_NAME.isValid(trimmedNickname)
     ) {
       return
     }
 
+    val nicknameOrNull = trimmedNickname.takeIf { it.isNotEmpty() }
     val saved = savedProfile
     if (
         saved != null &&
             saved.name == trimmedName &&
             saved.surname == trimmedSurname &&
+            saved.nickname == nicknameOrNull &&
             saved.role == role
     ) {
       onSuccess(role)
@@ -144,7 +170,8 @@ class CreateProfileViewModel(
 
     viewModelScope.launch {
       _uiState.update { it.copy(isSaving = true, errorMsgRes = null) }
-      val person = Person(firstName = trimmedName, lastName = trimmedSurname)
+      val person =
+          Person(firstName = trimmedName, lastName = trimmedSurname, nickname = nicknameOrNull)
       val result =
           if (saved == null) {
             profileRepository.createProfile(person = person, role = role)
@@ -152,7 +179,9 @@ class CreateProfileViewModel(
             profileRepository.updateOnboardingProfile(person = person, role = role)
           }
       result.fold(
-          onSuccess = { rememberAndContinue(trimmedName, trimmedSurname, role, onSuccess) },
+          onSuccess = {
+            rememberAndContinue(trimmedName, trimmedSurname, nicknameOrNull, role, onSuccess)
+          },
           onFailure = { error ->
             if (saved == null && error is ProfileCreationError.ProfileAlreadyExists) {
               correctExistingProfile(person, role, onSuccess)
@@ -182,15 +211,30 @@ class CreateProfileViewModel(
     if (
         current.role == role &&
             current.person.firstName == person.firstName &&
-            current.person.lastName == person.lastName
+            current.person.lastName == person.lastName &&
+            current.person.nickname == person.nickname
     ) {
-      rememberAndContinue(person.firstName, person.lastName, role, onSuccess)
+      rememberAndContinue(
+          person.firstName,
+          person.lastName,
+          person.nickname,
+          role,
+          onSuccess,
+      )
       return
     }
     profileRepository
         .updateOnboardingProfile(person = person, role = role)
         .fold(
-            onSuccess = { rememberAndContinue(person.firstName, person.lastName, role, onSuccess) },
+            onSuccess = {
+              rememberAndContinue(
+                  person.firstName,
+                  person.lastName,
+                  person.nickname,
+                  role,
+                  onSuccess,
+              )
+            },
             onFailure = { showFailure(it) },
         )
   }
@@ -198,10 +242,12 @@ class CreateProfileViewModel(
   private fun rememberAndContinue(
       name: String,
       surname: String,
+      nickname: String?,
       role: Role,
       onSuccess: (Role) -> Unit,
   ) {
-    savedProfile = SavedOnboardingProfile(name = name, surname = surname, role = role)
+    savedProfile =
+        SavedOnboardingProfile(name = name, surname = surname, nickname = nickname, role = role)
     _uiState.update { it.copy(isSaving = false, errorMsgRes = null) }
     onSuccess(role)
   }
@@ -210,11 +256,16 @@ class CreateProfileViewModel(
     _uiState.update { it.copy(isSaving = false, errorMsgRes = error.errorMessage()) }
   }
 
-  private fun updateNameField(name: String? = null, surname: String? = null) {
+  private fun updateNameField(
+      name: String? = null,
+      surname: String? = null,
+      nickname: String? = null,
+  ) {
     _uiState.update {
       it.copy(
           name = name ?: it.name,
           surname = surname ?: it.surname,
+          nickname = nickname ?: it.nickname,
           errorMsgRes = null,
       )
     }
@@ -224,6 +275,7 @@ class CreateProfileViewModel(
 private data class SavedOnboardingProfile(
     val name: String,
     val surname: String,
+    val nickname: String?,
     val role: Role,
 )
 

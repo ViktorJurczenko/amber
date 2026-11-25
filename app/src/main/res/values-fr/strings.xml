@@ -103,6 +103,7 @@
     <string name="createProfileQuestion">Comment devons-nous vous appeler&#160;?</string>
     <string name="createProfileName">Prénom</string>
     <string name="createProfileSurname">Nom</string>
+    <string name="createProfileNickname">Surnom - facultatif</string>
     <string name="createProfileSelectRole">Veuillez choisir votre rôle</string>
     <string name="createProfilePatient">Patient</string>
     <string name="createProfileCaregiver">Aidant</string>

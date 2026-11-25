@@ -1,6 +1,7 @@
 // Written by Alaabrine with the aid of AI coding agent
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.createProfile
 
@@ -133,6 +134,7 @@ class CreateProfileUITests {
     composeTestRule
         .onNodeWithTag(CreateProfileTestTags.SURNAME_INPUT)
         .performTextInput(" Lovelace ")
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NICKNAME_INPUT).performTextInput(" Nana ")
 
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performClick()
     composeTestRule.waitForIdle()
@@ -140,7 +142,75 @@ class CreateProfileUITests {
     assertEquals(1, callCount)
     assertEquals("Ada", savedPerson?.firstName)
     assertEquals("Lovelace", savedPerson?.lastName)
+    assertEquals("Nana", savedPerson?.nickname)
     assertEquals(Role.PATIENT, savedRole)
+  }
+
+  @Test
+  fun leavingNicknameBlank_sendsNullNickname() {
+    var savedPerson: Person? = null
+    val repository =
+        object : ProfileRepository {
+          override suspend fun createProfile(person: Person, role: Role): Result<Unit> {
+            savedPerson = person
+            return Result.success(Unit)
+          }
+
+          override suspend fun updateOnboardingProfile(person: Person, role: Role) =
+              Result.success(Unit)
+
+          override suspend fun getCurrentProfile() = Result.success(null)
+
+          override suspend fun getProfile(uid: String) = Result.success(null)
+        }
+    setCreateProfile(CreateProfileViewModel(profileRepository = repository))
+
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NAME_INPUT).performTextInput("Ada")
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.SURNAME_INPUT).performTextInput("Lovelace")
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(null, savedPerson?.nickname)
+  }
+
+  @Test
+  fun invalidNickname_showsFormatErrorAndDoesNotSubmit() {
+    var callCount = 0
+    val repository =
+        object : ProfileRepository {
+          override suspend fun createProfile(person: Person, role: Role): Result<Unit> {
+            callCount++
+            return Result.success(Unit)
+          }
+
+          override suspend fun updateOnboardingProfile(person: Person, role: Role) =
+              Result.success(Unit)
+
+          override suspend fun getCurrentProfile() = Result.success(null)
+
+          override suspend fun getProfile(uid: String) = Result.success(null)
+        }
+    setCreateProfile(CreateProfileViewModel(profileRepository = repository))
+
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NAME_INPUT).performTextInput("Ada")
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.SURNAME_INPUT).performTextInput("Lovelace")
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NICKNAME_INPUT).performTextInput("Ada2")
+
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NICKNAME_INPUT).assert(hasErrorSemantics())
+    composeTestRule
+        .onNodeWithTag(CreateProfileTestTags.NICKNAME_ERROR, useUnmergedTree = true)
+        .assertIsDisplayed()
+        .assertTextEquals(string(R.string.inputErrorNameFormat))
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).assertIsNotEnabled()
+    assertEquals(0, callCount)
+  }
+
+  @Test
+  fun nicknameLabelIsShown() {
+    setCreateProfile()
+
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NICKNAME_INPUT).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.createProfileNickname)).assertIsDisplayed()
   }
 
   @Test
