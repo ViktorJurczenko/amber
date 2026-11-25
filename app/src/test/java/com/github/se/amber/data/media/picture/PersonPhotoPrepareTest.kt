@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -7,12 +8,18 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import androidx.exifinterface.media.ExifInterface
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.se.amber.data.media.MAX_PHOTO_BYTES
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
 import io.mockk.unmockkConstructor
+import io.mockk.unmockkStatic
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -81,6 +88,71 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
+  fun everyPersonPhotoErrorExists() {
+    val source = IllegalStateException("missing")
+    val unknown = PersonPhotoError.Unknown(source)
+    assertEquals("No user is signed in", PersonPhotoError.NotAuthenticated.message)
+    assertEquals("The care circle has no storage bucket", PersonPhotoError.NoStorageBucket.message)
+    assertEquals(
+        "You do not have permission to access this photo",
+        PersonPhotoError.PermissionDenied.message,
+    )
+    assertEquals("Unable to reach photo storage", PersonPhotoError.Network.message)
+    assertEquals("The photo operation failed", unknown.message)
+    assertSame(source, unknown.source)
+  }
+
+  @Test
+  fun aQuarterTurnAndATallPhotoAreFitted() {
+    assertSize(
+        picture(width = 40, height = 20, orientation = ExifInterface.ORIENTATION_ROTATE_90),
+        width = 20,
+        height = 40,
+    )
+    assertSize(
+        picture(width = 400, height = 1500),
+        width = (400L * MAX_SIDE / 1500).toInt(),
+        height = MAX_SIDE,
+    )
+  }
+
+  @Test
+  fun aFailedRenameDeletesTheTemporaryFile() {
+    val directory = File(tmp.root, "as-directory").apply { mkdirs() }
+    assertThrows(IOException::class.java) { writePreparedJpeg(picture(), directory) }
+    assertTrue(tmp.root.list().orEmpty().none { it.startsWith("photo") && it.endsWith(".part") })
+  }
+
+  @Test
+  fun aBitmapThatCannotBeStoredAsASmallJpegIsRejected() {
+    val bitmap = mockk<Bitmap>()
+    every { bitmap.width } returns 4
+    every { bitmap.height } returns 4
+    every { bitmap.recycle() } returns Unit
+    mockkStatic(BitmapFactory::class)
+    try {
+      stubDecodedBitmap(bitmap)
+      every { bitmap.compress(any(), any(), any()) } returns false
+      assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
+        writePreparedJpeg(picture(), File(tmp.root, "compress.jpg"))
+      }
+
+      var attempt = 0
+      every { bitmap.compress(any(), any(), any()) } answers
+          {
+            if (attempt++ == 0)
+                thirdArg<OutputStream>().write(ByteArray((MAX_PHOTO_BYTES + 1).toInt()))
+            true
+          }
+      assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
+        writePreparedJpeg(picture(), File(tmp.root, "over-limit.jpg"))
+      }
+    } finally {
+      unmockkStatic(BitmapFactory::class)
+    }
+  }
+
+  @Test
   fun anUnreadableExifOrientationIsKeptUpright() {
     val source = picture()
     mockkConstructor(ExifInterface::class)
@@ -106,7 +178,12 @@ class PersonPhotoPrepareTest {
     return bounds.outWidth
   }
 
-  private fun picture(width: Int = 32, height: Int = 24, color: Int = Color.RED): File {
+  private fun picture(
+      width: Int = 32,
+      height: Int = 24,
+      color: Int = Color.RED,
+      orientation: Int? = null,
+  ): File {
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     bitmap.eraseColor(color)
     val file = File.createTempFile("picture", ".jpg", tmp.root)
@@ -117,7 +194,40 @@ class PersonPhotoPrepareTest {
     } finally {
       bitmap.recycle()
     }
+    if (orientation != null) {
+      ExifInterface(file).apply {
+        setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
+        saveAttributes()
+      }
+    }
     return file
+  }
+
+  private fun assertSize(source: File, width: Int, height: Int) {
+    val prepared = File(tmp.root, "fitted-${source.name}")
+    writePreparedJpeg(source, prepared)
+    val decoded = decode(prepared)
+    try {
+      assertEquals(width, decoded.width)
+      assertEquals(height, decoded.height)
+    } finally {
+      decoded.recycle()
+    }
+  }
+
+  /** Returns [bitmap] from the second decode. The bounds pass reports a tiny upright image. */
+  private fun stubDecodedBitmap(bitmap: Bitmap) {
+    every { BitmapFactory.decodeFile(any<String>(), any()) } answers
+        {
+          val options = secondArg<BitmapFactory.Options>()
+          if (options.inJustDecodeBounds) {
+            options.outWidth = 4
+            options.outHeight = 4
+            null
+          } else {
+            bitmap
+          }
+        }
   }
 
   private fun decode(file: File): Bitmap =
