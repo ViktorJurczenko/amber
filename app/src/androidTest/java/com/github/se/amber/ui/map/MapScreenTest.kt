@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -146,6 +147,9 @@ class MapScreenTest {
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.patientMapRecenter)
         )
+    recenter.performClick()
+    assertEquals(MediaMapLocationState.Searching, viewModel.locationState.value)
+
     updates.value = LocationUpdate.LocationOff
     composeTestRule.waitUntil(5_000) {
       viewModel.locationState.value == MediaMapLocationState.LocationOff
@@ -174,9 +178,14 @@ class MapScreenTest {
         .assertIsDisplayed()
     recenter.performClick()
 
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performTextInput("Lausanne")
+    val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
+    search.performTextInput("La")
+    search.performImeAction()
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+
+    search.performTextInput("usanne")
     composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.suggestions.isNotEmpty() }
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performImeAction()
+    search.performImeAction()
     composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.selectedPlace == place }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
@@ -185,7 +194,7 @@ class MapScreenTest {
   fun missingLocationPermissionKeepsMapVisibleAndRecenterRequestsIt() {
     var permissionReported = false
     val viewModel = createViewModel(permissionStatus = { permissionReported })
-    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+    composeTestRule.setContent { MapScreenPreview(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule

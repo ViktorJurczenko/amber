@@ -523,6 +523,15 @@ class MediaMapViewModelTest {
     assertEquals(1, calls)
     assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
     assertFalse(viewModel.placeSearchState.value.isSearching)
+
+    viewModel.selectPlace(place)
+    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+
+    assertEquals(2, calls)
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
   }
 
   @Test

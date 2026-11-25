@@ -362,7 +362,6 @@ class MediaMapViewModel(
    */
   fun selectPlace(place: GeoLocation) {
     if (place !in _placeSearchState.value.suggestions || place.pointOrNull() == null) return
-    placeSearchJob?.cancel()
     _placeSearchState.value =
         MapPlaceSearchState(query = place.placeName.orEmpty(), selectedPlace = place)
   }

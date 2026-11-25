@@ -220,8 +220,9 @@ fun MapScreen(
   }
 }
 
+/** Preview of the patient map; [viewModel] can be supplied by tests to avoid live repositories. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-private fun MapScreenPreview() {
-  AmberAppTheme { MapScreen() }
+internal fun MapScreenPreview(viewModel: MediaMapViewModel = viewModel()) {
+  AmberAppTheme { MapScreen(viewModel = viewModel) }
 }
