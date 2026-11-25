@@ -271,6 +271,40 @@ test("deleteAccount frees the patient slot when the patient is deleted", async (
   assert.equal(circle.createdBy, "gone");
 });
 
+/** @returns {string[]} the paths of the appointments still stored in the shared circle */
+function sharedAppointments() {
+  return [...state.store.keys()].filter((key) => key.startsWith("careCircles/shared/appointments/"));
+}
+
+test("deleteAccount deletes every appointment of the circle when the patient is deleted", async () => {
+  setupAccounts();
+  const {deleteAccount} = callableModule({firestore: storedFirestore()});
+
+  await deleteAccount({auth: freshAuth("patient"), data: {}});
+
+  // none of them names the patient, yet each one was part of their schedule
+  assert.deepEqual(sharedAppointments(), []);
+  assert.equal(state.store.has("careCircles/shared"), true);
+});
+
+test("deleteAccount deletes the patient's appointments when retried after a failure", async () => {
+  setupAccounts();
+  const {deleteAccount} = callableModule({firestore: storedFirestore()});
+  const failingPath = "careCircles/shared/appointments/physio";
+  state.failWrite = (action, target) => action === "delete" && target === failingPath;
+  await assert.rejects(
+    deleteAccount({auth: freshAuth("patient"), data: {}}),
+    {message: `Failed delete ${failingPath}`},
+  );
+
+  state.failWrite = null;
+  await deleteAccount({auth: freshAuth("patient"), data: {}});
+
+  // the circle still named them as patient, so the retry deletes them all again
+  assert.deepEqual(sharedAppointments(), []);
+  assert.equal(state.store.get("careCircles/shared").patientId, "");
+});
+
 test("deleteAccount keeps the circle of a last caregiver while its patient remains", async () => {
   setupAccounts();
   const {nicknames: _nicknames, ...circle} = state.store.get("careCircles/shared");

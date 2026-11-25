@@ -38,7 +38,6 @@
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
-
     <!-- EmailSignIn -->
     <string name="signInWelcome">Welcome to Amber</string>
     <string name="signInInstruction">Sign in with Google to access your account or create one.</string>
@@ -198,6 +197,9 @@
     <string name="createInvitationUsage">This code can only be used once.\nIt\'s active 30 days after its creation.</string>
     <string name="createInvitationListHeader">Code | Creation Time | Status</string>
     <string name="createInvitationListRow">%1$s | %2$s | %3$s</string>
+    <string name="createInvitationCopyCode">Copy code %1$s</string>
+    <string name="createInvitationClipboardLabel">Invitation code</string>
+    <string name="createInvitationCodeCopied">Code copied</string>
     <string name="createInvitationStatusActive">ACTIVE</string>
     <string name="createInvitationStatusExpired">EXPIRED</string>
     <string name="createInvitationStatusUsed">USED</string>
@@ -427,6 +429,7 @@
     <string name="audioPlaybackLoading">Loading</string>
     <string name="audioPlaybackRetry">Retry</string>
     <string name="audioPlaybackError">This memo could not be played.</string>
+
     <!-- MediaMap -->
     <string name="patientMapSearchHint">Look up a place</string>
     <string name="patientMapOverview">MAP OVERVIEW</string>
@@ -442,6 +445,22 @@
     <string name="mediaMapErrorLoadProfile">Failed to load the profile.</string>
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
     <string name="mediaMapErrorLoadMedia">Failed to load the memories of the map.</string>
+
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Appointment reminders</string>
+    <string name="appointmentReminderTitle">Upcoming appointment</string>
+    <string name="appointmentReminderToday">Today</string>
+    <string name="appointmentReminderTomorrow">Tomorrow</string>
+    <!-- %1$s is the day, %2$s the time, %3$s the title, %4$s the other people coming -->
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · with %4$s</string>
+    <!-- Patterns of java.time DateTimeFormatter: "Monday 30 November", "14:00" -->
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <!-- Between the names of the other people coming. The quotes keep the space -->
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <!-- %1$s is every name but the last, joined by the separator above; %2$s is the last name -->
+    <string name="appointmentReminderLastNames">%1$s and %2$s</string>
 
     <!-- AddAppointment -->
     <string name="addAppointmentTitle">Add an event</string>
@@ -460,4 +479,8 @@
     <string name="addAppointmentErrorPermissionDenied">You do not have permission to add an event</string>
     <string name="addAppointmentErrorNoCircle">No care circle found.</string>
     <string name="addAppointmentErrorAdd">Could not add the event</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Previous month</string>
+    <string name="calendarNextMonth">Next month</string>
 </resources>

@@ -34,7 +34,6 @@
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
-
     <!-- EmailSignIn -->
     <string name="signInWelcome">Bienvenue sur Amber</string>
     <string name="signInInstruction">Connectez-vous avec Google pour accéder à votre compte ou en créer un.</string>
@@ -198,6 +197,9 @@
     <string name="createInvitationUsage">Ce code ne peut être utilisé qu\'une seule fois.\nIl reste actif 30 jours après sa création.</string>
     <string name="createInvitationListHeader">Code | Date de création | Statut</string>
     <string name="createInvitationListRow">%1$s | %2$s | %3$s</string>
+    <string name="createInvitationCopyCode">Copier le code %1$s</string>
+    <string name="createInvitationClipboardLabel">Code d\'invitation</string>
+    <string name="createInvitationCodeCopied">Code copié</string>
     <string name="createInvitationStatusActive">ACTIVE</string>
     <string name="createInvitationStatusExpired">EXPIRÉE</string>
     <string name="createInvitationStatusUsed">UTILISÉE</string>
@@ -446,6 +448,18 @@
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
 
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Rappels de rendez-vous</string>
+    <string name="appointmentReminderTitle">Rendez-vous à venir</string>
+    <string name="appointmentReminderToday">Aujourd\'hui</string>
+    <string name="appointmentReminderTomorrow">Demain</string>
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · avec %4$s</string>
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <string name="appointmentReminderLastNames">%1$s et %2$s</string>
+
     <!-- AddAppointment -->
     <string name="addAppointmentTitle">Ajouter un événement</string>
     <string name="addAppointmentTitleLabel">Titre</string>
@@ -463,4 +477,8 @@
     <string name="addAppointmentErrorPermissionDenied">Vous n\'avez pas la permission d\'ajouter un événement</string>
     <string name="addAppointmentErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="addAppointmentErrorAdd">Impossible d\'ajouter l\'événement</string>
+
+    <!-- Calendar -->
+    <string name="calendarPreviousMonth">Mois précédent</string>
+    <string name="calendarNextMonth">Mois suivant</string>
 </resources>
