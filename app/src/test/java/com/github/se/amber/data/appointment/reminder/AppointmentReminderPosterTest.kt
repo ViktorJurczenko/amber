@@ -18,6 +18,8 @@ import io.mockk.mockk
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,7 +58,7 @@ class AppointmentReminderPosterTest {
         {
           val uid = firstArg<String>()
           Result.success(
-              UserProfile(uid = uid, person = Person(id = uid, firstName = NAMES[uid]!!))
+              UserProfile(uid = uid, person = Person(id = uid, firstName = NAMES.getValue(uid)))
           )
         }
     signIn(PATIENT)
@@ -70,7 +72,11 @@ class AppointmentReminderPosterTest {
   private fun post(occurrence: Appointment = DOCTOR, minutes: Int = 60) = runBlocking {
     poster.post(
         CIRCLE,
-        PlannedReminder(occurrence, minutes, occurrence.startAt - minutes * 60_000L),
+        PlannedReminder(
+            occurrence,
+            minutes,
+            occurrence.startAt - minutes.minutes.inWholeMilliseconds,
+        ),
     )
   }
 
@@ -113,7 +119,7 @@ class AppointmentReminderPosterTest {
     post(minutes = 24 * 60)
     post(minutes = 60)
     // the next occurrence of a repeating appointment shares its id, but not its start
-    post(DOCTOR.copy(startAt = DOCTOR.startAt + 7 * 24 * 3_600_000L))
+    post(DOCTOR.copy(startAt = DOCTOR.startAt + 7.days.inWholeMilliseconds))
 
     val tags = shown.map { it.tag }
     assertEquals(tags[0], tags[1])
