@@ -46,6 +46,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
+/** Stable tag used by UI tests to locate the Google Maps view. */
 object MapScreenTestTags {
   const val GOOGLE_MAP = "map_google_map"
 }
@@ -54,7 +55,14 @@ private const val INITIAL_LATITUDE = 46.5197
 private const val INITIAL_LONGITUDE = 6.6323
 private const val INITIAL_ZOOM = 14f
 
-/** Patient map centered on the first available device position; media pins come later. */
+/**
+ * Patient map centered on the first available device position.
+ *
+ * This composable handles Android's permission launcher and Google Maps camera.
+ *
+ * @param modifier modifier applied to the screen
+ * @param onTabSelected Called when the user selects a patient navigation tab.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -86,6 +94,7 @@ fun MapScreen(
         )
   }
 
+  // Check permissions when this screen enters composition, not on every recomposition.
   LaunchedEffect(Unit) {
     viewModel.refreshPermission()
     if (viewModel.locationState.value == MediaMapLocationState.NoPermission) {
@@ -100,6 +109,8 @@ fun MapScreen(
   }
 
   // When a fresh GPS position arrives, map centers it again to correct it
+  // A last-known fix can center the map immediately; a fresh fix replaces it once. After that,
+  // automatic camera moves stop so location updates do not override the user's map gestures
   LaunchedEffect(userPosition) { // Runs when the reported position changes
     // If there is a position and the user has not centered on a fresh one yet
     if (userPosition != null && !centeredOnFreshPosition) {
@@ -135,6 +146,7 @@ fun MapScreen(
           cameraPositionState = cameraPositionState,
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
+          // Reserve space for the position card so Google's zoom controls stay accessible.
           contentPadding =
               PaddingValues(
                   end = PATIENT_PADDING_MINI,
@@ -150,6 +162,7 @@ fun MapScreen(
           modifier = Modifier.align(Alignment.BottomCenter).padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
           onRecenter = {
+            // The ViewModel chooses an action; the UI performs the permission or camera API call
             when (val action = viewModel.recenter()) {
               // Ask for permission
               MapRecenterAction.RequestPermission ->

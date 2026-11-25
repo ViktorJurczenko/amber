@@ -38,6 +38,7 @@ import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
+/** Stable identifiers for the search controls and position card in UI tests. */
 object MapTestTags {
   const val SEARCH = "map_search"
   const val POSITION_CARD = "map_position_card"
@@ -69,7 +70,16 @@ internal fun MapSearchField(
   )
 }
 
-/** Position card that reflects the live GPS state. */
+/**
+ * Position card that reflects the live GPS state.
+ *
+ * [locationState] selects the translated status text. The parent handles [onRecenter], including
+ * permission requests and camera movement, so this component only renders state and user input.
+ *
+ * @param modifier Positions the card at the bottom of the map.
+ * @param locationState Current permission, GPS, or position state supplied by the ViewModel.
+ * @param onRecenter Called when the user taps the recenter button.
+ */
 @Composable
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
@@ -132,12 +142,14 @@ internal fun MapPositionCard(
   }
 }
 
+/** Preview of the search field with its default empty query. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapSearchFieldPreview() {
   AmberAppTheme { MapSearchField() }
 }
 
+/** Preview of the position card while the device is searching for a location. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapPositionCardPreview() {
