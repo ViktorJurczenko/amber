@@ -157,10 +157,11 @@ class MapScreenTest {
   @Test
   fun permissionLossAndGpsFailureKeepTheMapVisible() {
     var permissionReported = false
-    val updates = flow<LocationUpdate> {
-      emit(LocationUpdate.Searching)
-      throw IllegalStateException()
-    }
+    val updates =
+        flow<LocationUpdate> {
+          emit(LocationUpdate.Searching)
+          throw IllegalStateException()
+        }
     val viewModel = createViewModel(updates, permissionStatus = { permissionReported })
     composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
 
