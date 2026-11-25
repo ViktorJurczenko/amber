@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -465,6 +466,41 @@ class PersonPhotoRepositoryFirebaseTest {
         PersonPhotoError.PermissionDenied,
         repo.setPhoto(circle, PERSON, picture()).exceptionOrNull(),
     )
+
+    // A storage error outside the refused-upload set keeps that error.
+    val rejected = storageError(500)
+    fileStorage.downloadError = rejected
+    val stored = repo.setPhoto(circle, PERSON, picture()).exceptionOrNull()
+    assertTrue(stored is PersonPhotoError.Unknown)
+    assertSame(rejected, (stored as PersonPhotoError.Unknown).source)
+  }
+
+  @Test
+  fun setPhotoSucceedsWhenTheProbeFileCannotBeDeleted() = runTest {
+    val source = picture()
+    lateinit var probe: File
+    mockkStatic(File::class)
+    try {
+      every { File.createTempFile(any<String>(), any<String>()) } answers
+          {
+            val created = File(tmp.root, "tmp-${System.nanoTime()}${secondArg<String>()}")
+            check(created.createNewFile())
+            if (secondArg<String>() == ".part") {
+              object : File(created.path) {
+                    override fun delete() = false
+                  }
+                  .also { probe = it }
+            } else {
+              created
+            }
+          }
+      fileStorage.onUpload = { throw storageError(403) }
+      val result = repository().setPhoto(circle, PERSON, source)
+      assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+      assertTrue(probe.exists())
+    } finally {
+      unmockkStatic(File::class)
+    }
   }
 
   @Test
