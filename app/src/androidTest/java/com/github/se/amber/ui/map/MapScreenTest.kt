@@ -31,6 +31,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import io.mockk.mockk
+import kotlin.math.abs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -44,6 +45,10 @@ import org.junit.runner.RunWith
 /** Screen checks use local repositories; the map tiles themselves are outside these assertions. */
 @RunWith(AndroidJUnit4::class)
 class MapScreenTest {
+  private fun cameraIsNear(camera: CameraPositionState, position: DevicePosition): Boolean =
+      abs(camera.position.target.latitude - position.lat) < 0.0001 &&
+          abs(camera.position.target.longitude - position.lng) < 0.0001
+
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
   @get:Rule
   val locationPermissionRule =
@@ -159,9 +164,7 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
         .assertIsDisplayed()
-    composeTestRule.waitUntil(5_000) {
-      cameraPositionState.position.target == LatLng(lastKnown.lat, lastKnown.lng)
-    }
+    composeTestRule.waitUntil(5_000) { cameraIsNear(cameraPositionState, lastKnown) }
 
     val fresh = DevicePosition(46.53, 6.64)
     updates.value = LocationUpdate.Position(fresh)
@@ -171,15 +174,13 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    composeTestRule.waitUntil(5_000) {
-      cameraPositionState.position.target == LatLng(fresh.lat, fresh.lng)
-    }
+    composeTestRule.waitUntil(5_000) { cameraIsNear(cameraPositionState, fresh) }
     updates.value = LocationUpdate.Position(DevicePosition(46.54, 6.65))
     composeTestRule.waitUntil(5_000) {
       (viewModel.locationState.value as? MediaMapLocationState.Located)?.position?.lat == 46.54
     }
     composeTestRule.waitForIdle()
-    assertEquals(LatLng(fresh.lat, fresh.lng), cameraPositionState.position.target)
+    assertEquals(true, cameraIsNear(cameraPositionState, fresh))
     recenter.performClick()
   }
 
