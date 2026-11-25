@@ -48,6 +48,7 @@ import com.github.se.amber.ui.caregiver.upload.text.UploadTextScreen
 import com.github.se.amber.ui.media.LocalMediaRetrySignal
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.CaregiverScreen
+import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.NavigationActions
 import com.github.se.amber.ui.navigation.OnboardingScreen
@@ -289,12 +290,7 @@ fun AmberApp(
       }
       composable(
           route = PatientScreen.SeeMediasSpecificPerson.route,
-          arguments =
-              listOf(
-                  navArgument(PatientScreen.SeeMediasSpecificPerson.ARG_PERSON_ID) {
-                    type = NavType.StringType
-                  }
-              ),
+          arguments = listOf(navArgument(NavArgs.PERSON_ID) { type = NavType.StringType }),
       ) { backStackEntry ->
         val personId = navigationActions.personIdFrom(backStackEntry.arguments)
         SeeMediasSpecificPersonScreen(

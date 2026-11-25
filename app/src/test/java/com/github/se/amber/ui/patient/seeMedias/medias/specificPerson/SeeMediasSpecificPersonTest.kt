@@ -42,11 +42,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.util.Locale
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.resetMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -97,11 +94,6 @@ class SeeMediasSpecificPersonScreenTest {
     coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
     every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
     coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
-  }
-
-  @After
-  fun tearDown() {
-    Dispatchers.resetMain()
   }
 
   /** Text of [id] in the current test language, with [args] for its placeholders. */

@@ -43,12 +43,9 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.resetMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -110,11 +107,6 @@ class SeePicturesScreenTest {
         Result.success(CareCircle(id = "circle1"))
     coEvery { mediaRepository.observeApprovedMedia("circle1") } returns flowOf(emptyList())
     coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
-  }
-
-  @After
-  fun tearDown() {
-    Dispatchers.resetMain()
   }
 
   // The ViewModel is created before the composition: its init runs right away (Unconfined)
