@@ -10,8 +10,10 @@ import com.github.se.amber.data.location.FakeLocationUpdatesRepository
 import com.github.se.amber.data.location.FakeMediaLocationRepository
 import com.github.se.amber.data.location.LocationUpdate
 import com.github.se.amber.data.location.MediaLocationRepository
+import com.github.se.amber.data.location.PlaceSearchRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.NEARBY_EXIT_MARGIN_METERS
 import com.github.se.amber.model.location.NEARBY_RADIUS_METERS
@@ -32,10 +34,12 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -82,6 +86,7 @@ class MediaMapViewModelTest {
   private val activeCircleRepository = FakeActiveCircleRepository("circle1")
   private val connectivity = FakeConnectivityMonitor(online = true)
   private val locationUpdates = FakeLocationUpdatesRepository(permission = true)
+  private val emptyPlaceSearch = PlaceSearchRepository { Result.success(emptyList()) }
 
   private val caregiver =
       UserProfile(
@@ -121,13 +126,17 @@ class MediaMapViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel(repository: MediaLocationRepository = mediaLocationRepository) =
+  private fun createViewModel(
+      repository: MediaLocationRepository = mediaLocationRepository,
+      placeSearch: PlaceSearchRepository = emptyPlaceSearch,
+  ) =
       MediaMapViewModel(
           repository,
           profileRepository,
           activeCircleRepository,
           connectivity,
           locationUpdates,
+          placeSearch,
       )
 
   /**
@@ -228,7 +237,7 @@ class MediaMapViewModelTest {
   fun selectingAPinWhileLoadingDoesNothing() {
     // The screen is already loading when the pin is selected, and its pins arrive after
     val updates = MutableSharedFlow<List<MediaMarker>>(extraBufferCapacity = 1)
-    val viewModel = createViewModel { updates }
+    val viewModel = createViewModel(repository = { updates })
     assertEquals(MediaMapUIState.Loading, viewModel.uiState.value)
 
     viewModel.selectMarker(twoPins[0].id)
@@ -439,6 +448,137 @@ class MediaMapViewModelTest {
 
     locationUpdates.updates.value = LocationUpdate.LocationOff
     assertEquals(MapRecenterAction.PositionUnavailable, viewModel.recenter())
+  }
+
+  @Test
+  fun placeSearchUsesOnlyTheLatestValidQueryAndAcceptsASuggestedPlace() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val searched = mutableListOf<String>()
+    val repository = PlaceSearchRepository { query ->
+      searched += query
+      Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("La")
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+    viewModel.updateSearchQuery("Lausa")
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    assertEquals(listOf("Lausanne"), searched)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+
+    viewModel.selectPlace(GeoLocation(lat = 1.0, lng = 1.0, placeName = "Other"))
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    viewModel.selectPlace(place)
+    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+    assertEquals("Lausanne", viewModel.placeSearchState.value.query)
+    assertTrue(viewModel.placeSearchState.value.suggestions.isEmpty())
+  }
+
+  @Test
+  fun failedPlaceSearchCanRetryAndEditingTheQueryClearsOldResults() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    var calls = 0
+    val repository = PlaceSearchRepository {
+      calls++
+      if (calls == 1) Result.failure(IllegalStateException("offline"))
+      else Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Geneva")
+    scheduler.advanceUntilIdle()
+    assertTrue(viewModel.placeSearchState.value.searchFailed)
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+
+    viewModel.retryPlaceSearch()
+    scheduler.advanceUntilIdle()
+    assertEquals(2, calls)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+
+    viewModel.updateSearchQuery("")
+    assertEquals(MapPlaceSearchState(), viewModel.placeSearchState.value)
+  }
+
+  @Test
+  fun unchangedQueryDoesNotSearchAgainAndRetryOnlyRunsAfterFailure() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    var calls = 0
+    val repository = PlaceSearchRepository {
+      calls++
+      Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.retryPlaceSearch()
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    viewModel.updateSearchQuery("Lausanne")
+    viewModel.retryPlaceSearch()
+
+    assertEquals(1, calls)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+    assertFalse(viewModel.placeSearchState.value.isSearching)
+
+    viewModel.selectPlace(place)
+    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+
+    assertEquals(2, calls)
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    assertEquals(listOf(place), viewModel.placeSearchState.value.suggestions)
+  }
+
+  @Test
+  fun suggestionMustHaveCoordinatesAndUnnamedSuggestionCanBeSelected() {
+    val scheduler = useStandardDispatcher().scheduler
+    val withoutCoordinates = GeoLocation(placeName = "Unknown place")
+    val unnamed = GeoLocation(lat = 46.52, lng = 6.63)
+    val repository = PlaceSearchRepository { Result.success(listOf(withoutCoordinates, unnamed)) }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    viewModel.selectPlace(withoutCoordinates)
+    assertNull(viewModel.placeSearchState.value.selectedPlace)
+    assertEquals(2, viewModel.placeSearchState.value.suggestions.size)
+
+    viewModel.selectPlace(unnamed)
+    assertEquals(unnamed, viewModel.placeSearchState.value.selectedPlace)
+    assertEquals("", viewModel.placeSearchState.value.query)
+  }
+
+  @Test
+  fun lateResultForAnOldQueryDoesNotReplaceCurrentSuggestions() {
+    val scheduler = useStandardDispatcher().scheduler
+    val oldPlace = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val newPlace = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    val repository = PlaceSearchRepository { query ->
+      if (query == "Lausanne") {
+        // Simulate a source that returns a response even after its request was cancelled.
+        try {
+          delay(1_000)
+        } catch (_: CancellationException) {}
+        Result.success(listOf(oldPlace))
+      } else {
+        Result.success(listOf(newPlace))
+      }
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceTimeBy(300)
+    scheduler.runCurrent()
+    viewModel.updateSearchQuery("Geneva")
+    scheduler.advanceUntilIdle()
+
+    assertEquals("Geneva", viewModel.placeSearchState.value.query)
+    assertEquals(listOf(newPlace), viewModel.placeSearchState.value.suggestions)
   }
 
   @Test

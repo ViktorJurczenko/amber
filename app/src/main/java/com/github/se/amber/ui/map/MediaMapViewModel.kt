@@ -17,16 +17,24 @@ import com.github.se.amber.data.location.LocationUpdatesRepository
 import com.github.se.amber.data.location.LocationUpdatesRepositoryProvider
 import com.github.se.amber.data.location.MediaLocationRepository
 import com.github.se.amber.data.location.MediaLocationRepositoryProvider
+import com.github.se.amber.data.location.PlaceSearchRepository
+import com.github.se.amber.data.location.PlaceSearchRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.NEARBY_EXIT_MARGIN_METERS
 import com.github.se.amber.model.location.NEARBY_MAX_ACCURACY_METERS
 import com.github.se.amber.model.location.isPreciseWithin
 import com.github.se.amber.model.location.nearby
+import com.github.se.amber.model.location.pointOrNull
+import com.github.se.amber.model.validation.InputValidation
+import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -139,6 +147,28 @@ sealed interface MapRecenterAction {
 }
 
 /**
+ * Search field state, including the floating suggestions before a place is selected.
+ *
+ * [hasSearched] distinguishes an empty result from a query that has not been sent yet. Selecting
+ * [selectedPlace] closes the suggestion popup while keeping its name in [query].
+ *
+ * @param query Current text shown in the search field.
+ * @param suggestions Places returned for the current query.
+ * @param selectedPlace Place chosen by the user, if any.
+ * @param isSearching Whether a place lookup is in progress.
+ * @param searchFailed Whether the latest lookup failed and can be retried.
+ * @param hasSearched Whether a lookup completed, allowing an empty result to be shown.
+ */
+data class MapPlaceSearchState(
+    val query: String = "",
+    val suggestions: List<GeoLocation> = emptyList(),
+    val selectedPlace: GeoLocation? = null,
+    val isSearching: Boolean = false,
+    val searchFailed: Boolean = false,
+    val hasSearched: Boolean = false,
+)
+
+/**
  * How long the GPS keeps running after the map stops being shown: long enough for a screen
  * rotation, short enough not to run in the background.
  */
@@ -154,6 +184,7 @@ internal const val MAP_LOCATION_STOP_DELAY_MILLIS = 5_000L
  * @param activeCircleRepository picks which of their circles to show.
  * @param connectivityMonitor tells whether the phone is offline, so the screen can say so.
  * @param locationUpdatesRepository gives the user's live position, and whether they allowed it.
+ * @param placeSearchRepository looks up place suggestions for the search field.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MediaMapViewModel(
@@ -165,6 +196,8 @@ class MediaMapViewModel(
     connectivityMonitor: ConnectivityMonitor = ConnectivityMonitorProvider.monitor,
     private val locationUpdatesRepository: LocationUpdatesRepository =
         LocationUpdatesRepositoryProvider.default.repository,
+    private val placeSearchRepository: PlaceSearchRepository =
+        PlaceSearchRepositoryProvider.default.repository,
 ) : ViewModel() {
 
   /** The pins, or why there are none yet; the open pin and the offline flag are kept apart. */
@@ -181,14 +214,11 @@ class MediaMapViewModel(
   // or an older one is added, and the pin must stay open then
   private val selectedMediaIds = MutableStateFlow<Set<String>>(emptySet())
   private val errorMsgRes = MutableStateFlow<Int?>(null)
-  private val _searchQuery = MutableStateFlow("")
-
-  // Text entered in the map search field
-  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-  fun updateSearchQuery(query: String) {
-    _searchQuery.value = query
-  }
+  private val _placeSearchState = MutableStateFlow(MapPlaceSearchState())
+  /** Search state exposed read-only so the screen sends edits through ViewModel actions. */
+  val placeSearchState: StateFlow<MapPlaceSearchState> = _placeSearchState.asStateFlow()
+  // Cancel the previous delayed lookup when the query changes or a place is selected.
+  private var placeSearchJob: Job? = null
 
   /** Screen content derived from loaded pins, the selected pin, errors, and connectivity. */
   val uiState: StateFlow<MediaMapUIState> =
@@ -299,6 +329,71 @@ class MediaMapViewModel(
         is MediaMapLocationState.Located -> MapRecenterAction.MoveTo(location.position)
         else -> MapRecenterAction.PositionUnavailable
       }
+
+  /**
+   * Updates the field and cancels results for text the patient has already changed. Input is
+   * cleaned with [InputValidation.PLACE_QUERY]; short queries do not reach the repository.
+   *
+   * @param query Text entered in the search field.
+   */
+  fun updateSearchQuery(query: String) {
+    val cleaned = InputValidation.PLACE_QUERY.clean(query)
+    if (cleaned == _placeSearchState.value.query && _placeSearchState.value.selectedPlace == null) {
+      return
+    }
+    placeSearchJob?.cancel()
+    val shouldSearch = cleaned.trim().length >= MAP_MIN_PLACE_QUERY_LENGTH
+    _placeSearchState.value = MapPlaceSearchState(query = cleaned, isSearching = shouldSearch)
+    if (shouldSearch) searchPlaces(cleaned)
+  }
+
+  /** Repeats a failed lookup without changing the query. */
+  fun retryPlaceSearch() {
+    val state = _placeSearchState.value
+    if (!state.searchFailed) return
+    _placeSearchState.value = state.copy(isSearching = true, searchFailed = false)
+    searchPlaces(state.query)
+  }
+
+  /**
+   * Picks a suggested point; the screen moves the camera after observing [placeSearchState].
+   *
+   * @param place A currently shown suggestion with valid coordinates; other places are ignored.
+   */
+  fun selectPlace(place: GeoLocation) {
+    if (place !in _placeSearchState.value.suggestions || place.pointOrNull() == null) return
+    _placeSearchState.value =
+        MapPlaceSearchState(query = place.placeName.orEmpty(), selectedPlace = place)
+  }
+
+  /**
+   * Runs only the latest lookup after the patient pauses typing. The query check also discards a
+   * response if the user edited or selected a place in the meantime.
+   *
+   * @param query Cleaned search text sent to the place repository.
+   */
+  private fun searchPlaces(query: String) {
+    placeSearchJob?.cancel()
+    placeSearchJob = viewModelScope.launch {
+      delay(MAP_PLACE_SEARCH_DELAY_MILLIS.milliseconds)
+      val result = placeSearchRepository.search(query)
+      val current = _placeSearchState.value
+      if (current.query != query || current.selectedPlace != null) return@launch
+      _placeSearchState.value =
+          result.fold(
+              onSuccess = { places ->
+                current.copy(suggestions = places, isSearching = false, hasSearched = true)
+              },
+              onFailure = {
+                current.copy(
+                    suggestions = emptyList(),
+                    isSearching = false,
+                    searchFailed = true,
+                )
+              },
+          )
+    }
+  }
 
   /** Clears the non-blocking error message. */
   fun clearErrorMsg() {
@@ -422,5 +517,6 @@ class MediaMapViewModel(
 
   private companion object {
     const val TAG = "MediaMapViewModel"
+    const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
   }
 }

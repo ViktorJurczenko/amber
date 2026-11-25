@@ -107,6 +107,7 @@ const val MAX_CHAR_DEFAULT = 20
 // The limits themselves are in InputValidation, which the ViewModels enforce
 const val MAX_CHAR_DESCRIPTION = InputValidation.DESCRIPTION_MAX_LENGTH
 const val MAX_CHAR_PLACE_SEARCH = InputValidation.PLACE_QUERY_MAX_LENGTH
+const val MAP_MIN_PLACE_QUERY_LENGTH = 3
 const val MAX_CHAR_NAME = InputValidation.NAME_MAX_LENGTH
 
 const val MAX_VISIBLE_ITEM = 5 // Number of items visible at once in the Date Pickers

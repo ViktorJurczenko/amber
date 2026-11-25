@@ -440,6 +440,8 @@
     <string name="patientMapLastKnown">Dernière position connue</string>
     <string name="patientMapLocationFound">Position actuelle</string>
     <string name="patientMapRecenter">Recentrer</string>
+    <string name="patientMapSearchFailed">Impossible de rechercher des lieux. Vérifiez votre connexion et réessayez.</string>
+    <string name="patientMapNoPlaceFound">Aucun lieu trouvé. Essayez une autre recherche.</string>
     <string name="mediaMapErrorNoProfile">Aucun profil trouvé.</string>
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
