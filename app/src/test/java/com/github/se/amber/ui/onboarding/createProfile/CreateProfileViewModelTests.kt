@@ -25,6 +25,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -160,6 +161,17 @@ class CreateProfileViewModelTests {
     advanceUntilIdle()
     assertEquals("", surnameFirst.uiState.value.name)
     assertEquals(typed, surnameFirst.uiState.value.surname)
+
+    // Typed, then deleted: the user cleared the field, so the saved name doesn't come back
+    val clearedLoad = CompletableDeferred<Result<UserProfile?>>()
+    val cleared = viewModelLoading { clearedLoad.await() }
+    runCurrent()
+    cleared.onNameChange(typed)
+    cleared.onNameChange("")
+    clearedLoad.complete(Result.success(savedProfile(role = Role.PATIENT)))
+    advanceUntilIdle()
+    assertEquals("", cleared.uiState.value.name)
+    assertEquals("", cleared.uiState.value.surname)
   }
 
   @Test
@@ -190,7 +202,12 @@ class CreateProfileViewModelTests {
     runCurrent()
     assertTrue(stuck.uiState.value.isLoading)
 
-    advanceTimeBy(PROFILE_LOAD_TIMEOUT)
+    // still waiting just before the timeout, so it really waits for PROFILE_LOAD_TIMEOUT
+    advanceTimeBy(PROFILE_LOAD_TIMEOUT - 1.milliseconds)
+    runCurrent()
+    assertTrue(stuck.uiState.value.isLoading)
+
+    advanceTimeBy(1.milliseconds)
     runCurrent()
 
     // not loading anymore, and the form is empty as if there were no profile

@@ -1,7 +1,7 @@
 // Written by Alaabrine with the aid of an AI coding agent
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.onboarding.createProfile
 
@@ -89,6 +89,10 @@ class CreateProfileViewModel(
 
   private var savedProfile: SavedOnboardingProfile? = null
 
+  // Set once the user types in either field, even if they delete it again: the saved name must not
+  // replace what they chose to clear
+  private var typed = false
+
   init {
     viewModelScope.launch { loadSavedProfile() }
   }
@@ -106,10 +110,7 @@ class CreateProfileViewModel(
       val name = profile.person.firstName
       val surname = profile.person.lastName
       savedProfile = SavedOnboardingProfile(name = name, surname = surname, role = profile.role)
-      _uiState.update {
-        if (it.name.isEmpty() && it.surname.isEmpty()) it.copy(name = name, surname = surname)
-        else it
-      }
+      if (!typed) _uiState.update { it.copy(name = name, surname = surname) }
     } finally {
       _uiState.update { it.copy(isLoading = false) }
     }
@@ -246,6 +247,7 @@ class CreateProfileViewModel(
   }
 
   private fun updateNameField(name: String? = null, surname: String? = null) {
+    typed = true
     _uiState.update {
       it.copy(
           name = name ?: it.name,

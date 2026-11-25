@@ -230,6 +230,7 @@ class CreateProfileUITests {
     val load = CompletableDeferred<Result<UserProfile?>>()
     val saved = Person(id = "uid", firstName = "Ada", lastName = "Lovelace")
     var createdPerson: Person? = null
+    var updateCalls = 0
     var nextScreenFor: Role? = null
     val viewModel =
         CreateProfileViewModel(
@@ -239,8 +240,13 @@ class CreateProfileUITests {
                 return Result.success(Unit)
               }
 
-              override suspend fun updateOnboardingProfile(person: Person, role: Role) =
-                  Result.success(Unit)
+              override suspend fun updateOnboardingProfile(
+                  person: Person,
+                  role: Role,
+              ): Result<Unit> {
+                updateCalls++
+                return Result.success(Unit)
+              }
 
               override suspend fun getCurrentProfile() = load.await()
 
@@ -276,6 +282,7 @@ class CreateProfileUITests {
     composeTestRule.waitForIdle()
     assertEquals(Role.PATIENT, nextScreenFor)
     assertNull(createdPerson)
+    assertEquals(0, updateCalls)
   }
 
   @Test
