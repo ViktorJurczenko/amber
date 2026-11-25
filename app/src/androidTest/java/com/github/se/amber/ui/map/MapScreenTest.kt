@@ -25,6 +25,7 @@ import com.github.se.amber.data.connectivity.ConnectivityMonitor
 import com.github.se.amber.data.location.LocationUpdate
 import com.github.se.amber.data.location.LocationUpdatesRepository
 import com.github.se.amber.data.profile.ProfileRepository
+import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
@@ -129,6 +130,37 @@ class MapScreenTest {
         .assertIsSelected()
   }
 
+  @Test
+  fun locationFixesUpdateTheMapAndRecenterUsesTheFreshPosition() {
+    val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
+    val viewModel = createViewModel(updates)
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
+
+    val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
+    updates.value = LocationUpdate.Position(lastKnown)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == lastKnown
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
+        .assertIsDisplayed()
+
+    val fresh = DevicePosition(46.53, 6.64)
+    updates.value = LocationUpdate.Position(fresh)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == fresh
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
+        .assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(MapRecenterAction.MoveTo(fresh), viewModel.recenter())
+  }
+
   // ActivityResultRegistry that answers deterministically and counts requests
   private val denied =
       mapOf(
@@ -216,5 +248,7 @@ class MapScreenTest {
     }
 
     composeTestRule.onNodeWithText(text(R.string.patientMapLocationUnavailable)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    assertEquals(MediaMapLocationState.Unavailable, viewModel.locationState.value)
   }
 }
