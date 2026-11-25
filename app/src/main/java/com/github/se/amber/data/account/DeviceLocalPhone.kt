@@ -4,6 +4,7 @@
 package com.github.se.amber.data.account
 
 import com.github.se.amber.data.directions.LAST_ROUTE_FILE_NAME
+import com.github.se.amber.data.directions.LAST_ROUTE_TEMPORARY_SUFFIX
 import com.github.se.amber.data.media.image.MediaImageMemory
 import com.github.se.amber.data.runEveryStep
 import com.github.se.amber.model.media.MediaRepository
@@ -49,7 +50,7 @@ class DeviceLocalPhone(
    * Deletes the files SelectedPictureReaderAndroid copies picked pictures to, camera photos, voice
    * memos that weren't uploaded (the recorder and the audio reader leave them as .m4a files
    * anywhere in the cache), and the last walking route, which shows where the patient lives and
-   * goes.
+   * goes, with any temporary copy of it an app killed mid-save left behind.
    *
    * @throws IOException if some are still there afterwards, naming one of them.
    */
@@ -61,9 +62,18 @@ class DeviceLocalPhone(
         val memos = cacheDir.walkTopDown().filter { it.isFile && it.extension == MEMO_EXTENSION }
         val captured = File(cacheDir, CAPTURED_DIR)
         val route = File(cacheDir, LAST_ROUTE_FILE_NAME)
+        val routeLeftovers = cacheDir.listFiles { file ->
+          file.name.startsWith(LAST_ROUTE_FILE_NAME) &&
+              file.name.endsWith(LAST_ROUTE_TEMPORARY_SUFFIX)
+        }
         // File.delete() also returns false when the file was already gone, which is fine.
         // walkBottomUp visits the files of captured_pictures before the folder itself.
-        val files = picked.orEmpty().toList() + memos + captured.walkBottomUp() + route
+        val files =
+            picked.orEmpty().toList() +
+                memos +
+                captured.walkBottomUp() +
+                route +
+                routeLeftovers.orEmpty()
         val left = files.filter { !it.delete() && it.exists() }
         if (left.isNotEmpty()) {
           throw IOException("Could not delete ${left.size} temporary file(s), e.g. ${left.first()}")

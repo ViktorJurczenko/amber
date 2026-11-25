@@ -97,7 +97,8 @@ class RouteFileTest {
   }
 
   /** The temporary files left in the folder. */
-  private fun temporaryFiles() = tempFolder.root.list().orEmpty().filter { it.endsWith(".tmp") }
+  private fun temporaryFiles() =
+      tempFolder.root.list().orEmpty().filter { it.endsWith(LAST_ROUTE_TEMPORARY_SUFFIX) }
 
   private companion object {
     const val SAVES_AT_ONCE = 20

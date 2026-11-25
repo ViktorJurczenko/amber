@@ -24,6 +24,8 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
@@ -42,29 +44,34 @@ interface RouteStore {
 /**
  * Keeps the last route as JSON in [file], in the app's cache: losing it only means no route
  * offline. Written to a temporary file first, then moved over [file] in one step, so an app killed
- * mid-write never leaves half a route, and two saves at once leave one whole route. A save that
- * fails leaves no temporary file behind.
+ * mid-write never leaves half a route. Saves run one at a time. A save that fails leaves no
+ * temporary file behind; one left by an app killed mid-save is deleted at sign-out, like [file]
+ * (see [LAST_ROUTE_TEMPORARY_SUFFIX]).
  */
 class RouteFile(
     private val file: File,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : RouteStore {
 
-  override suspend fun save(route: Route): Unit =
-      withContext(ioDispatcher) {
-        // A unique name per save: two saves at once, or a file left by a killed app, never share it
-        val temporary = File.createTempFile(file.name, TEMPORARY_SUFFIX, file.parentFile)
-        try {
-          temporary.writeText(route.toJson().toString())
-          // In one step, replacing the kept route on every platform, unlike File.renameTo
-          Files.move(temporary.toPath(), file.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
-        } finally {
-          // Nothing to delete once moved
-          if (!temporary.delete() && temporary.exists()) {
-            Log.w(TAG, "Couldn't delete ${temporary.name}")
-          }
+  // One save at a time: on Windows, a file can't be replaced while another move is replacing it
+  private val saving = Mutex()
+
+  override suspend fun save(route: Route): Unit = saving.withLock {
+    withContext(ioDispatcher) {
+      // A unique name: a temporary file left by a killed app is never written into
+      val temporary = File.createTempFile(file.name, LAST_ROUTE_TEMPORARY_SUFFIX, file.parentFile)
+      try {
+        temporary.writeText(route.toJson().toString())
+        // In one step, replacing the kept route on every platform, unlike File.renameTo
+        Files.move(temporary.toPath(), file.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+      } finally {
+        // Nothing to delete once moved
+        if (!temporary.delete() && temporary.exists()) {
+          Log.w(TAG, "Couldn't delete ${temporary.name}")
         }
       }
+    }
+  }
 
   override suspend fun load(): Route? =
       withContext(ioDispatcher) {
@@ -126,7 +133,6 @@ class RouteFile(
 
   private companion object {
     const val TAG = "RouteFile"
-    const val TEMPORARY_SUFFIX = ".tmp"
   }
 }
 
@@ -135,3 +141,10 @@ class RouteFile(
  * delete it (see DeviceLocalPhone): it holds where the patient lives and goes.
  */
 const val LAST_ROUTE_FILE_NAME = "last_route.json"
+
+/**
+ * The end of the name of a temporary file [RouteFile] saves through, in the same folder: the name
+ * is [LAST_ROUTE_FILE_NAME], a unique number, then this. One is left only when the app is killed
+ * mid-save. It holds a route too, so sign-out deletes it with the kept one (see DeviceLocalPhone).
+ */
+const val LAST_ROUTE_TEMPORARY_SUFFIX = ".tmp"
