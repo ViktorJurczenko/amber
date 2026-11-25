@@ -446,6 +446,22 @@
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
     <string name="mediaMapErrorLoadMedia">Failed to load the memories of the map.</string>
 
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Appointment reminders</string>
+    <string name="appointmentReminderTitle">Upcoming appointment</string>
+    <string name="appointmentReminderToday">Today</string>
+    <string name="appointmentReminderTomorrow">Tomorrow</string>
+    <!-- %1$s is the day, %2$s the time, %3$s the title, %4$s the other people coming -->
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · with %4$s</string>
+    <!-- Patterns of java.time DateTimeFormatter: "Monday 30 November", "14:00" -->
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <!-- Between the names of the other people coming. The quotes keep the space -->
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <!-- %1$s is every name but the last, joined by the separator above; %2$s is the last name -->
+    <string name="appointmentReminderLastNames">%1$s and %2$s</string>
+
     <!-- AddAppointment -->
     <string name="addAppointmentTitle">Add an event</string>
     <string name="addAppointmentTitleLabel">Title</string>

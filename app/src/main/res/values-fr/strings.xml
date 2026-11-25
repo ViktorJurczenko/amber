@@ -448,6 +448,18 @@
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
 
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Rappels de rendez-vous</string>
+    <string name="appointmentReminderTitle">Rendez-vous à venir</string>
+    <string name="appointmentReminderToday">Aujourd\'hui</string>
+    <string name="appointmentReminderTomorrow">Demain</string>
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · avec %4$s</string>
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <string name="appointmentReminderLastNames">%1$s et %2$s</string>
+
     <!-- AddAppointment -->
     <string name="addAppointmentTitle">Ajouter un événement</string>
     <string name="addAppointmentTitleLabel">Titre</string>

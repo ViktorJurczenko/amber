@@ -9,6 +9,9 @@
     <!-- FusedLocationUpdatesRepository, while the memories map is open; asked at runtime -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- AndroidAppointmentReminderNotifier. The app doesn't ask for it yet: on Android 13 and
+         later, the reminders show once the user allows notifications in the system settings -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".AmberApplication"

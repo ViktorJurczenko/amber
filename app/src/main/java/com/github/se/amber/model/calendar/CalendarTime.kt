@@ -3,6 +3,7 @@
 package com.github.se.amber.model.calendar
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -38,6 +39,17 @@ fun CalendarEvent.endDateTime(zone: ZoneId): LocalDateTime = endAt().toLocalDate
  * @return the time, in epoch milliseconds.
  */
 fun LocalDateTime.toEpochMillis(zone: ZoneId): Long = atZone(zone).toInstant().toEpochMilli()
+
+/**
+ * The day [epochMillis] falls on in [zone]. The reminders use it to find the day of an appointment
+ * from its start, and the day it is now.
+ *
+ * @param epochMillis the time, in epoch milliseconds.
+ * @param zone the time zone the day is counted in, usually the phone's.
+ * @return the day, in [zone].
+ */
+fun localDateOf(epochMillis: Long, zone: ZoneId): LocalDate =
+    epochMillis.toLocalDateTime(zone).toLocalDate()
 
 /** @return this time in epoch milliseconds, as a clock time in [zone]. */
 private fun Long.toLocalDateTime(zone: ZoneId): LocalDateTime =
