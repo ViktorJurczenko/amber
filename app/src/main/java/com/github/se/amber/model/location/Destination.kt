@@ -88,9 +88,10 @@ fun destinations(
  * @param nowMillis the current time, in epoch milliseconds. It is a parameter so that tests can
  *   choose it.
  */
-fun List<Appointment>.nextAppointmentWithPlace(nowMillis: Long): Appointment? = filter {
-  it.endAt() > nowMillis && it.toDestination() != null
-}.minWithOrNull(compareBy({ it.startAt }, { it.id }))
+fun List<Appointment>.nextAppointmentWithPlace(nowMillis: Long): Appointment? {
+  val notOverAndOffered = filter { it.endAt() > nowMillis && it.toDestination() != null }
+  return notOverAndOffered.minWithOrNull(compareBy({ it.startAt }, { it.id }))
+}
 
 /** A place found by the address search, or null if it has no real point or no name to show. */
 fun GeoLocation.toSearchDestination(): Destination? =
