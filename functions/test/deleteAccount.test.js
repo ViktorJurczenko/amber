@@ -2,6 +2,7 @@
 // Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor (Grok).
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {callableModule, resetState, state, storedFirestore} = require("./support/fakes");
@@ -147,6 +148,7 @@ test("deleteAccount leaves no trace of a caregiver and changes nobody else's dat
   const untouched = [
     "users/other",
     "users/patient",
+    "walkingRouteCalls/other",
     "careCircles/unrelated",
     "careCircles/unrelated/media/photo",
     "careCircles/shared/appointments/physio",
