@@ -20,6 +20,9 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.firestore
 import java.time.LocalDate
 import java.time.ZoneId
@@ -42,8 +45,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * the live lists, and sends it once online. A listener on the write's task reports a refusal in
  * [writeFailures].
  *
- * [observeAppointments] filters a range on [Appointment.lastEndAt] and one on
- * [Appointment.startAt]. It needs the composite index on both fields, in
+ * [observeAppointments] and [getAppointments] filter a range on [Appointment.lastEndAt] and one on
+ * [Appointment.startAt]. They need the composite index on both fields, in
  * firebase/firestore/firestore.indexes.json. Without it, the server refuses the query.
  *
  * This repository must stay the only code that writes appointments. It always sets
@@ -192,6 +195,59 @@ class FirebaseAppointmentRepository(
         .observeDocuments(map = { it.toAppointment() }, onError = { it.toAppointmentError() })
         .map { list -> list.sortedWith(compareBy({ it.value.startAt }, { it.value.id })) }
   }
+
+  /**
+   * Runs the query of [observeAppointments] once with `get()`, which asks the server. It waits at
+   * most [AppointmentRepository.SERVER_WAIT_SECONDS] seconds. Then, or when the server can't be
+   * reached, it runs the same query on the cache with `get(Source.CACHE)`.
+   *
+   * Any other failure of the server, such as a refused read, is returned and not hidden by the
+   * cache: the cache could list appointments the user may no longer read.
+   *
+   * @param circleId the id of the care circle.
+   * @param firstDay the first day of the window.
+   * @param days how many days the window holds. It must be at least 1.
+   * @return the appointments sorted by start, then by id, or a failure with an [AppointmentError].
+   */
+  override suspend fun getAppointments(
+      circleId: String,
+      firstDay: LocalDate,
+      days: Int,
+  ): Result<List<Appointment>> {
+    val window = dayWindow(firstDay, days, zone())
+    if (!isValidDocumentId(circleId)) return Result.failure(AppointmentError.InvalidCircleId())
+
+    val query =
+        appointments(circleId)
+            .whereGreaterThan(LAST_END_AT_FIELD, window.startMillis)
+            .whereLessThan(START_AT_FIELD, window.endMillis)
+    return try {
+      val snapshot = fromServer(query) ?: query.get(Source.CACHE).await()
+      Result.success(
+          snapshot.documents
+              .mapNotNull { it.toAppointment() }
+              .sortedWith(compareBy({ it.startAt }, { it.id }))
+      )
+    } catch (exception: CancellationException) {
+      throw exception
+    } catch (exception: Exception) {
+      Result.failure(exception.toAppointmentError())
+    }
+  }
+
+  /**
+   * Runs [query] on the server.
+   *
+   * @return its result, or null if the server didn't answer in time or can't be reached.
+   * @throws Exception any other failure of the server.
+   */
+  private suspend fun fromServer(query: Query): QuerySnapshot? =
+      try {
+        withTimeoutOrNull(AppointmentRepository.SERVER_WAIT_SECONDS.seconds) { query.get().await() }
+      } catch (exception: FirebaseFirestoreException) {
+        if (exception.code != FirebaseFirestoreException.Code.UNAVAILABLE) throw exception
+        null
+      }
 
   /**
    * Waits up to [UNSYNCED_WAIT] for Firestore's `waitForPendingWrites()`. Firestore can't say how

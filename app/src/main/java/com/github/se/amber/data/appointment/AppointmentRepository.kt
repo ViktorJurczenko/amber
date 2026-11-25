@@ -23,7 +23,8 @@ import kotlinx.coroutines.flow.Flow
  *
  * Every failed [Result] contains an [AppointmentError]. Cancellation is rethrown.
  *
- * [observeAppointments] reads them, one day or several days at a time.
+ * [observeAppointments] reads them, one day or several days at a time, and follows their changes.
+ * [getAppointments] reads them once, from the server when it can.
  *
  * [hasUnsyncedWrites] tells whether some changes are still waiting to be sent, for example before
  * signing out.
@@ -55,6 +56,9 @@ interface AppointmentRepository {
    *
    * Going offline doesn't end it. The list then comes from what this phone has already loaded.
    *
+   * Screens use it, since their list must update when someone else edits. Its first list can come
+   * from the cache, so code that needs one fresh answer uses [getAppointments] instead.
+   *
    * @param circleId the id of the care circle.
    * @param firstDay the first day of the window. It is included.
    * @param days how many days the window holds. It must be at least 1.
@@ -66,6 +70,38 @@ interface AppointmentRepository {
       firstDay: LocalDate,
       days: Int,
   ): Flow<List<Synced<Appointment>>>
+
+  /**
+   * Reads once the appointments of the circle [circleId] during the [days] days that start with
+   * [firstDay]. The window and the order are the same as in [observeAppointments].
+   *
+   * When to use which: this read is for code that needs one fresh answer, like the reminder check,
+   * which runs in the background after the app may have been closed for hours. The check is its
+   * only caller for now. Screens keep [observeAppointments], since their list must update when
+   * someone else edits.
+   *
+   * Why not take the first list of [observeAppointments]: when this phone has appointments of the
+   * window in its cache, Firestore sends them first, even online, and the server's answer only
+   * comes after. Taking the first list stops the listener before that answer, so it reads old data.
+   * An appointment added on another phone meanwhile would be missing.
+   *
+   * So this read asks the server first. It waits at most [SERVER_WAIT_SECONDS] seconds, since
+   * background work only has a few seconds. If the server doesn't answer in time, or can't be
+   * reached, it reads what this phone has already loaded instead. That list can be old, or empty.
+   *
+   * @param circleId the id of the care circle.
+   * @param firstDay the first day of the window. It is included.
+   * @param days how many days the window holds. It must be at least 1.
+   * @return the appointments, sorted by start, or a failure with an [AppointmentError]:
+   *   [AppointmentError.InvalidCircleId] for an invalid id, and [AppointmentError.PermissionDenied]
+   *   when the user can't read the circle. Cancellation is rethrown.
+   * @throws IllegalArgumentException if [days] is 0 or less. That is a bug in the caller.
+   */
+  suspend fun getAppointments(
+      circleId: String,
+      firstDay: LocalDate,
+      days: Int,
+  ): Result<List<Appointment>>
 
   /**
    * Generates a new appointment id on the phone, without writing anything. It works offline.
@@ -186,6 +222,15 @@ interface AppointmentRepository {
    *   out or the wait failed.
    */
   suspend fun hasUnsyncedWrites(): Boolean
+
+  companion object {
+    /**
+     * How long [getAppointments] waits for the server before it reads the phone's cache. The
+     * reminder alarm gives its check about 9 seconds, so the check still has time to show the
+     * reminders and set the alarm again.
+     */
+    const val SERVER_WAIT_SECONDS = 5L
+  }
 }
 
 /** The kinds of writes [AppointmentRepository] makes. */
