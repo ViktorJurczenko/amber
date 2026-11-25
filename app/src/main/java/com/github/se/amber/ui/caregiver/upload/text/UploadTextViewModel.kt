@@ -1,5 +1,6 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver.upload.text
 
@@ -93,10 +94,10 @@ open class UploadTextViewModel(
   /**
    * The description saved on a text story.
    *
-   * A text story has no shared description: [MediaItem.description] stays empty. The words typed in
-   * the description box are [UploadTextUIState.text].
+   * A text story has no shared description: [MediaItem.description] is null. The words typed in the
+   * description box are [UploadTextUIState.text].
    */
-  fun mediaDescription(): String = ""
+  fun mediaDescription(): String? = null
 
   /** Stores [text] as the story body from the description box. */
   fun setText(text: String) {

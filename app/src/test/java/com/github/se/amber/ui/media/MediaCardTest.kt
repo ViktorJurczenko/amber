@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.media
 
@@ -175,6 +176,14 @@ class MediaCardTest {
     composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("m1")).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextHide("m1")).assertDoesNotExist()
     composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertDoesNotExist()
+  }
+
+  @Test
+  fun aTextWithoutDescriptionShowsAnEmptyOneNotNull() {
+    setCard(MediaItem.Text(id = "m1", authorId = "author", description = null))
+
+    toggle()
+    composeTestRule.onNodeWithTag(MediaCardTestTags.description("m1")).assertTextEquals("")
   }
 
   // ---------- layout ----------

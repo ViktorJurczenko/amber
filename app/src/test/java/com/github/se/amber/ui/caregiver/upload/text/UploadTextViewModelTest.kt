@@ -1,5 +1,6 @@
 // Written by Yuhan YANG, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.caregiver.upload.text
 
@@ -83,13 +84,13 @@ class UploadTextViewModelTest {
   }
 
   @Test
-  fun sharedDescriptionStaysEmpty() {
+  fun aTextStoryHasNoSharedDescription() {
     val viewModel = openViewModel()
 
     viewModel.setTitle("Market day")
     viewModel.setText("We bought bread.")
 
-    assertEquals("", viewModel.mediaDescription())
+    assertNull(viewModel.mediaDescription())
   }
 
   @Test

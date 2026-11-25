@@ -2,6 +2,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.media
 
@@ -60,6 +61,22 @@ class MediaItemMappingTest {
     val audioWithoutExtras = audio.copy(transcript = null, waveform = emptyList())
     for (item in listOf(picture, audio, audioWithoutExtras, text)) {
       assertEquals(item, mediaItemFromMap(item.id, item.toMap()))
+    }
+  }
+
+  @Test
+  fun onlyATextCanHaveNoDescription() {
+    // A text without one is stored as null and read back as null, not ""
+    val noDescription = text.copy(description = null)
+    assertNull(noDescription.toMap()["description"])
+    assertNull(mediaItemFromMap(text.id, noDescription.toMap())?.description)
+    // A text saved before with "" keeps it
+    val emptyDescription = text.copy(description = "")
+    assertEquals(emptyDescription, mediaItemFromMap(text.id, emptyDescription.toMap()))
+    // A picture or a voice memo always has one: a stored null reads as ""
+    for (item in listOf(picture, audio)) {
+      val stored = item.toMap() + ("description" to null)
+      assertEquals("", mediaItemFromMap(item.id, stored)?.description)
     }
   }
 

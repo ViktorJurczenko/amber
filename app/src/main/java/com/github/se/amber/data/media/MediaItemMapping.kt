@@ -2,6 +2,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.media
 
@@ -133,7 +134,8 @@ private class Fields(private val map: Map<String, Any?>) {
               authorId = authorId,
               storagePath = storagePath,
               createdAt = createdAt,
-              description = description,
+              // A text can have no description: a stored null stays null instead of becoming ""
+              description = stringOrNull("description"),
               date = date,
               location = location,
               shownIds = shownIds,
