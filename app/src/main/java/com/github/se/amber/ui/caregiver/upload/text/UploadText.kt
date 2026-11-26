@@ -73,7 +73,7 @@ object UploadTextTestTags {
  * The form matches the picture upload screen, with a title field in place of the camera and gallery
  * buttons. The title box is [MediaItem.Text.title]. The description box keeps that label, but its
  * text is the story body, [MediaItem.Text.text]. A text story has no shared caption, so
- * [MediaItem.description] stays empty. What is typed is sent to [viewModel]. [onUpload] and
+ * [MediaItem.description] stays null. What is typed is sent to [viewModel]. [onUpload] and
  * [goBack] only move between screens.
  *
  * @param viewModel the view model that owns the story being typed.
@@ -147,7 +147,7 @@ fun UploadTextScreen(
           }
 
           // Labeled "Description" like the audio screen. The value is the story body (`text`),
-          // not MediaItem.description, which stays empty for a text story.
+          // not MediaItem.description, which stays null for a text story.
           Column(Modifier.testTag(UploadTextTestTags.DESCRIPTION)) {
             DisplayTextField(
                 modifier = Modifier.height(TEXT_FIELD_BIG),

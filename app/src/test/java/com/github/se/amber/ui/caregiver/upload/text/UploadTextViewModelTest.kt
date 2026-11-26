@@ -45,7 +45,7 @@ import org.junit.Test
 /**
  * Checks when a text story can be uploaded, that the title and body are stored, that content errors
  * use the text-upload string resources, and that [UploadTextViewModel.createItem] builds a text
- * story with an empty shared description.
+ * story with a null shared description.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UploadTextViewModelTest {
@@ -219,7 +219,7 @@ class UploadTextViewModelTest {
   }
 
   @Test
-  fun uploadSavesTheBodyWithAnEmptySharedDescription() = runTest {
+  fun uploadSavesTheBodyWithANullSharedDescription() = runTest {
     val viewModel = openViewModel()
     viewModel.setTitle("Market day")
     viewModel.setText("We bought bread.")
