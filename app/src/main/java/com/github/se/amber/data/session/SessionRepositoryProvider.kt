@@ -1,5 +1,4 @@
-// Written by Alaabrine, with assistance from Cursor.
-// Modified by Alaabrine, with assistance from Cursor Agent.
+// Written by Alaabrine, with assistance from Cursor (Agent).
 
 package com.github.se.amber.data.session
 

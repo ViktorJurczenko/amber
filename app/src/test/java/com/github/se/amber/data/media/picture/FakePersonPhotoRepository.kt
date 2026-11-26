@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -15,14 +14,15 @@ import java.io.File
  * and [files], and [getPhotoFile] returns that file. A later [setPhoto] for the same person drops
  * the previous path, because the contract deletes the previous photo. [savePendingPhoto] keeps its
  * file in [pendingPhoto] until [uploadPendingPhoto] or [clearLocalPhotos]. Set [error] to make
- * every call return that failure and change nothing.
+ * every call fail with it and change nothing: [clearLocalPhotos] throws it, and the others return
+ * it.
  */
 class FakePersonPhotoRepository : PersonPhotoRepository {
 
   /** Every call, in order. */
   val calls = mutableListOf<String>()
 
-  /** When set, every call returns this failure and stores nothing. */
+  /** When set, every call fails with this and stores nothing. */
   var error: PersonPhotoError? = null
 
   /** Circle id to the person ids and the storage paths written by [setPhoto]. */
@@ -36,59 +36,46 @@ class FakePersonPhotoRepository : PersonPhotoRepository {
 
   private var nextPhotoId = 0
 
-  override suspend fun setPhoto(circle: CareCircle, personId: String, file: File): Result<Unit> {
-    calls += "setPhoto ${circle.id}:$personId"
-    error?.let {
-      return Result.failure(it)
-    }
-    val people = photos.getOrPut(circle.id) { mutableMapOf() }
-    val previous = people[personId]
-    val storagePath = "careCircles/${circle.id}/people/$personId/${++nextPhotoId}.jpg"
-    people[personId] = storagePath
-    if (previous != null) files.remove(previous)
-    files[storagePath] = file
-    return Result.success(Unit)
-  }
+  override suspend fun setPhoto(circle: CareCircle, personId: String, file: File): Result<Unit> =
+      call("setPhoto ${circle.id}:$personId") {
+        val people = photos.getOrPut(circle.id) { mutableMapOf() }
+        val previous = people[personId]
+        val storagePath = "careCircles/${circle.id}/people/$personId/${++nextPhotoId}.jpg"
+        people[personId] = storagePath
+        if (previous != null) files.remove(previous)
+        files[storagePath] = file
+      }
 
-  override suspend fun getPhotoFile(circle: CareCircle, storagePath: String): Result<File> {
-    calls += "getPhotoFile ${circle.id}:$storagePath"
-    error?.let {
-      return Result.failure(it)
-    }
-    val file = files[storagePath]
-    return if (file == null) {
-      Result.failure(PersonPhotoError.Unknown(IllegalStateException("No photo at $storagePath")))
-    } else {
-      Result.success(file)
-    }
-  }
+  override suspend fun getPhotoFile(circle: CareCircle, storagePath: String): Result<File> =
+      call("getPhotoFile ${circle.id}:$storagePath") {
+        files[storagePath]
+            ?: throw PersonPhotoError.Unknown(IllegalStateException("No photo at $storagePath"))
+      }
 
-  override suspend fun savePendingPhoto(file: File): Result<Unit> {
-    calls += "savePendingPhoto"
-    error?.let {
-      return Result.failure(it)
-    }
-    pendingPhoto = file
-    return Result.success(Unit)
-  }
+  override suspend fun savePendingPhoto(file: File): Result<Unit> =
+      call("savePendingPhoto") { pendingPhoto = file }
 
-  override suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit> {
-    calls += "uploadPendingPhoto ${circle.id}"
-    error?.let {
-      return Result.failure(it)
-    }
-    pendingPhoto = null
-    return Result.success(Unit)
-  }
+  override suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit> =
+      call("uploadPendingPhoto ${circle.id}") { pendingPhoto = null }
 
-  override suspend fun clearLocalPhotos(): Result<Unit> {
-    calls += "clearLocalPhotos"
-    error?.let {
-      return Result.failure(it)
-    }
+  override suspend fun clearLocalPhotos() {
+    record("clearLocalPhotos")
     photos.clear()
     files.clear()
     pendingPhoto = null
-    return Result.success(Unit)
+  }
+
+  /** Records [name], then runs [body]. [error] fails the call before [body] changes anything. */
+  private inline fun <T> call(name: String, body: () -> T): Result<T> =
+      try {
+        record(name)
+        Result.success(body())
+      } catch (failure: PersonPhotoError) {
+        Result.failure(failure)
+      }
+
+  private fun record(name: String) {
+    calls += name
+    error?.let { throw it }
   }
 }

@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -121,12 +120,18 @@ class PersonPhotoRepositoryFirebase(
     if (uid in circle.personPhotos) return Result.success(Unit)
     val uploaded = setPhoto(circle, uid, pendingPhoto)
     if (uploaded.isFailure) return uploaded
-    return photoCall { deletePendingPhoto() }
+    return try {
+      deletePendingPhoto()
+      Result.success(Unit)
+    } catch (e: IOException) {
+      // The photo is already stored. This file is only a leftover on the phone.
+      Log.w(TAG, "Couldn't delete the pending photo ${pendingPhoto.path}", e)
+      Result.success(Unit)
+    }
   }
 
-  override suspend fun clearLocalPhotos(): Result<Unit> = photoCall {
-    runEveryStep({ cache.clear() }, { deletePendingPhoto() })
-  }
+  override suspend fun clearLocalPhotos() =
+      runEveryStep({ cache.clear() }, { deletePendingPhoto() })
 
   /**
    * Uploads [prepared], writes [personId]'s entry, then drops the previous file. Throws the failure
@@ -247,13 +252,12 @@ class PersonPhotoRepositoryFirebase(
    *
    * @throws IOException if the file is still there afterwards.
    */
-  private suspend fun deletePendingPhoto() {
-    withContext(ioDispatcher) {
-      if (!pendingPhoto.delete() && pendingPhoto.exists()) {
-        throw IOException("Could not delete the pending photo ${pendingPhoto.path}")
+  private suspend fun deletePendingPhoto() =
+      withContext(ioDispatcher) {
+        if (!pendingPhoto.delete() && pendingPhoto.exists()) {
+          throw IOException("Could not delete the pending photo ${pendingPhoto.path}")
+        }
       }
-    }
-  }
 
   /** A Firestore auto-id, generated on the device, with no network call. */
   private fun newPhotoId(): String = firestore.collection(CARE_CIRCLES_COLLECTION).document().id

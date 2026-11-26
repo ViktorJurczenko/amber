@@ -17,8 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Clears the media and the last walking route this device keeps for the signed-in user. Account
- * deletion and sign-out share it, so the steps are not copied into each flow.
+ * Clears the media, the profile photos, and the last walking route this device keeps for the
+ * signed-in user. Account deletion and sign-out share it, so the steps are not copied into each
+ * flow.
  *
  * @param mediaRepository Holds the media kept on the phone and their pending sends.
  * @param imageMemory Holds the decoded pictures; clearLocalMedia doesn't clear these.
@@ -35,9 +36,9 @@ class DeviceLocalPhone(
 ) {
 
   /**
-   * Cancels the send jobs and clears the outbox and media cache, then clears the decoded pictures,
-   * then deletes the temporary upload files. Every step is still attempted when an earlier one
-   * fails. A cancellation stops at once and is rethrown.
+   * Cancels the send jobs and clears the outbox and media cache, then the profile photos kept on
+   * the phone, then the decoded pictures, then the temporary upload files. Every step is still
+   * attempted when an earlier one fails. A cancellation stops at once and is rethrown.
    *
    * @throws Exception if something couldn't be cleared: it may still be on the device. The first
    *   failure is thrown, and any later ones are added to it. Clearing can run again.
@@ -45,7 +46,7 @@ class DeviceLocalPhone(
   suspend fun clear() {
     runEveryStep(
         { mediaRepository.clearLocalMedia() },
-        { photoRepository.clearLocalPhotos().getOrThrow() },
+        { photoRepository.clearLocalPhotos() },
         { imageMemory.clearAll() },
         { deleteTemporaryFiles() },
     )

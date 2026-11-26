@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -483,7 +482,7 @@ class PersonPhotoRepositoryFirebaseTest {
   }
 
   @Test
-  fun savePendingPhotoReplacesThePendingFileAndDoesNotKeepTheCaptureFile() = runTest {
+  fun savePendingPhotoKeepsACopyAndReplacesThePreviousOne() = runTest {
     val firstCapture = picture(color = Color.RED)
     val secondCapture = picture(color = Color.BLUE)
     val repo = repository()
@@ -491,10 +490,14 @@ class PersonPhotoRepositoryFirebaseTest {
     assertTrue(repo.savePendingPhoto(firstCapture).isSuccess)
     firstCapture.delete()
     assertTrue(pendingPhoto.isFile)
-    assertEquals("red", colorAt(decode(pendingPhoto)))
+    val firstKept = decode(pendingPhoto)
+    try {
+      assertEquals("red", colorAt(firstKept))
+    } finally {
+      firstKept.recycle()
+    }
 
     assertTrue(repo.savePendingPhoto(secondCapture).isSuccess)
-    assertFalse(pendingPhoto.absolutePath == secondCapture.absolutePath)
     secondCapture.delete()
 
     val kept = decode(pendingPhoto)
@@ -504,8 +507,6 @@ class PersonPhotoRepositoryFirebaseTest {
       kept.recycle()
     }
     assertTrue(pendingPhoto.isFile)
-    assertFalse(firstCapture.exists())
-    assertFalse(secondCapture.exists())
   }
 
   @Test
@@ -530,6 +531,23 @@ class PersonPhotoRepositoryFirebaseTest {
     assertFalse(pendingPhoto.exists())
     assertEquals(listOf("upload $BUCKET:$pathFromRules", "write $pathFromRules"), events)
     assertEquals(listOf(FieldPath.of("personPhotos", UID) to pathFromRules), writes)
+  }
+
+  @Test
+  fun uploadPendingPhotoSucceedsWhenThePendingFileCannotBeDeleted() = runTest {
+    val repo = repository()
+    assertTrue(repo.savePendingPhoto(picture()).isSuccess)
+    duringWrite = {
+      assertTrue(pendingPhoto.delete())
+      assertTrue(pendingPhoto.mkdirs())
+      File(pendingPhoto, "inside").writeText("x")
+    }
+
+    val result = repo.uploadPendingPhoto(circle)
+
+    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
+    assertEquals(1, writes.size)
+    assertTrue(pendingPhoto.isDirectory)
   }
 
   @Test
@@ -565,7 +583,7 @@ class PersonPhotoRepositoryFirebaseTest {
   }
 
   @Test
-  fun clearLocalPhotosRemovesTheCacheAndPendingFileWhenOneStepThrows() = runTest {
+  fun clearLocalPhotosStillDeletesThePendingPhotoWhenTheCacheFails() = runTest {
     val path = "careCircles/$CIRCLE_ID/people/$PERSON/cached.jpg"
     val repo = repository()
     val cached = repo.getPhotoFile(circle, path).getOrThrow()
@@ -576,33 +594,26 @@ class PersonPhotoRepositoryFirebaseTest {
           File(this, "inside").writeText("x")
         }
 
-    val cacheFailure = repo.clearLocalPhotos()
+    val error = runCatching { repo.clearLocalPhotos() }.exceptionOrNull() as IOException
 
-    val cacheError = cacheFailure.exceptionOrNull()
-    assertTrue(cacheError is PersonPhotoError.Unknown)
-    assertTrue((cacheError as PersonPhotoError.Unknown).source is IOException)
-    assertTrue(cacheError.source.message.orEmpty().startsWith("Could not delete"))
+    assertTrue(error.message.orEmpty().startsWith("Could not delete 1 cached file"))
     assertFalse(cached.exists())
     assertFalse(pendingPhoto.exists())
     assertTrue(stuck.exists())
+  }
 
-    val again = repository(directory = File(tmp.root, "people-b"))
-    val cachedAgain = again.getPhotoFile(circle, path).getOrThrow()
+  @Test
+  fun clearLocalPhotosStillClearsTheCacheWhenThePendingPhotoStays() = runTest {
+    val path = "careCircles/$CIRCLE_ID/people/$PERSON/cached.jpg"
+    val repo = repository()
+    val cached = repo.getPhotoFile(circle, path).getOrThrow()
     pendingPhoto.mkdirs()
     File(pendingPhoto, "inside").writeText("x")
 
-    val pendingFailure = again.clearLocalPhotos()
+    val error = runCatching { repo.clearLocalPhotos() }.exceptionOrNull() as IOException
 
-    val pendingError = pendingFailure.exceptionOrNull()
-    assertTrue(pendingError is PersonPhotoError.Unknown)
-    assertTrue(
-        (pendingError as PersonPhotoError.Unknown)
-            .source
-            .message
-            .orEmpty()
-            .startsWith("Could not delete")
-    )
-    assertFalse(cachedAgain.exists())
+    assertTrue(error.message.orEmpty().startsWith("Could not delete the pending photo"))
+    assertFalse(cached.exists())
     assertTrue(pendingPhoto.exists())
   }
 
@@ -630,7 +641,7 @@ class PersonPhotoRepositoryFirebaseTest {
   }
 
   @Test
-  fun uploadPendingPhotoFailsWhenSignedOutOrTheUploadFailsAndKeepsTheFile() = runTest {
+  fun uploadPendingPhotoFailsWhenSignedOutAndKeepsTheFile() = runTest {
     val signedOut = repository(signedInAs(null))
     assertTrue(signedOut.savePendingPhoto(picture()).isSuccess)
 
@@ -638,10 +649,15 @@ class PersonPhotoRepositoryFirebaseTest {
 
     assertSame(PersonPhotoError.NotAuthenticated, notSignedIn.exceptionOrNull())
     assertTrue(pendingPhoto.isFile)
-    val kept = pendingPhoto.readBytes()
+  }
 
+  @Test
+  fun uploadPendingPhotoFailsWhenTheUploadFailsAndKeepsTheFile() = runTest {
     val repo = repository()
+    assertTrue(repo.savePendingPhoto(picture()).isSuccess)
+    val kept = pendingPhoto.readBytes()
     fileStorage.onUpload = { throw IOException("offline") }
+
     val failed = repo.uploadPendingPhoto(circle)
 
     assertTrue(failed.exceptionOrNull() is PersonPhotoError.Unknown)
@@ -650,9 +666,8 @@ class PersonPhotoRepositoryFirebaseTest {
 
   @Test
   fun clearLocalPhotosSucceedsWhenNothingIsPending() = runTest {
-    val result = repository().clearLocalPhotos()
+    repository().clearLocalPhotos()
 
-    assertTrue(result.exceptionOrNull()?.toString(), result.isSuccess)
     assertFalse(pendingPhoto.exists())
   }
 

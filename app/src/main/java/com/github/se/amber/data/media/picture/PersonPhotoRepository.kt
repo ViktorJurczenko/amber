@@ -1,12 +1,19 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
 import com.github.se.amber.model.circle.CareCircle
 import java.io.File
 
-/** Stores a person's profile photo, including one picked before the circle has a bucket. */
+/**
+ * Stores a person's profile photo, including one picked before the circle has a bucket.
+ *
+ * That early pick is the pending photo. [savePendingPhoto] keeps one JPEG on the phone, for example
+ * during onboarding, before the circle has a bucket. It belongs to whoever is signed in when
+ * [uploadPendingPhoto] runs. There is only one per phone, and a new [savePendingPhoto] replaces it.
+ * It survives an app restart. It is removed after the upload, or by [clearLocalPhotos] on sign-out
+ * and account deletion.
+ */
 interface PersonPhotoRepository {
 
   /**
@@ -37,19 +44,23 @@ interface PersonPhotoRepository {
   suspend fun savePendingPhoto(file: File): Result<Unit>
 
   /**
-   * Uploads the pending photo into [circle] and then deletes it. Does nothing when there is no
-   * pending photo, [circle] has no bucket, or the signed-in user already has a photo there.
+   * Uploads the pending photo into [circle] for whoever is signed in, then deletes the local file.
+   * Does nothing when there is no pending photo, [circle] has no bucket, or that user already has a
+   * photo there. When the upload lands and the local file cannot be deleted, the call still
+   * succeeds: only a leftover file remains on the phone.
    *
    * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
    */
   suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit>
 
   /**
-   * Deletes the cached photos and the pending photo. Nothing stored in a bucket is deleted.
+   * Deletes the cached photos and the pending photo. Nothing stored in a bucket is deleted. Every
+   * file is still tried when one delete fails. Cancellation is rethrown.
    *
-   * A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
+   * @throws java.io.IOException if some files can't be deleted: a photo may then still be on the
+   *   device.
    */
-  suspend fun clearLocalPhotos(): Result<Unit>
+  suspend fun clearLocalPhotos()
 }
 
 /** Typed failures returned by [PersonPhotoRepository]. */
