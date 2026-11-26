@@ -7,12 +7,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.se.amber.R
+import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
+import com.github.se.amber.model.user.Person
+import com.github.se.amber.model.user.Role
+import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaImage
 import com.github.se.amber.ui.media.aspectRatioOf
 import com.github.se.amber.ui.media.audio.AudioPlaybackState
@@ -20,6 +25,8 @@ import com.github.se.amber.ui.media.audio.DisplayAudioPlayback
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMedias
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasConfig
+import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasUIState
+import com.github.se.amber.ui.theme.AmberAppTheme
 
 /** Test tags of [SeeMediasSpecificPersonScreen]. */
 object SeeMediasSpecificPersonTestTags {
@@ -80,7 +87,7 @@ fun SeeMediasSpecificPersonScreen(
       onErrorShown = viewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
-      onPersonClick = onPersonClick,
+      onPersonClick = {id -> if (id != personId) onPersonClick(id)},
       titleArgs = listOf(personName),
   ) { item, circle, modifier ->
     when (item) {
@@ -108,4 +115,26 @@ fun SeeMediasSpecificPersonScreen(
       else -> Unit
     }
   }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun SeeMediasSpecificPersonPreview() {
+    AmberAppTheme(dynamicColor = false) {
+        SeeGeneralMedias(
+            uiState =
+                SeeGeneralMediasUIState.Empty(
+                    UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
+                    CareCircle(id = "circle1"),
+                ),
+            config = specificPersonScreenConfig,
+            onRetry = {},
+            onErrorShown = {},
+            onBackClick = {},
+            onTabSelected = {},
+            onPersonClick = {},
+            titleArgs = listOf("Eva"),
+        ) { _, _, _ ->
+        }
+    }
 }

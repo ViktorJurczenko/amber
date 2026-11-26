@@ -414,7 +414,7 @@
     <string name="seeAudiosErrorLoadMedia">Impossible de charger les médias.</string>
 
     <!-- SeeMediasSpecificPerson -->
-    <string name="seeMediasSpecificPersonTitle">Voir les médias avec %1$s </string>
+    <string name="seeMediasSpecificPersonTitle">Voir les médias avec %1$s</string>
     <string name="seeMediasSpecificPersonEmpty">Il n\'y a pas encore de médias avec %1$s.</string>
     <string name="seeMediasSpecificPersonUnknownName">cette personne</string>
     <string name="seeMediasSpecificPersonRetry">Réessayer</string>
