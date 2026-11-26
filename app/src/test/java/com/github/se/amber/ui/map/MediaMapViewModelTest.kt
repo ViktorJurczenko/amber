@@ -1,4 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -421,6 +422,24 @@ class MediaMapViewModelTest {
   private val farFromLausanne = atLausannePin.movedNorth(wellOutsideRadius)
 
   private fun MediaMapViewModel.location() = locationState.value
+
+  @Test
+  fun recenterRequestsPermissionOrUsesTheCurrentPosition() {
+    locationUpdates.permission = false
+    val viewModel = createViewModel()
+    viewModel.showMap()
+    assertEquals(MapRecenterAction.RequestPermission, viewModel.recenter())
+
+    locationUpdates.permission = true
+    viewModel.refreshPermission()
+    assertEquals(MapRecenterAction.PositionUnavailable, viewModel.recenter())
+
+    locationUpdates.updates.value = LocationUpdate.Position(atLausannePin)
+    assertEquals(MapRecenterAction.MoveTo(atLausannePin), viewModel.recenter())
+
+    locationUpdates.updates.value = LocationUpdate.LocationOff
+    assertEquals(MapRecenterAction.PositionUnavailable, viewModel.recenter())
+  }
 
   @Test
   fun withoutThePermissionTheMapWorksWithoutTheGPSUntilTheUserAllowsIt() {

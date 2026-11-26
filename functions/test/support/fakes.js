@@ -2,6 +2,7 @@
 // Modified by Neha Chakraborty and Copilot, with assistance from
 // Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor (Grok).
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const path = require("node:path");
@@ -104,13 +105,17 @@ function failIfAsked(action, target) {
 /**
  * Applies one write to state.store. Calls state.beforeWrite first, then throws if failIfAsked does,
  * and, like Firestore, when updating a missing document.
- * @param {"update" | "delete"} action
+ * @param {"set" | "update" | "delete"} action
  */
 function write(action, documentPath, data) {
   state.beforeWrite?.(action, documentPath);
   failIfAsked(action, documentPath);
   if (action === "delete") {
     state.store.delete(documentPath);
+    return;
+  }
+  if (action === "set") {
+    state.store.set(documentPath, {...data});
     return;
   }
   const current = state.store.get(documentPath);
@@ -191,6 +196,7 @@ function storedFirestore() {
       const writes = [];
       const result = await callback({
         get: async (reference) => storedSnapshot(reference.path),
+        set: (reference, data) => writes.push(["set", reference.path, data]),
         update: (reference, data) => writes.push(["update", reference.path, data]),
       });
       writes.forEach((entry) => write(...entry));
@@ -306,7 +312,10 @@ function callableModule({firestore = recordingFirestore()} = {}) {
       return {getSecurityRules: () => state.securityRules};
     }
     if (request === "firebase-functions/params") {
-      return {defineString: () => ({value: () => state.bucketLocation})};
+      return {
+        defineString: () => ({value: () => state.bucketLocation}),
+        defineSecret: () => ({value: () => "test-routes-key"}),
+      };
     }
     if (request === "firebase-functions/v2/https") {
       // the handler comes last, after the options if there are any

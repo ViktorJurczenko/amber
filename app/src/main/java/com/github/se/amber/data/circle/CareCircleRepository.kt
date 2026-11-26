@@ -1,5 +1,6 @@
 // Written by Neha Chakraborty and Claude Code
 // Modified by MeiliV, with assistance from OpenAI Codex
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.circle
 
@@ -54,6 +55,10 @@ sealed class CareCircleError(message: String) : Exception(message) {
   data object Network : CareCircleError("Unable to reach the care circle")
 
   data object InvalidPersonName : CareCircleError("A first name is required")
+
+  data object InvalidPlace : CareCircleError("A place needs a name and a point on the map")
+
+  data object InvalidPlaceId : CareCircleError("A valid place ID is required")
 
   data class Unknown(val source: Throwable) : CareCircleError("The care circle operation failed")
 }

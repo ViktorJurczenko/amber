@@ -1,4 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -101,6 +103,9 @@ sealed interface MediaMapLocationState {
    * stops: the user may have moved far by the time the map is shown again.
    *
    * When the map is shown again, the last position stays, as last known, until a new one comes.
+   *
+   * @param position Most recent device position, which may be marked as last known.
+   * @param nearbyMarkers Pins considered nearby for a sufficiently precise fresh position.
    */
   data class Located(
       val position: DevicePosition,
@@ -115,6 +120,22 @@ sealed interface MediaMapLocationState {
     val isPrecise: Boolean
       get() = !position.isLastKnown && position.isPreciseWithin(NEARBY_MAX_ACCURACY_METERS)
   }
+}
+
+/** What the screen should do when the patient taps the Recenter button. */
+sealed interface MapRecenterAction {
+  /** Ask Android for location access before trying to move the camera. */
+  data object RequestPermission : MapRecenterAction
+
+  /**
+   * Move the camera to the current or last-known [position].
+   *
+   * @param position Position the screen should center on.
+   */
+  data class MoveTo(val position: DevicePosition) : MapRecenterAction
+
+  /** Keep the camera in place while the device searches or location is unavailable. */
+  data object PositionUnavailable : MapRecenterAction
 }
 
 /**
@@ -160,7 +181,16 @@ class MediaMapViewModel(
   // or an older one is added, and the pin must stay open then
   private val selectedMediaIds = MutableStateFlow<Set<String>>(emptySet())
   private val errorMsgRes = MutableStateFlow<Int?>(null)
+  private val _searchQuery = MutableStateFlow("")
 
+  // Text entered in the map search field
+  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+  fun updateSearchQuery(query: String) {
+    _searchQuery.value = query
+  }
+
+  /** Screen content derived from loaded pins, the selected pin, errors, and connectivity. */
   val uiState: StateFlow<MediaMapUIState> =
       combine(loaded, selectedMediaIds, errorMsgRes, connectivityMonitor.isOnline) {
               loaded,
@@ -234,7 +264,11 @@ class MediaMapViewModel(
   /** Reloads everything and shows the loading state. */
   fun retry() = load()
 
-  /** Opens the media of the pin [markerId]. Does nothing if no pin has this id. */
+  /**
+   * Opens the media of the pin [markerId]. Does nothing if no pin has this id.
+   *
+   * @param markerId Identifier of the pin to open.
+   */
   fun selectMarker(markerId: String) {
     val markers = (loaded.value as? Loaded.Markers)?.markers ?: return
     markers.find { it.id == markerId }?.let { selectedMediaIds.value = it.mediaIds() }
@@ -252,6 +286,19 @@ class MediaMapViewModel(
   fun refreshPermission() {
     hasLocationPermission.value = locationUpdatesRepository.hasPermission()
   }
+
+  /**
+   * Chooses the recenter action from the current location state; camera motion stays in the UI. A
+   * last-known position can still be used while the device looks for a fresh fix.
+   *
+   * @return The action the screen should perform for the current location state.
+   */
+  fun recenter(): MapRecenterAction =
+      when (val location = locationState.value) {
+        MediaMapLocationState.NoPermission -> MapRecenterAction.RequestPermission
+        is MediaMapLocationState.Located -> MapRecenterAction.MoveTo(location.position)
+        else -> MapRecenterAction.PositionUnavailable
+      }
 
   /** Clears the non-blocking error message. */
   fun clearErrorMsg() {
@@ -298,6 +345,8 @@ class MediaMapViewModel(
   /**
    * The pins of [circleId], starting with [Loaded.Loading]. If they stop with an error, the pins
    * already shown stay with a message; with none shown yet, the error replaces the screen.
+   *
+   * @param circleId Active circle whose pins are observed.
    */
   private fun markersOf(circleId: String): Flow<Loaded> {
     // Whether this circle's pins were shown; loaded may still hold the previous circle's
@@ -358,11 +407,17 @@ class MediaMapViewModel(
             }
           }
 
-  /** The pin that has one of [mediaIds], the media of the open pin; null if none has. */
+  /**
+   * The pin that has one of [mediaIds], the media of the open pin; null if none has.
+   *
+   * @param mediaIds Media identifiers used to find the open pin after the pin list changes.
+   * @return The matching pin, or null when none remains.
+   */
   private fun List<MediaMarker>.openPin(mediaIds: Set<String>): MediaMarker? = find { pin ->
     pin.media.any { it.id in mediaIds }
   }
 
+  /** Identifiers of this pin's media, used to preserve the open pin across updates. */
   private fun MediaMarker.mediaIds(): Set<String> = media.mapTo(mutableSetOf()) { it.id }
 
   private companion object {

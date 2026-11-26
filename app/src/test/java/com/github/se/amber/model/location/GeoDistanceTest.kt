@@ -11,6 +11,8 @@ import com.github.se.amber.model.location.TestPositions.MAX_DISTANCE_ERROR
 import com.github.se.amber.model.location.TestPositions.movedNorth
 import com.github.se.amber.model.location.TestPositions.pinAt
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GeoDistanceTest {
@@ -44,6 +46,20 @@ class GeoDistanceTest {
         distance(onEquator, opposite),
         EXACT_TOLERANCE_METERS,
     )
+  }
+
+  @Test
+  fun pointsWithinTheSamePlaceRadiusAreTheSamePlaceInBothDirections() {
+    fun samePlace(from: DevicePosition, to: DevicePosition) =
+        isSamePlace(from.lat, from.lng, to.lat, to.lng)
+    val inside = here.movedNorth(SAME_PLACE_RADIUS_METERS * 0.9)
+    val outside = here.movedNorth(SAME_PLACE_RADIUS_METERS * 1.1)
+
+    assertTrue(samePlace(here, here))
+    assertTrue(samePlace(here, inside))
+    assertTrue(samePlace(inside, here))
+    assertFalse(samePlace(here, outside))
+    assertFalse(samePlace(outside, here))
   }
 
   @Test
