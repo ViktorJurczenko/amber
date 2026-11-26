@@ -31,6 +31,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
@@ -412,6 +413,17 @@
     <string name="seeAudiosErrorLoadCircle">Impossible de charger le cercle de soins.</string>
     <string name="seeAudiosErrorLoadMedia">Impossible de charger les médias.</string>
 
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">Voir les médias avec cette personne</string>
+    <string name="seeMediasSpecificPersonEmpty">Il n\'y a pas encore de médias avec cette personne.</string>
+    <string name="seeMediasSpecificPersonUnknownName">cette personne</string>
+    <string name="seeMediasSpecificPersonRetry">Réessayer</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">Aucun profil trouvé.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Échec du chargement du profil.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">Vous ne faites pas encore partie d\'un cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Échec du chargement du cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Échec du chargement des médias.</string>
+
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">voir les infos</string>
     <string name="mediaCardHideInfos">masquer les infos</string>
@@ -447,6 +459,18 @@
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
+
+    <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
+    <string name="appointmentReminderChannel">Rappels de rendez-vous</string>
+    <string name="appointmentReminderTitle">Rendez-vous à venir</string>
+    <string name="appointmentReminderToday">Aujourd\'hui</string>
+    <string name="appointmentReminderTomorrow">Demain</string>
+    <string name="appointmentReminderText">%1$s %2$s · %3$s</string>
+    <string name="appointmentReminderTextWith">%1$s %2$s · %3$s · avec %4$s</string>
+    <string name="appointmentReminderDatePattern">EEEE d MMMM</string>
+    <string name="appointmentReminderTimePattern">HH:mm</string>
+    <string name="appointmentReminderNameSeparator">", "</string>
+    <string name="appointmentReminderLastNames">%1$s et %2$s</string>
 
     <!-- AddAppointment -->
     <string name="addAppointmentTitle">Ajouter un événement</string>
