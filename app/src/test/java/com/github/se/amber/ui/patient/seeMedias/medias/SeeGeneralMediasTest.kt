@@ -30,13 +30,18 @@ import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
+import com.github.se.amber.ui.media.clickRelatedPerson
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -52,6 +57,7 @@ import org.robolectric.shadows.ShadowToast
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class SeeGeneralMediasTest {
+  @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
 
   private object Tags {
@@ -118,6 +124,7 @@ class SeeGeneralMediasTest {
    * @param onErrorShown called once the non-blocking error was shown in a Toast.
    * @param onBackClick called when the top navigation action is selected.
    * @param onTabSelected called when a bottom navigation tab is selected.
+   * @param onPersonClick called with the id of a related person when its button is clicked.
    * @param titleRes string resource of the title, to check a title with a placeholder.
    * @param titleArgs format arguments of the title string, empty for a plain title.
    */
@@ -127,6 +134,7 @@ class SeeGeneralMediasTest {
       onErrorShown: () -> Unit = {},
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
       titleRes: Int = R.string.seeAudiosTitle,
       titleArgs: List<Any> = emptyList(),
   ) {
@@ -141,6 +149,7 @@ class SeeGeneralMediasTest {
               onErrorShown = onErrorShown,
               onBackClick = onBackClick,
               onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
               titleArgs = titleArgs,
           ) { item, itemCircle, modifier ->
             receivedCircle = itemCircle
@@ -309,6 +318,26 @@ class SeeGeneralMediasTest {
     composeTestRule.runOnIdle { uiState.value = SeeGeneralMediasUIState.Empty(profile, circle) }
     composeTestRule.onNodeWithTag(Tags.item("a2")).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.EMPTY).assertIsDisplayed()
+  }
+
+  @Test
+  fun clicking_a_related_person_in_a_card_calls_onPersonClick_with_its_id() {
+    val circleWithPerson =
+        CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+    val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
+    // MediaCard's ViewModel loads the author, the active circle and the circle of the card
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+    var clickedId: String? = null
+    setContent(
+        SeeGeneralMediasUIState.Content(profile, circleWithPerson, listOf(audio)),
+        onPersonClick = { clickedId = it },
+    )
+
+    composeTestRule.clickRelatedPerson("a1")
+    assertEquals("p1", clickedId)
   }
 
   // ---------------------------------------------------------------------------------------------

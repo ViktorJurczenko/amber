@@ -10,11 +10,16 @@ async function expectHttpsError(promise, code, message, reason) {
     && error.code === code && error.message === message && error.details?.reason === reason);
 }
 
-/** Asserts that no stored document mentions uid, and that uid is no Auth user any more. */
+/**
+ * Asserts that no stored document mentions uid or is named after it, and that uid is no Auth user
+ * any more.
+ */
 function assertNoReferenceTo(uid) {
   const stored = JSON.stringify([...state.store.entries()]);
   assert.equal(stored.includes(`"${uid}"`), false, stored);
   assert.equal(stored.includes(`users/${uid}`), false, stored);
+  // a document named after the user, such as users/{uid} or walkingRouteCalls/{uid}
+  assert.equal(stored.includes(`/${uid}"`), false, stored);
   assert.equal(state.authUsers.has(uid), false);
 }
 

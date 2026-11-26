@@ -1,6 +1,7 @@
 // Written by Neha Chakraborty and Copilot
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.data.profile
 
@@ -14,11 +15,12 @@ interface ProfileRepository {
   /**
    * Atomically creates the current authenticated user's initial profile with [person] and [role].
    *
-   * The returned [Result] fails only with [ProfileCreationError]: `InvalidPersonDetails` when
-   * [person] has no valid name, `NotAuthenticated` when no user is authenticated,
-   * `ProfileAlreadyExists` when the user already has a profile, `PermissionDenied` when Firestore
-   * rejects the write, `Network` for unavailable or timed-out Firestore operations, and `Unknown`
-   * for other failures. Cancellation is rethrown.
+   * [person] may include an optional [Person.nickname]; blank nicknames are stored as null. The
+   * returned [Result] fails only with [ProfileCreationError]: `InvalidPersonDetails` when [person]
+   * has no valid name, `NotAuthenticated` when no user is authenticated, `ProfileAlreadyExists`
+   * when the user already has a profile, `PermissionDenied` when Firestore rejects the write,
+   * `Network` for unavailable or timed-out Firestore operations, and `Unknown` for other failures.
+   * Cancellation is rethrown.
    *
    * The implementation derives both the profile UID and `person.id` from the current authenticated
    * user and rejects an attempt to overwrite an existing profile.
@@ -26,14 +28,16 @@ interface ProfileRepository {
   suspend fun createProfile(person: Person, role: Role): Result<Unit>
 
   /**
-   * Replaces the signed-in user's name and role while that profile still has no care circle.
+   * Replaces the signed-in user's name, optional nickname, and role while that profile still has no
+   * care circle.
    *
-   * Used when onboarding goes back to the create-profile step and the user picks a different role.
-   * The returned [Result] fails only with [ProfileUpdateError]: `InvalidPersonDetails` when
-   * [person] has no valid name, `NotAuthenticated` when no user is signed in, `NoProfile` when
-   * nothing is stored yet, `AlreadyInCareCircle` when [UserProfile.circleIds] is no longer empty,
-   * `PermissionDenied` when Firestore rejects the write, `Network` for unavailable or timed-out
-   * Firestore operations, and `Unknown` for other failures. Cancellation is rethrown.
+   * Used when onboarding goes back to the create-profile step and the user picks a different role
+   * or edits their details. Blank nicknames clear the stored nickname. The returned [Result] fails
+   * only with [ProfileUpdateError]: `InvalidPersonDetails` when [person] has no valid name,
+   * `NotAuthenticated` when no user is signed in, `NoProfile` when nothing is stored yet,
+   * `AlreadyInCareCircle` when [UserProfile.circleIds] is no longer empty, `PermissionDenied` when
+   * Firestore rejects the write, `Network` for unavailable or timed-out Firestore operations, and
+   * `Unknown` for other failures. Cancellation is rethrown.
    */
   suspend fun updateOnboardingProfile(person: Person, role: Role): Result<Unit>
 

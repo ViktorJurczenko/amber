@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -11,9 +12,10 @@ import java.io.File
  * [calls] records every call, in order: "setPhoto {circleId}:{personId}", "getPhotoFile
  * {circleId}:{storagePath}", "savePendingPhoto", "uploadPendingPhoto {circleId}", or
  * "clearLocalPhotos". A photo passed to [setPhoto] is kept under the path it records in [photos]
- * and [files], and [getPhotoFile] returns that file. [savePendingPhoto] keeps its file in
- * [pendingPhoto] until [uploadPendingPhoto] or [clearLocalPhotos]. Set [error] to make every call
- * return that failure and change nothing.
+ * and [files], and [getPhotoFile] returns that file. A later [setPhoto] for the same person drops
+ * the previous path, because the contract deletes the previous photo. [savePendingPhoto] keeps its
+ * file in [pendingPhoto] until [uploadPendingPhoto] or [clearLocalPhotos]. Set [error] to make
+ * every call return that failure and change nothing.
  */
 class FakePersonPhotoRepository : PersonPhotoRepository {
 
@@ -39,8 +41,11 @@ class FakePersonPhotoRepository : PersonPhotoRepository {
     error?.let {
       return Result.failure(it)
     }
+    val people = photos.getOrPut(circle.id) { mutableMapOf() }
+    val previous = people[personId]
     val storagePath = "careCircles/${circle.id}/people/$personId/${++nextPhotoId}.jpg"
-    photos.getOrPut(circle.id) { mutableMapOf() }[personId] = storagePath
+    people[personId] = storagePath
+    if (previous != null) files.remove(previous)
     files[storagePath] = file
     return Result.success(Unit)
   }

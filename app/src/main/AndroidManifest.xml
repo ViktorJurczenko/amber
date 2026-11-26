@@ -9,6 +9,9 @@
     <!-- FusedLocationUpdatesRepository, while the memories map is open; asked at runtime -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- AndroidAppointmentReminderNotifier. The app doesn't ask for it yet: on Android 13 and
+         later, the reminders show once the user allows notifications in the system settings -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".AmberApplication"
@@ -53,6 +56,11 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
+
+        <!-- Make Apache HTTP available to older Google Maps renderers when the device provides it -->
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
 
         <!-- WorkManager is set up by AmberApplication instead, on first use -->
         <provider

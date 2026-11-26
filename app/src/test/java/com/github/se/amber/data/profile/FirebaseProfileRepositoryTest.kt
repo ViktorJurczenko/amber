@@ -1,6 +1,7 @@
 // Written by Neha Chakraborty and Copilot
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.data.profile
 
@@ -97,6 +98,31 @@ class FirebaseProfileRepositoryTest {
     assertEquals(uid, capturedProfile.captured.uid)
     assertEquals(uid, capturedProfile.captured.person.id)
     assertTrue(capturedProfile.captured.circleIds.isEmpty())
+  }
+
+  @Test
+  fun createProfile_trimsNicknameAndClearsBlankNickname() = runTest {
+    val capturedWithNickname = stubSuccessfulTransaction()
+    assertTrue(
+        repository
+            .createProfile(
+                Person(firstName = "Ada", lastName = "Lovelace", nickname = " Nana "),
+                Role.PATIENT,
+            )
+            .isSuccess
+    )
+    assertEquals("Nana", capturedWithNickname.captured.person.nickname)
+
+    val capturedBlankNickname = stubSuccessfulTransaction()
+    assertTrue(
+        repository
+            .createProfile(
+                Person(firstName = "Ada", lastName = "Lovelace", nickname = "  "),
+                Role.PATIENT,
+            )
+            .isSuccess
+    )
+    assertNull(capturedBlankNickname.captured.person.nickname)
   }
 
   @Test
@@ -405,12 +431,12 @@ class FirebaseProfileRepositoryTest {
   }
 
   @Test
-  fun updateOnboardingProfile_writesTheNewRoleAndKeepsTheNickname() = runTest {
+  fun updateOnboardingProfile_writesTheNewRoleAndNickname() = runTest {
     val captured = stubUpdateTransaction(existingProfile(circleIds = emptyList()))
 
     val result =
         repository.updateOnboardingProfile(
-            Person(firstName = " Ada ", lastName = " Lovelace ", nickname = "ignored"),
+            Person(firstName = " Ada ", lastName = " Lovelace ", nickname = " Nana "),
             Role.PATIENT,
         )
 
@@ -418,9 +444,23 @@ class FirebaseProfileRepositoryTest {
     assertEquals(Role.PATIENT, captured.captured.role)
     assertEquals("Ada", captured.captured.person.firstName)
     assertEquals("Lovelace", captured.captured.person.lastName)
-    assertEquals("Ada", captured.captured.person.nickname)
+    assertEquals("Nana", captured.captured.person.nickname)
     assertEquals(emptyList<String>(), captured.captured.circleIds)
     assertEquals(uid, captured.captured.person.id)
+  }
+
+  @Test
+  fun updateOnboardingProfile_clearsBlankNickname() = runTest {
+    val captured = stubUpdateTransaction(existingProfile(circleIds = emptyList()))
+
+    val result =
+        repository.updateOnboardingProfile(
+            Person(firstName = "Ada", lastName = "Lovelace", nickname = "  "),
+            Role.PATIENT,
+        )
+
+    assertTrue(result.isSuccess)
+    assertNull(captured.captured.person.nickname)
   }
 
   @Test

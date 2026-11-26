@@ -44,7 +44,7 @@ fun List<MediaItem>.toMediaMarkers(): List<MediaMarker> {
     val location = media.location ?: continue
     val (lat, lng) = location.pointOrNull() ?: continue
     val pin =
-        pins.firstOrNull { distanceMeters(it.lat, it.lng, lat, lng) <= SAME_PLACE_RADIUS_METERS }
+        pins.firstOrNull { isSamePlace(it.lat, it.lng, lat, lng) }
             ?: PinBuilder(id = media.id, lat = lat, lng = lng).also { pins += it }
     pin.media.addFirst(media) // newest first
     location.placeName?.takeIf { it.isNotBlank() }?.let { pin.placeNames.addFirst(it) }
@@ -84,9 +84,3 @@ private fun List<String>.mostCommon(): String? = groupingBy {
     .eachCount()
     .maxByOrNull { (_, count) -> count }
     ?.key
-
-/**
- * How far from a pin's oldest media other media can be and still share the pin, in meters: about a
- * building, more than two searches for the same place usually differ by.
- */
-const val SAME_PLACE_RADIUS_METERS = 25.0
