@@ -87,7 +87,7 @@ fun SeeMediasSpecificPersonScreen(
       onErrorShown = viewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
-      onPersonClick = {id -> if (id != personId) onPersonClick(id)},
+      onPersonClick = { id -> if (id != personId) onPersonClick(id) },
       titleArgs = listOf(personName),
   ) { item, circle, modifier ->
     when (item) {
@@ -120,21 +120,21 @@ fun SeeMediasSpecificPersonScreen(
 @Preview(showBackground = true)
 @Composable
 internal fun SeeMediasSpecificPersonPreview() {
-    AmberAppTheme(dynamicColor = false) {
-        SeeGeneralMedias(
-            uiState =
-                SeeGeneralMediasUIState.Empty(
-                    UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
-                    CareCircle(id = "circle1"),
-                ),
-            config = specificPersonScreenConfig,
-            onRetry = {},
-            onErrorShown = {},
-            onBackClick = {},
-            onTabSelected = {},
-            onPersonClick = {},
-            titleArgs = listOf("Eva"),
-        ) { _, _, _ ->
-        }
+  AmberAppTheme(dynamicColor = false) {
+    SeeGeneralMedias(
+        uiState =
+            SeeGeneralMediasUIState.Empty(
+                UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
+                CareCircle(id = "circle1"),
+            ),
+        config = specificPersonScreenConfig,
+        onRetry = {},
+        onErrorShown = {},
+        onBackClick = {},
+        onTabSelected = {},
+        onPersonClick = {},
+        titleArgs = listOf("Eva"),
+    ) { _, _, _ ->
     }
+  }
 }
