@@ -531,7 +531,8 @@ class PersonPhotoRepositoryFirebaseTest {
 
     val error = runCatching {
       repository(ioDispatcher = dispatcher).savePendingPhoto(picture())
-    }.exceptionOrNull()
+    }
+        .exceptionOrNull()
 
     assertTrue(error is CancellationException)
     assertEquals("stopped", error?.message)
