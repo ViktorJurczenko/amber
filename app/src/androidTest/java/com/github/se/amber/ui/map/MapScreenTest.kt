@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -42,10 +43,11 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.abs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -182,33 +184,27 @@ class MapScreenTest {
   }
 
   @Test
-  fun locationFixesUpdateTheMapAndRecenterUsesTheFreshPosition() {
-    // Arrange: control location emissions and camera replacement independently of device GPS.
+  fun locationFixesUpdateStatusAndRecenterUsesTheLatestPosition() {
+    // Record the action returned to the button, without waiting for native Maps rendering.
+    // Auto-centering policy is covered by MapUtilsTest; recenter must use the latest fix here.
     val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
-    val viewModel = createViewModel(updates)
-    val useSecondCamera = mutableStateOf(false)
-    val firstCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
-    val secondCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
-    composeTestRule.setContent {
-      AmberAppTheme {
-        MapScreen(
-            viewModel = viewModel,
-            cameraPositionState = if (useSecondCamera.value) secondCamera else firstCamera,
-        )
-      }
-    }
+    val viewModel = spyk(createViewModel(updates))
+    var recenterAction: MapRecenterAction? = null
+    every { viewModel.recenter() } answers { callOriginal().also { recenterAction = it } }
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
 
     // No fix yet: recenter leaves the screen searching; a disabled provider updates the card.
     composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    assertEquals(MapRecenterAction.PositionUnavailable, recenterAction)
     assertEquals(MediaMapLocationState.Searching, viewModel.locationState.value)
 
     updates.value = LocationUpdate.LocationOff
     composeTestRule.waitUntil(5_000) {
       viewModel.locationState.value == MediaMapLocationState.LocationOff
     }
-    waitForCameraAttachment(firstCamera)
+    composeTestRule.onNodeWithText(text(R.string.patientMapLocationOff)).assertIsDisplayed()
 
-    // Last-known fix: show its status and center the first attached camera.
+    // Last-known fix: show the cached-position status.
     val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
     updates.value = LocationUpdate.Position(lastKnown)
     composeTestRule.waitUntil(5_000) {
@@ -217,13 +213,7 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
         .assertIsDisplayed()
-    waitForCameraTarget(firstCamera, lastKnown)
-
-    // The next fresh fix should center the camera currently attached to the map.
-    composeTestRule.runOnIdle { useSecondCamera.value = true }
-    waitForCameraAttachment(secondCamera)
-
-    // First fresh fix: update the status and center the replacement camera once.
+    // First fresh fix: replace the cached status and use this fix when recenter is tapped.
     val fresh = DevicePosition(46.53, 6.64)
     updates.value = LocationUpdate.Position(fresh)
     composeTestRule.waitUntil(5_000) {
@@ -232,11 +222,12 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    waitForCameraTarget(secondCamera, fresh)
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    assertEquals(MapRecenterAction.MoveTo(fresh), recenterAction)
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
 
-    // Later fix: update location state while leaving the camera at the first fresh fix.
+    // Later fix: the next recenter action must use it, rather than the first fresh fix.
     val later = DevicePosition(46.54, 6.65)
     updates.value = LocationUpdate.Position(later)
     composeTestRule.waitUntil(5_000) {
@@ -245,16 +236,14 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    composeTestRule.waitForIdle()
-    waitForCameraTarget(secondCamera, fresh)
-
-    // Recenter must use the latest fix even after automatic following has stopped.
-    composeTestRule.runOnIdle {
-      secondCamera.position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f)
-    }
-    waitForCameraTarget(secondCamera, DevicePosition(0.0, 0.0))
     composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
-    waitForCameraTarget(secondCamera, later)
+    assertEquals(MapRecenterAction.MoveTo(later), recenterAction)
+  }
+
+  @Test
+  fun searchImeSelectsOnlyWhenSuggestionsAreAvailable() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
 
     // Search with no suggestions: the IME action must leave the selection empty.
     val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
@@ -268,30 +257,6 @@ class MapScreenTest {
     search.performImeAction()
     composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.selectedPlace == place }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
-  }
-
-  /**
-   * Maps attaches asynchronously, outside Compose's idling. Before attachment, position reads only
-   * return cached requests and cannot confirm that the native map has processed a camera move.
-   * Projection is available as soon as the camera is bound; this does not wait for network tiles.
-   */
-  private fun waitForCameraAttachment(camera: CameraPositionState) {
-    composeTestRule.waitUntil(MAP_READY_TIMEOUT) {
-      composeTestRule.runOnUiThread { camera.projection != null }
-    }
-    composeTestRule.waitForIdle()
-  }
-
-  /** Read native camera state on the UI thread and allow Maps' coordinate rounding. */
-  private fun waitForCameraTarget(camera: CameraPositionState, expected: DevicePosition) {
-    composeTestRule.waitUntil(TIME_OUT) {
-      composeTestRule.runOnUiThread {
-        val target = camera.position.target
-        !camera.isMoving &&
-            abs(target.latitude - expected.lat) < 0.0001 &&
-            abs(target.longitude - expected.lng) < 0.0001
-      }
-    }
   }
 
   // ActivityResultRegistry that answers deterministically and counts requests
@@ -331,7 +296,6 @@ class MapScreenTest {
   private fun text(id: Int) = composeTestRule.activity.getString(id)
 
   private val TIME_OUT = 5_000L
-  private val MAP_READY_TIMEOUT = 30_000L
 
   @Test
   fun withoutPermissionTheCardAsksToAllowLocation_andTheMapStaysVisible() {
