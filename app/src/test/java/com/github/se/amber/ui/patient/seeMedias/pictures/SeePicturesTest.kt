@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.patient.seeMedias.pictures
 
@@ -30,6 +31,8 @@ import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
+import com.github.se.amber.ui.media.clickRelatedPerson
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -40,15 +43,9 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -61,7 +58,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowToast
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -70,6 +66,7 @@ class SeePicturesScreenTest {
   private fun string(id: Int, vararg args: Any): String =
       ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
 
+  @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
 
   private val mediaRepository = mockk<MediaRepository>()
@@ -104,7 +101,6 @@ class SeePicturesScreenTest {
 
   @Before
   fun setUp() {
-    Dispatchers.setMain(UnconfinedTestDispatcher())
     coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
     every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
     coEvery { circleRepository.getCircle("circle1") } returns
@@ -113,15 +109,11 @@ class SeePicturesScreenTest {
     coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
   }
 
-  @After
-  fun tearDown() {
-    Dispatchers.resetMain()
-  }
-
   // The ViewModel is created before the composition: its init runs right away (Unconfined)
   private fun setContent(
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
   ): SeePicturesViewModel {
     val viewModel = SeePicturesViewModel(mediaRepository, circleRepository, profileRepository)
     composeTestRule.setContent {
@@ -131,6 +123,7 @@ class SeePicturesScreenTest {
               pictureViewModel = viewModel,
               onBackClick = onBackClick,
               onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
           )
         }
       }
@@ -290,6 +283,52 @@ class SeePicturesScreenTest {
     assertNull(state.errorMsgRes)
     assertEquals(listOf(picture), state.items)
     composeTestRule.onNodeWithTag(SeePicturesTestTags.ERROR).assertDoesNotExist()
+  }
+
+  @Test
+  fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+    coEvery { circleRepository.getCircle("circle1") } returns
+        Result.success(
+            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+        )
+    coEvery { mediaRepository.observeApprovedMedia("circle1") } returns
+        flowOf(
+            listOf(MediaItem.Picture(id = "1", width = 400, height = 300, shownIds = listOf("p1")))
+        )
+    var clickedId: String? = null
+    setContent(onPersonClick = { clickedId = it })
+
+    composeTestRule.clickRelatedPerson("1")
+    assertEquals("p1", clickedId)
+  }
+
+  @Test
+  fun default_callbacks_do_nothing_and_keep_the_screen_displayed() {
+    coEvery { circleRepository.getCircle("circle1") } returns
+        Result.success(
+            CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+        )
+    coEvery { mediaRepository.observeApprovedMedia("circle1") } returns
+        flowOf(
+            listOf(MediaItem.Picture(id = "1", width = 400, height = 300, shownIds = listOf("p1")))
+        )
+    val viewModel = SeePicturesViewModel(mediaRepository, circleRepository, profileRepository)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+        AmberAppTheme(dynamicColor = false) {
+          SeePicturesScreen(pictureViewModel = viewModel) // all callbacks left to their default
+        }
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.clickRelatedPerson("1")
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
+        .performClick()
+
+    composeTestRule.onNodeWithTag(SeePicturesTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test

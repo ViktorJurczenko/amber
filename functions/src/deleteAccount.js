@@ -2,11 +2,13 @@
 // Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor (Grok).
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 const { getAuth } = require("firebase-admin/auth");
 const { HttpsError, onCall } = require("firebase-functions/v2/https");
 const { deleteDocuments } = require("./batches");
 const { removeFromCircle } = require("./circleCleanup");
 const { db } = require("./firebase");
+const { routeCallsPath } = require("./walkingRoute");
 
 const RECENT_SIGN_IN_SECONDS = 5 * 60;
 const FIRESTORE_NOT_FOUND = 5;
@@ -102,7 +104,7 @@ async function deleteAuthUser(uid) {
  *       come back to it.
  *    f. If they were its last member, delete the bucket, then the circle. The bucket goes first,
  *       as its name would be lost with the circle.
- * 4. Delete the profile, then the Auth user.
+ * 4. Delete their count of walking routes, the profile, then the Auth user.
  * @param {CallableRequest} request needs a recent sign-in, see requireRecentSignIn
  * @returns {Promise<{deleted: true}>} once everything is deleted
  * @throws {HttpsError} unauthenticated without a signed-in caller, or failed-precondition
@@ -121,6 +123,7 @@ const deleteAccount = onCall({ timeoutSeconds: DELETE_ACCOUNT_TIMEOUT_SECONDS },
   for (const circle of circles.docs) {
     await removeFromCircle(uid, circle);
   }
+  await db.doc(routeCallsPath(uid)).delete();
   await db.doc(`users/${uid}`).delete();
   await deleteAuthUser(uid);
   return { deleted: true };

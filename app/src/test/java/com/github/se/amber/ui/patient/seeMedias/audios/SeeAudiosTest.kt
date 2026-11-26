@@ -1,6 +1,7 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.patient.seeMedias.audios
 
@@ -24,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.CareCircleRepository
+import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.user.Person
@@ -31,8 +34,10 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
 import com.github.se.amber.ui.media.audio.AudioPlaybackState
 import com.github.se.amber.ui.media.audio.AudioPlaybackTestTags
+import com.github.se.amber.ui.media.clickRelatedPerson
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
@@ -40,6 +45,7 @@ import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasUIState
 import com.github.se.amber.ui.theme.AmberAppTheme
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -59,12 +65,15 @@ import org.robolectric.shadows.ShadowToast
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class SeeAudiosScreenTest {
+  @get:Rule val mainDispatcherRule = UnconfinedMainDispatcherRule()
   @get:Rule val composeTestRule = createComposeRule()
 
   private val activeCircleRepository =
       mockk<ActiveCircleRepository> {
         every { activeCircleId(any(), any()) } returns flowOf("circle1")
       }
+  private val profileRepository = mockk<ProfileRepository>()
+  private val circleRepository = mockk<CareCircleRepository>()
 
   /** Text of [id] in the current test language, with [args] for its placeholders. */
   private fun string(id: Int, vararg args: Any): String =
@@ -81,7 +90,12 @@ class SeeAudiosScreenTest {
                   when (modelClass) {
                     SeeAudiosViewModel::class.java -> audioViewModel as T
                     MediaCardViewModel::class.java ->
-                        MediaCardViewModel(mockk(), mockk(), activeCircleRepository) as T
+                        MediaCardViewModel(
+                            profileRepository,
+                            circleRepository,
+                            activeCircleRepository,
+                        )
+                            as T
                     else -> error("Unexpected ViewModel: $modelClass")
                   }
             }
@@ -90,6 +104,7 @@ class SeeAudiosScreenTest {
   private fun setContent(
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
+      onPersonClick: (String) -> Unit = {},
       state: SeeGeneralMediasUIState<MediaItem.Audio> =
           SeeGeneralMediasUIState.Empty(
               UserProfile(uid = "patient", role = Role.PATIENT, person = Person()),
@@ -109,6 +124,7 @@ class SeeAudiosScreenTest {
               audioViewModel = viewModel,
               onBackClick = onBackClick,
               onTabSelected = onTabSelected,
+              onPersonClick = onPersonClick,
           )
         }
       }
@@ -297,6 +313,26 @@ class SeeAudiosScreenTest {
         .performClick()
 
     assertEquals(PatientTab.Home, selected)
+  }
+
+  @Test
+  fun clicking_a_related_person_calls_onPersonClick_with_its_id() {
+    val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
+    val circle =
+        CareCircle(id = "circle1", people = mapOf("p1" to Person(id = "p1", firstName = "Eva")))
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(circle)
+    val audio = MediaItem.Audio(id = "a1", shownIds = listOf("p1"))
+    var clickedId: String? = null
+    setContent(
+        state = SeeGeneralMediasUIState.Content(profile, circle, listOf(audio)),
+        onPersonClick = { clickedId = it },
+    )
+
+    composeTestRule.clickRelatedPerson("a1")
+
+    assertEquals("p1", clickedId)
   }
 
   @Test

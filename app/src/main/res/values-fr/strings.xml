@@ -31,6 +31,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
@@ -103,6 +104,7 @@
     <string name="createProfileQuestion">Comment devons-nous vous appeler&#160;?</string>
     <string name="createProfileName">Prénom</string>
     <string name="createProfileSurname">Nom</string>
+    <string name="createProfileNickname">Surnom - facultatif</string>
     <string name="createProfileSelectRole">Veuillez choisir votre rôle</string>
     <string name="createProfilePatient">Patient</string>
     <string name="createProfileCaregiver">Aidant</string>
@@ -412,6 +414,17 @@
     <string name="seeAudiosErrorLoadCircle">Impossible de charger le cercle de soins.</string>
     <string name="seeAudiosErrorLoadMedia">Impossible de charger les médias.</string>
 
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">Voir les médias avec cette personne</string>
+    <string name="seeMediasSpecificPersonEmpty">Il n\'y a pas encore de médias avec cette personne.</string>
+    <string name="seeMediasSpecificPersonUnknownName">cette personne</string>
+    <string name="seeMediasSpecificPersonRetry">Réessayer</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">Aucun profil trouvé.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Échec du chargement du profil.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">Vous ne faites pas encore partie d\'un cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Échec du chargement du cercle de soins.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Échec du chargement des médias.</string>
+
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">voir les infos</string>
     <string name="mediaCardHideInfos">masquer les infos</string>
@@ -468,6 +481,17 @@
     <string name="addAppointmentNotePlaceholder">Saisissez une note pour vous ou le patient</string>
     <string name="addAppointmentAddButton">Ajouter l\'événement</string>
     <string name="addAppointmentErrorTitleEmpty">Le titre ne peut pas être vide</string>
+    <string name="addAppointmentErrorNotSignedIn">Connectez-vous pour ajouter un événement</string>
+    <string name="addAppointmentErrorInvalidCircle">Le cercle de soins est invalide</string>
+    <string name="addAppointmentErrorInvalidId">L\'identifiant de l\'événement est invalide</string>
+    <string name="addAppointmentErrorMissingStart">L\'événement doit avoir une date de début</string>
+    <string name="addAppointmentErrorInvalidDuration">Impossible d\'ajouter l\'événement : sa durée doit être comprise entre 1 minute et 24 heures.</string>
+    <string name="addAppointmentErrorInvalidReminders">Impossible d\'ajouter l\'événement : ses rappels ne sont pas valides.</string>
+    <string name="addAppointmentErrorNoPatient">Le patient n\'a pas encore rejoint le cercle de soins.</string>
+    <string name="addAppointmentErrorNotFound">Cet événement n\'existe plus</string>
+    <string name="addAppointmentErrorPermissionDenied">Vous n\'avez pas la permission d\'ajouter un événement</string>
+    <string name="addAppointmentErrorNoCircle">Aucun cercle de soins trouvé.</string>
+    <string name="addAppointmentErrorAdd">Impossible d\'ajouter l\'événement</string>
 
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Mois précédent</string>
