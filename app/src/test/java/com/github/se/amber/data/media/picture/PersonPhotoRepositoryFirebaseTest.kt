@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 

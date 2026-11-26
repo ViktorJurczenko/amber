@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -276,7 +275,7 @@ class PersonPhotoRepositoryFirebase(
     const val PROBE_PREFIX = "person-photo-probe-"
     const val JPEG_SUFFIX = ".jpg"
     const val PART_SUFFIX = ".part"
-    private val TEMP_DIR = File(requireNotNull(System.getProperty("java.io.tmpdir")))
+    val TEMP_DIR = File(requireNotNull(System.getProperty("java.io.tmpdir")))
 
     /** A probe that found no stored photo: the rules refused it, or the object is missing. */
     val PROBE_NOT_STORED =
