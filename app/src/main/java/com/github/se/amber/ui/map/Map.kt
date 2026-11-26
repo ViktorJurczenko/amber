@@ -38,8 +38,6 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_BIG
-import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -158,7 +156,7 @@ fun MapScreen(
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
           // Reserve space for the position card so Google's zoom controls stay accessible.
-          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight)
+          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight),
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
