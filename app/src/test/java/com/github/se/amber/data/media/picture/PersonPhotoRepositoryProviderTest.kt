@@ -59,6 +59,7 @@ class PersonPhotoRepositoryProviderTest {
     val app = mockk<FirebaseApp>()
     every { app.applicationContext } returns context
     every { context.cacheDir } returns File("people-cache")
+    every { context.filesDir } returns File("people-files")
     mockkStatic(FirebaseApp::class, FirebaseFirestore::class)
     every { FirebaseApp.getInstance() } returns app
     every { FirebaseFirestore.getInstance() } returns mockk()

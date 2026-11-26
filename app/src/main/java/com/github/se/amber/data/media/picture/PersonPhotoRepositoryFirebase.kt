@@ -9,6 +9,7 @@ import com.github.se.amber.data.media.PHOTO_CONTENT_TYPE
 import com.github.se.amber.data.media.causedByConnection
 import com.github.se.amber.data.media.requirePersonPhotoOf
 import com.github.se.amber.data.media.requirePhotoUploadable
+import com.github.se.amber.data.runEveryStep
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.circle.hasStorageBucket
@@ -38,12 +39,13 @@ import kotlinx.coroutines.withContext
  * only refuse a second upload to a path that already has a file. That refusal is the Storage
  * client's own retry of an upload whose reply was lost after the file landed: the path is new, so
  * nothing else uploads it twice. When that happens and the file is there, the first upload did land
- * and [setPhoto] continues.
+ * and [setPhoto] continues. The pending photo is [pendingPhoto], a file chosen by the caller.
  *
  * @param fileStorage uploads, downloads and deletes photo files in the circle's bucket.
  * @param cache local copies of those files. A file it already has is returned without a download.
  * @param firestore the circle documents, where `personPhotos` is stored.
  * @param authRepository the signed-in user, read when a call needs one.
+ * @param pendingPhoto where [savePendingPhoto] keeps a JPEG until [uploadPendingPhoto].
  * @param ioDispatcher where the JPEG is prepared and temporary files are created. Tests pass their
  *   own.
  */
@@ -52,6 +54,7 @@ class PersonPhotoRepositoryFirebase(
     private val cache: MediaFileCache,
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
+    private val pendingPhoto: File,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PersonPhotoRepository {
 
@@ -100,6 +103,35 @@ class PersonPhotoRepositoryFirebase(
       Result.failure(e.toPersonPhotoError())
     }
   }
+
+  override suspend fun savePendingPhoto(file: File): Result<Unit> = photoCall {
+    withContext(ioDispatcher) {
+      writePreparedJpeg(file, pendingPhoto)
+      Unit
+    }
+  }
+
+  override suspend fun uploadPendingPhoto(circle: CareCircle): Result<Unit> {
+    if (!pendingPhoto.isFile) return Result.success(Unit)
+    if (!circle.hasStorageBucket) return Result.success(Unit)
+    val uid =
+        authRepository.currentUser?.uid?.takeIf { it.isNotBlank() }
+            ?: return Result.failure(PersonPhotoError.NotAuthenticated)
+    if (uid in circle.personPhotos) return Result.success(Unit)
+    val uploaded = setPhoto(circle, uid, pendingPhoto)
+    if (uploaded.isFailure) return uploaded
+    return try {
+      deletePendingPhoto()
+      Result.success(Unit)
+    } catch (e: IOException) {
+      // The photo is already stored. This file is only a leftover on the phone.
+      Log.w(TAG, "Couldn't delete the pending photo ${pendingPhoto.path}", e)
+      Result.success(Unit)
+    }
+  }
+
+  override suspend fun clearLocalPhotos() =
+      runEveryStep({ cache.clear() }, { deletePendingPhoto() })
 
   /**
    * Uploads [prepared], writes [personId]'s entry, then drops the previous file. Throws the failure
@@ -215,6 +247,18 @@ class PersonPhotoRepositoryFirebase(
     }
   }
 
+  /**
+   * Deletes [pendingPhoto]. A file that is already gone is the result this wants.
+   *
+   * @throws IOException if the file is still there afterwards.
+   */
+  private suspend fun deletePendingPhoto() =
+      withContext(ioDispatcher) {
+        if (!pendingPhoto.delete() && pendingPhoto.exists()) {
+          throw IOException("Could not delete the pending photo ${pendingPhoto.path}")
+        }
+      }
+
   /** A Firestore auto-id, generated on the device, with no network call. */
   private fun newPhotoId(): String = firestore.collection(CARE_CIRCLES_COLLECTION).document().id
 
@@ -227,6 +271,15 @@ class PersonPhotoRepositoryFirebase(
   private fun deleteQuietly(file: File) {
     if (!file.delete() && file.exists()) Log.w(TAG, "Couldn't delete ${file.path}")
   }
+
+  private suspend fun <T> photoCall(block: suspend () -> T): Result<T> =
+      try {
+        Result.success(block())
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Result.failure(e.toPersonPhotoError())
+      }
 
   private fun Exception.toPersonPhotoError(): PersonPhotoError =
       when (this) {

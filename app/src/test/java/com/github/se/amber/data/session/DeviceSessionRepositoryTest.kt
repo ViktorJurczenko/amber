@@ -1,4 +1,4 @@
-// Written by Alaabrine, with assistance from Cursor.
+// Written by Alaabrine, with assistance from Cursor (Agent).
 
 package com.github.se.amber.data.session
 
@@ -6,6 +6,7 @@ import coil3.ImageLoader
 import coil3.memory.MemoryCache
 import com.github.se.amber.data.account.DeviceLocalPhone
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.FakePersonPhotoRepository
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.media.MediaRepository
 import io.mockk.coEvery
@@ -29,6 +30,7 @@ class DeviceSessionRepositoryTest {
   @get:Rule val tempFolder = TemporaryFolder()
 
   private val mediaRepository: MediaRepository = mockk(relaxUnitFun = true)
+  private val photoRepository = FakePersonPhotoRepository()
   private val authRepository: AuthRepository = mockk()
   private val memoryCache: MemoryCache = mockk(relaxUnitFun = true)
   private val calls = mutableListOf<String>()
@@ -58,6 +60,7 @@ class DeviceSessionRepositoryTest {
                 mediaRepository,
                 MediaImageMemory(imageLoader),
                 cacheDir,
+                photoRepository,
                 Dispatchers.Unconfined,
             ),
             authRepository,
@@ -72,6 +75,7 @@ class DeviceSessionRepositoryTest {
     assertFalse(picked.exists())
     assertTrue(otherFile.exists())
     assertEquals(listOf("clearMedia", "clearMemory", "signOut"), calls)
+    assertEquals(listOf("clearLocalPhotos"), photoRepository.calls)
   }
 
   @Test
