@@ -158,11 +158,7 @@ fun MapScreen(
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
           // Reserve space for the position card so Google's zoom controls stay accessible.
-          contentPadding =
-              PaddingValues(
-                  end = PATIENT_PADDING_MINI,
-                  bottom = PATIENT_PADDING_ENORMOUS + PATIENT_PADDING_BIG + PATIENT_PADDING_SMALL,
-              ),
+          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight)
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
