@@ -1,8 +1,8 @@
 // Written by Alaabrine with the aid of an AI coding agent
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.onboarding.createProfile
 
@@ -17,14 +17,17 @@ import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.data.profile.ProfileUpdateError
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
+import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.model.validation.InputValidation
 import com.github.se.amber.ui.utils.UiText
 import com.github.se.amber.ui.utils.errorText
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * UI state for the create-profile step.
@@ -38,6 +41,7 @@ import kotlinx.coroutines.launch
  * @param nickname optional nickname entered by the user.
  * @param validationAttempted true after the user has pressed Patient or Caregiver at least once.
  * @param isSaving true while a create-profile request is in flight.
+ * @param isLoading true while the saved profile is being read, before the role buttons can be used.
  * @param errorMsgRes actionable repository failure message, or null when there is none.
  */
 data class CreateProfileUIState(
@@ -46,6 +50,7 @@ data class CreateProfileUIState(
     val nickname: String = "",
     val validationAttempted: Boolean = false,
     val isSaving: Boolean = false,
+    val isLoading: Boolean = false,
     @param:StringRes val errorMsgRes: Int? = null,
 ) {
   /** Why [name] is refused, or null; a blank or unfinished one only once validation ran. */
@@ -65,9 +70,14 @@ data class CreateProfileUIState(
             formatRes = R.string.inputErrorNameFormat,
         )
 
-  /** Whether the role buttons can be pressed: no save in progress and no error shown. */
+  /** Whether the role buttons can be pressed: nothing loading or saving, and no error shown. */
   val canSubmit: Boolean
-    get() = !isSaving && nameError == null && surnameError == null && nicknameError == null
+    get() =
+        !isSaving &&
+            !isLoading &&
+            nameError == null &&
+            surnameError == null &&
+            nicknameError == null
 
   private fun requiredNameError(value: String): UiText? =
       InputValidation.NAME.errorText(
@@ -82,8 +92,9 @@ data class CreateProfileUIState(
  * ViewModel for [CreateProfileScreen]: validates name/surname/nickname and persists the profile on
  * role choice.
  *
- * On start it reads the saved profile and, when the user has not typed yet, fills the nickname. A
- * relaunch otherwise sends a blank nickname and clears the stored one.
+ * On start it reads the saved profile, so after a relaunch the form shows the saved name and
+ * nickname, and choosing the same role again only navigates. The role buttons stay disabled until
+ * that read ends.
  *
  * @param profileRepository source of profile create/read operations.
  */
@@ -91,32 +102,51 @@ class CreateProfileViewModel(
     private val profileRepository: ProfileRepository = ProfileRepositoryProvider.default.repository,
 ) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(CreateProfileUIState())
+  private val _uiState = MutableStateFlow(CreateProfileUIState(isLoading = true))
   val uiState: StateFlow<CreateProfileUIState> = _uiState.asStateFlow()
 
   private var savedProfile: SavedOnboardingProfile? = null
 
-  /** True after a field edit, so a saved nickname does not replace text the user cleared. */
-  private var typed = false
+  // Each is set once the user types in that field, even if they delete it again: the saved value
+  // must not replace what they chose to clear, but the fields they left alone still get filled
+  private var nameTyped = false
+  private var surnameTyped = false
+  private var nicknameTyped = false
 
   init {
     viewModelScope.launch { loadSavedProfile() }
   }
 
   /**
-   * Fills [CreateProfileUIState.nickname] from the saved profile unless the user already typed. A
-   * missing profile or a failed read leaves the field blank.
+   * Remembers the saved profile and fills each field the user hasn't typed in yet with its saved
+   * value. Keeps the empty form when there is no profile, the read fails, or it takes longer than
+   * [PROFILE_LOAD_TIMEOUT]. [CreateProfileUIState.isLoading] is cleared however the read ends.
    */
   private suspend fun loadSavedProfile() {
-    val nickname =
-        profileRepository
-            .getCurrentProfile()
-            .getOrNull()
-            ?.person
-            ?.nickname
-            ?.takeIf { it.isNotBlank() }
-            .orEmpty()
-    if (!typed) _uiState.update { it.copy(nickname = nickname) }
+    try {
+      val profile =
+          withTimeoutOrNull(PROFILE_LOAD_TIMEOUT) { profileRepository.getCurrentProfile() }
+              ?.getOrNull() ?: return
+      val name = profile.person.firstName
+      val surname = profile.person.lastName
+      val nickname = profile.person.nickname?.takeIf { it.isNotBlank() }
+      savedProfile =
+          SavedOnboardingProfile(
+              name = name,
+              surname = surname,
+              nickname = nickname,
+              role = profile.role,
+          )
+      _uiState.update {
+        it.copy(
+            name = if (nameTyped) it.name else name,
+            surname = if (surnameTyped) it.surname else surname,
+            nickname = if (nicknameTyped) it.nickname else nickname.orEmpty(),
+        )
+      }
+    } finally {
+      _uiState.update { it.copy(isLoading = false) }
+    }
   }
 
   /**
@@ -146,18 +176,19 @@ class CreateProfileViewModel(
   /**
    * Validates name, surname and optional nickname, then saves the profile with [role].
    *
-   * The first successful choice creates the profile. Pressing the same role again only navigates.
-   * Pressing the other role updates the stored onboarding profile, so a wrong choice can be
-   * corrected after Cancel. If this screen is recreated and the profile already exists with no care
-   * circle, the selected role is written over that profile instead of failing with "already
-   * exists".
+   * The first successful choice creates the profile. Pressing the same role again with the same
+   * name, including after a relaunch, only navigates. Pressing the other role updates the stored
+   * onboarding profile, so a wrong choice can be corrected after Cancel. If the saved profile
+   * couldn't be read on start and it exists with no care circle, the selected role is written over
+   * that profile instead of failing with "already exists".
    *
    * [onSuccess] runs after the profile matches [role], so the navigation owner can move forward
-   * without observing UI state. Does nothing while a save is already in progress. Does not call the
-   * repository when a required field is blank after trim or isn't a valid name.
+   * without observing UI state. Does nothing while the saved profile is loading or a save is
+   * already in progress. Does not call the repository when a required field is blank after trim or
+   * isn't a valid name.
    */
   fun onRoleSelected(role: Role, onSuccess: (Role) -> Unit = {}) {
-    if (_uiState.value.isSaving) return
+    if (_uiState.value.isSaving || _uiState.value.isLoading) return
 
     val trimmedName = _uiState.value.name.trim()
     val trimmedSurname = _uiState.value.surname.trim()
@@ -224,13 +255,13 @@ class CreateProfileViewModel(
       role: Role,
       onSuccess: (Role) -> Unit,
   ) {
-    val current =
+    val current: UserProfile? =
         profileRepository.getCurrentProfile().getOrElse { error ->
           showFailure(error)
           return
         }
-    val alreadyJoined = current?.circleIds?.any { it.isNotBlank() } == true
-    if (current == null || alreadyJoined) {
+    // already in a care circle: the role can't be changed anymore
+    if (current == null || current.circleIds.any { it.isNotBlank() }) {
       showFailure(ProfileCreationError.ProfileAlreadyExists)
       return
     }
@@ -287,7 +318,9 @@ class CreateProfileViewModel(
       surname: String? = null,
       nickname: String? = null,
   ) {
-    typed = true
+    if (name != null) nameTyped = true
+    if (surname != null) surnameTyped = true
+    if (nickname != null) nicknameTyped = true
     _uiState.update {
       it.copy(
           name = name ?: it.name,
@@ -298,6 +331,12 @@ class CreateProfileViewModel(
     }
   }
 }
+
+/**
+ * How long the start-up read of the saved profile may take before the empty form is used. Long
+ * enough for a slow network; short enough that the role buttons don't stay disabled for good.
+ */
+internal val PROFILE_LOAD_TIMEOUT = 5.seconds
 
 private data class SavedOnboardingProfile(
     val name: String,

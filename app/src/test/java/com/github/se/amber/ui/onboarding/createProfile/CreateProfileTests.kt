@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.createProfile
 
@@ -10,8 +11,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -30,6 +33,7 @@ import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthUser
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
+import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.authentication.signOut.PreviewActiveCircleRepository
 import com.github.se.amber.ui.authentication.signOut.SignOutViewModel
 import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
@@ -46,6 +50,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -77,9 +82,11 @@ class CreateProfileUITests {
       viewModel: CreateProfileViewModel = CreateProfileViewModel(profileRepository()),
       signOutViewModel: SignOutViewModel = viewModelFor(idleAuthRepository()),
       onSignedOut: () -> Unit = {},
+      onProfileCreated: (Role) -> Unit = {},
   ) {
     composeTestRule.setContent {
       CreateProfileScreen(
+          onProfileCreated = onProfileCreated,
           viewModel = viewModel,
           signOutViewModel = signOutViewModel,
           onSignedOut = onSignedOut,
@@ -235,6 +242,68 @@ class CreateProfileUITests {
 
     composeTestRule.onNodeWithTag(CreateProfileTestTags.SUBMIT_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(CreateProfileTestTags.NAME_INPUT).assertIsDisplayed()
+  }
+
+  @Test
+  fun rolesWaitForTheSavedProfileWhichThenFillsTheFormAndTheSameRoleGoesOn() {
+    val load = CompletableDeferred<Result<UserProfile?>>()
+    val saved = Person(id = "uid", firstName = NAME, lastName = SURNAME, nickname = NICKNAME)
+    var createdPerson: Person? = null
+    var updateCalls = 0
+    var nextScreenFor: Role? = null
+    val viewModel =
+        CreateProfileViewModel(
+            object : ProfileRepository {
+              override suspend fun createProfile(person: Person, role: Role): Result<Unit> {
+                createdPerson = person
+                return Result.success(Unit)
+              }
+
+              override suspend fun updateOnboardingProfile(
+                  person: Person,
+                  role: Role,
+              ): Result<Unit> {
+                updateCalls++
+                return Result.success(Unit)
+              }
+
+              override suspend fun getCurrentProfile() = load.await()
+
+              override suspend fun getProfile(uid: String) = Result.success(null)
+            }
+        )
+    setCreateProfile(viewModel = viewModel, onProfileCreated = { nextScreenFor = it })
+
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.BUTTON)
+        .performScrollTo()
+        .assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateProfileTestTags.CAREGIVER_BUTTON)
+        .performScrollTo()
+        .assertIsNotEnabled()
+
+    load.complete(Result.success(UserProfile(uid = saved.id, role = Role.PATIENT, person = saved)))
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NAME_INPUT).assert(hasText(saved.firstName))
+    composeTestRule
+        .onNodeWithTag(CreateProfileTestTags.SURNAME_INPUT)
+        .assert(hasText(saved.lastName))
+    composeTestRule.onNodeWithTag(CreateProfileTestTags.NICKNAME_INPUT).assert(hasText(NICKNAME))
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performScrollTo().assertIsEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateProfileTestTags.CAREGIVER_BUTTON)
+        .performScrollTo()
+        .assertIsEnabled()
+
+    // the saved profile already has this role, name and nickname: no write, straight to the next
+    // step
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).performScrollTo().performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(Role.PATIENT, nextScreenFor)
+    assertNull(createdPerson)
+    assertEquals(0, updateCalls)
   }
 
   @Test

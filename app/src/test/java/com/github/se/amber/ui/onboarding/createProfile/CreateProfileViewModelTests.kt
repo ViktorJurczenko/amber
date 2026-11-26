@@ -1,11 +1,14 @@
 // Written by Alaabrine with the aid of an AI coding agent
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.createProfile
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import com.github.se.amber.R
 import com.github.se.amber.data.profile.ProfileCreationError
 import com.github.se.amber.data.profile.ProfileReadError
@@ -17,16 +20,20 @@ import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.model.validation.InputValidation
 import com.github.se.amber.ui.onboarding.createProfile.CreateProfileUIState
 import com.github.se.amber.ui.onboarding.createProfile.CreateProfileViewModel
+import com.github.se.amber.ui.onboarding.createProfile.PROFILE_LOAD_TIMEOUT
 import com.github.se.amber.ui.utils.UiText
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -49,6 +56,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class CreateProfileViewModelTests {
 
+  private val testDispatcher = StandardTestDispatcher()
   private lateinit var profileRepository: ProfileRepository
   private var successCount = 0
   private var lastSuccessRole: Role? = null
@@ -60,7 +68,6 @@ class CreateProfileViewModelTests {
 
   @Before
   fun setUp() {
-    val testDispatcher = StandardTestDispatcher()
     Dispatchers.setMain(testDispatcher)
     profileRepository = mockk()
     coEvery { profileRepository.getCurrentProfile() } returns Result.success(null)
@@ -80,11 +87,157 @@ class CreateProfileViewModelTests {
   // ---------- Initial state ----------
 
   @Test
-  fun initialState_hasEmptyFieldsAndNoErrors() {
+  fun withNoSavedProfile_theFormStartsEmptyWithNoErrors() {
     assertEquals(CreateProfileUIState(), viewModel.uiState.value)
     assertNull(viewModel.uiState.value.nameError)
     assertNull(viewModel.uiState.value.surnameError)
     assertNull(viewModel.uiState.value.nicknameError)
+  }
+
+  // ---------- Saved profile read on start ----------
+
+  @Test
+  fun aSavedProfileFillsTheFormAndOnlyAChangedRoleIsWritten() = runTest {
+    // e.g. after a relaunch: the profile was saved before the app was closed
+    val saved = savedProfile(role = Role.PATIENT, nickname = NICKNAME)
+    coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns Result.success(Unit)
+    val relaunched = viewModelLoading { Result.success(saved) }
+    advanceUntilIdle()
+
+    val state = relaunched.uiState.value
+    assertEquals(saved.person.firstName, state.name)
+    assertEquals(saved.person.lastName, state.surname)
+    assertEquals(NICKNAME, state.nickname)
+    assertFalse(state.isLoading)
+    assertTrue(state.canSubmit)
+
+    // the same role with unchanged details only navigates
+    relaunched.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+    assertEquals(Role.PATIENT, lastSuccessRole)
+    coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
+
+    // another role updates the saved profile
+    relaunched.onRoleSelected(Role.CAREGIVER, onSuccess)
+    advanceUntilIdle()
+    assertEquals(Role.CAREGIVER, lastSuccessRole)
+    coVerify(exactly = 1) {
+      profileRepository.updateOnboardingProfile(
+          person =
+              Person(
+                  firstName = saved.person.firstName,
+                  lastName = saved.person.lastName,
+                  nickname = NICKNAME,
+              ),
+          role = Role.CAREGIVER,
+      )
+    }
+    coVerify(exactly = 0) { profileRepository.createProfile(any(), any()) }
+  }
+
+  @Test
+  fun whileTheSavedProfileLoads_rolesAreIgnoredAndOnlyTheUntouchedFieldsAreFilled() = runTest {
+    val saved = savedProfile(role = Role.PATIENT, nickname = NICKNAME)
+    val load = CompletableDeferred<Result<UserProfile?>>()
+    val loading = viewModelLoading { load.await() }
+    runCurrent()
+    val typed = "Grace"
+    loading.onNameChange(typed)
+
+    assertTrue(loading.uiState.value.isLoading)
+    assertFalse(loading.uiState.value.canSubmit)
+    loading.onRoleSelected(Role.PATIENT, onSuccess)
+    runCurrent()
+    assertNull(lastSuccessRole)
+    coVerify(exactly = 0) { profileRepository.createProfile(any(), any()) }
+
+    load.complete(Result.success(saved))
+    advanceUntilIdle()
+
+    // the typed name is kept; the surname and nickname the user didn't touch are still filled
+    val state = loading.uiState.value
+    assertEquals(typed, state.name)
+    assertEquals(SURNAME, state.surname)
+    assertEquals(NICKNAME, state.nickname)
+    assertFalse(state.isLoading)
+    assertTrue(state.canSubmit)
+
+    // Only a nickname typed: kept, and the names are filled
+    val nicknameLoad = CompletableDeferred<Result<UserProfile?>>()
+    val nicknameFirst = viewModelLoading { nicknameLoad.await() }
+    runCurrent()
+    nicknameFirst.onNicknameChange(typed)
+    nicknameLoad.complete(Result.success(saved))
+    advanceUntilIdle()
+    assertEquals(NAME, nicknameFirst.uiState.value.name)
+    assertEquals(SURNAME, nicknameFirst.uiState.value.surname)
+    assertEquals(typed, nicknameFirst.uiState.value.nickname)
+
+    // Typed, then deleted: the user cleared those fields, so the saved values don't come back
+    val clearedLoad = CompletableDeferred<Result<UserProfile?>>()
+    val cleared = viewModelLoading { clearedLoad.await() }
+    runCurrent()
+    cleared.onSurnameChange(typed)
+    cleared.onSurnameChange("")
+    cleared.onNicknameChange(typed)
+    cleared.onNicknameChange("")
+    clearedLoad.complete(Result.success(saved))
+    advanceUntilIdle()
+    assertEquals(NAME, cleared.uiState.value.name)
+    assertEquals("", cleared.uiState.value.surname)
+    assertEquals("", cleared.uiState.value.nickname)
+  }
+
+  @Test
+  fun aFailedLoadClearsTheLoadingFlagAndTheEmptyFormStillCreatesTheProfile() = runTest {
+    coEvery { profileRepository.createProfile(any(), any()) } returns Result.success(Unit)
+    val offline = viewModelLoading { Result.failure(ProfileReadError.Network) }
+    advanceUntilIdle()
+
+    // no error for the read: the form works as if there were no profile
+    assertEquals(CreateProfileUIState(), offline.uiState.value)
+
+    offline.fillValidNameAndSurname()
+    offline.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(Role.PATIENT, lastSuccessRole)
+    coVerify(exactly = 1) {
+      profileRepository.createProfile(
+          person = Person(firstName = NAME, lastName = SURNAME),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  @Test
+  fun aLoadThatNeverAnswersStopsWaitingAfterTheTimeout() = runTest {
+    val stuck = viewModelLoading { awaitCancellation() }
+    runCurrent()
+    assertTrue(stuck.uiState.value.isLoading)
+
+    // still waiting just before the timeout, so it really waits for PROFILE_LOAD_TIMEOUT
+    advanceTimeBy(PROFILE_LOAD_TIMEOUT - 1.milliseconds)
+    runCurrent()
+    assertTrue(stuck.uiState.value.isLoading)
+
+    advanceTimeBy(1.milliseconds)
+    runCurrent()
+
+    // not loading anymore, and the form is empty as if there were no profile
+    assertEquals(CreateProfileUIState(), stuck.uiState.value)
+  }
+
+  @Test
+  fun closingTheScreenWhileTheProfileLoadsClearsTheLoadingFlag() = runTest {
+    val closed = viewModelLoading { awaitCancellation() }
+    runCurrent()
+    assertTrue(closed.uiState.value.isLoading)
+
+    clear(closed)
+    runCurrent()
+
+    assertFalse(closed.uiState.value.isLoading)
   }
 
   // ---------- Name format ----------
@@ -98,6 +251,10 @@ class CreateProfileViewModelTests {
     assertEquals(UiText.Resource(R.string.inputErrorNameFormat), state.nameError)
     assertEquals(UiText.Resource(R.string.inputErrorNameFormat), state.surnameError)
     assertFalse(state.canSubmit)
+
+    // A valid name isn't enough while the surname is refused
+    viewModel.onNameChange(NAME)
+    assertFalse(viewModel.uiState.value.canSubmit)
   }
 
   @Test
@@ -125,16 +282,16 @@ class CreateProfileViewModelTests {
 
   @Test
   fun onNameChange_updatesNameInState() {
-    viewModel.onNameChange("Ada")
+    viewModel.onNameChange(NAME)
 
-    assertEquals("Ada", viewModel.uiState.value.name)
+    assertEquals(NAME, viewModel.uiState.value.name)
   }
 
   @Test
   fun onSurnameChange_updatesSurnameInState() {
-    viewModel.onSurnameChange("Lovelace")
+    viewModel.onSurnameChange(SURNAME)
 
-    assertEquals("Lovelace", viewModel.uiState.value.surname)
+    assertEquals(SURNAME, viewModel.uiState.value.surname)
   }
 
   @Test
@@ -153,10 +310,10 @@ class CreateProfileViewModelTests {
     viewModel.onRoleSelected(Role.PATIENT, onSuccess)
     assertEquals(UiText.Resource(R.string.createProfileFillOut), viewModel.uiState.value.nameError)
 
-    viewModel.onNameChange("Ada")
+    viewModel.onNameChange(NAME)
 
     assertNull(viewModel.uiState.value.nameError)
-    assertEquals("Ada", viewModel.uiState.value.name)
+    assertEquals(NAME, viewModel.uiState.value.name)
   }
 
   @Test
@@ -167,10 +324,10 @@ class CreateProfileViewModelTests {
         viewModel.uiState.value.surnameError,
     )
 
-    viewModel.onSurnameChange("Lovelace")
+    viewModel.onSurnameChange(SURNAME)
 
     assertNull(viewModel.uiState.value.surnameError)
-    assertEquals("Lovelace", viewModel.uiState.value.surname)
+    assertEquals(SURNAME, viewModel.uiState.value.surname)
   }
 
   @Test
@@ -220,7 +377,7 @@ class CreateProfileViewModelTests {
 
   @Test
   fun onRoleSelected_blankNameOnly_setsNameErrorAndDoesNotCallRepository() = runTest {
-    viewModel.onSurnameChange("Lovelace")
+    viewModel.onSurnameChange(SURNAME)
 
     viewModel.onRoleSelected(Role.PATIENT, onSuccess)
     advanceUntilIdle()
@@ -228,13 +385,13 @@ class CreateProfileViewModelTests {
     val state = viewModel.uiState.value
     assertEquals(UiText.Resource(R.string.createProfileFillOut), state.nameError)
     assertNull(state.surnameError)
-    assertEquals("Lovelace", state.surname)
+    assertEquals(SURNAME, state.surname)
     coVerify(exactly = 0) { profileRepository.createProfile(any(), any()) }
   }
 
   @Test
   fun onRoleSelected_blankSurnameOnly_setsSurnameErrorAndDoesNotCallRepository() = runTest {
-    viewModel.onNameChange("Ada")
+    viewModel.onNameChange(NAME)
 
     viewModel.onRoleSelected(Role.PATIENT, onSuccess)
     advanceUntilIdle()
@@ -242,7 +399,7 @@ class CreateProfileViewModelTests {
     val state = viewModel.uiState.value
     assertNull(state.nameError)
     assertEquals(UiText.Resource(R.string.createProfileFillOut), state.surnameError)
-    assertEquals("Ada", state.name)
+    assertEquals(NAME, state.name)
     coVerify(exactly = 0) { profileRepository.createProfile(any(), any()) }
   }
 
@@ -262,11 +419,11 @@ class CreateProfileViewModelTests {
     assertNull(state.errorMsgRes)
     assertEquals(1, successCount)
     assertEquals(Role.PATIENT, lastSuccessRole)
-    assertEquals("Ada", state.name)
-    assertEquals("Lovelace", state.surname)
+    assertEquals(NAME, state.name)
+    assertEquals(SURNAME, state.surname)
     coVerify(exactly = 1) {
       profileRepository.createProfile(
-          person = Person(firstName = "Ada", lastName = "Lovelace"),
+          person = Person(firstName = NAME, lastName = SURNAME),
           role = Role.PATIENT,
       )
     }
@@ -391,8 +548,9 @@ class CreateProfileViewModelTests {
   fun onRoleSelected_existingProfileWithNoCircle_writesTheNewlySelectedRole() = runTest {
     coEvery { profileRepository.createProfile(any(), any()) } returns
         Result.failure(ProfileCreationError.ProfileAlreadyExists)
+    // A blank circle id is no circle
     coEvery { profileRepository.getCurrentProfile() } returns
-        Result.success(savedProfile(role = Role.CAREGIVER))
+        Result.success(savedProfile(role = Role.CAREGIVER, circleIds = listOf("")))
     coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns Result.success(Unit)
     fillValidNameAndSurname()
 
@@ -403,7 +561,7 @@ class CreateProfileViewModelTests {
     assertEquals(Role.PATIENT, lastSuccessRole)
     coVerify(exactly = 1) {
       profileRepository.updateOnboardingProfile(
-          person = Person(firstName = "Ada", lastName = "Lovelace"),
+          person = Person(firstName = NAME, lastName = SURNAME),
           role = Role.PATIENT,
       )
     }
@@ -595,7 +753,7 @@ class CreateProfileViewModelTests {
     coVerify(exactly = 1) { profileRepository.createProfile(any(), Role.PATIENT) }
     coVerify(exactly = 1) {
       profileRepository.updateOnboardingProfile(
-          person = Person(firstName = "Ada", lastName = "Lovelace"),
+          person = Person(firstName = NAME, lastName = SURNAME),
           role = Role.CAREGIVER,
       )
     }
@@ -670,6 +828,8 @@ class CreateProfileViewModelTests {
       coEvery { profileRepository.getCurrentProfile() } returns
           Result.success(savedProfile(role = Role.PATIENT).copy(person = stored))
       viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+      // the role buttons wait for the start-up read of the saved profile
+      advanceUntilIdle()
       fillValidNameAndSurname()
       viewModel.onRoleSelected(Role.PATIENT, onSuccess)
       advanceUntilIdle()
@@ -742,18 +902,7 @@ class CreateProfileViewModelTests {
         coEvery { profileRepository.createProfile(any(), any()) } returns
             Result.failure(ProfileCreationError.ProfileAlreadyExists)
         coEvery { profileRepository.getCurrentProfile() } returns
-            Result.success(
-                savedProfile(role = Role.PATIENT)
-                    .copy(
-                        person =
-                            Person(
-                                id = "uid",
-                                firstName = NAME,
-                                lastName = SURNAME,
-                                nickname = "Old",
-                            )
-                    )
-            )
+            Result.success(savedProfile(role = Role.PATIENT, nickname = "Old"))
         coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns
             Result.success(Unit)
         fillValidNameAndSurname()
@@ -777,18 +926,7 @@ class CreateProfileViewModelTests {
         coEvery { profileRepository.createProfile(any(), any()) } returns
             Result.failure(ProfileCreationError.ProfileAlreadyExists)
         coEvery { profileRepository.getCurrentProfile() } returns
-            Result.success(
-                savedProfile(role = Role.PATIENT)
-                    .copy(
-                        person =
-                            Person(
-                                id = "uid",
-                                firstName = NAME,
-                                lastName = SURNAME,
-                                nickname = NICKNAME,
-                            )
-                    )
-            )
+            Result.success(savedProfile(role = Role.PATIENT, nickname = NICKNAME))
         fillValidNameAndSurname()
         viewModel.onNicknameChange(NICKNAME)
 
@@ -799,84 +937,52 @@ class CreateProfileViewModelTests {
         coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
       }
 
-  @Test
-  fun relaunch_keepsTheSavedNicknameWhenTheNamesAreRetyped() = runTest {
-    val saved =
-        savedProfile(role = Role.PATIENT)
-            .copy(
-                person =
-                    Person(id = "uid", firstName = NAME, lastName = SURNAME, nickname = NICKNAME)
-            )
-    coEvery { profileRepository.getCurrentProfile() } returns Result.success(saved)
-    coEvery { profileRepository.createProfile(any(), any()) } returns
-        Result.failure(ProfileCreationError.ProfileAlreadyExists)
-    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
-    advanceUntilIdle()
-
-    assertEquals(NICKNAME, viewModel.uiState.value.nickname)
-
-    viewModel.onNameChange(NAME)
-    viewModel.onSurnameChange(SURNAME)
-    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
-    advanceUntilIdle()
-
-    assertEquals(1, successCount)
-    coVerify(exactly = 1) {
-      profileRepository.createProfile(
-          person = Person(firstName = NAME, lastName = SURNAME, nickname = NICKNAME),
-          role = Role.PATIENT,
-      )
-    }
-    coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
-  }
-
-  @Test
-  fun aNicknameTypedBeforeTheSavedProfileArrivesIsKept() = runTest {
-    val load = CompletableDeferred<Result<UserProfile?>>()
-    coEvery { profileRepository.getCurrentProfile() } coAnswers { load.await() }
-    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
-    runCurrent()
-
-    val typed = "Nini"
-    viewModel.onNicknameChange(typed)
-    load.complete(
-        Result.success(
-            savedProfile(role = Role.PATIENT)
-                .copy(
-                    person =
-                        Person(
-                            id = "uid",
-                            firstName = NAME,
-                            lastName = SURNAME,
-                            nickname = NICKNAME,
-                        )
-                )
-        )
-    )
-    advanceUntilIdle()
-
-    assertEquals(typed, viewModel.uiState.value.nickname)
-  }
-
   /** Picks Patient on a new screen with a valid name and returns the message it shows. */
   private fun TestScope.failedMessageOfAFreshScreen(): Int? {
     viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    // the role buttons wait for the start-up read of the saved profile
+    advanceUntilIdle()
     fillValidNameAndSurname()
     viewModel.onRoleSelected(Role.PATIENT, onSuccess)
     advanceUntilIdle()
     return viewModel.uiState.value.errorMsgRes
   }
 
-  private fun fillValidNameAndSurname() {
-    viewModel.onNameChange(NAME)
-    viewModel.onSurnameChange(SURNAME)
+  /** A new ViewModel whose start-up read of the saved profile answers with [load]. */
+  private fun viewModelLoading(load: suspend () -> Result<UserProfile?>): CreateProfileViewModel {
+    coEvery { profileRepository.getCurrentProfile() } coAnswers { load() }
+    return CreateProfileViewModel(profileRepository = profileRepository)
   }
 
-  private fun savedProfile(role: Role, circleIds: List<String> = emptyList()) =
+  /** Clears [vm] the way Android does when its screen is gone: its store is cleared. */
+  private fun clear(vm: CreateProfileViewModel) {
+    val store = ViewModelStore()
+    ViewModelProvider(
+        store,
+        object : ViewModelProvider.Factory {
+          @Suppress("UNCHECKED_CAST")
+          override fun <T : ViewModel> create(modelClass: Class<T>): T = vm as T
+        },
+    )[CreateProfileViewModel::class.java]
+    store.clear()
+  }
+
+  private fun fillValidNameAndSurname() = viewModel.fillValidNameAndSurname()
+
+  private fun CreateProfileViewModel.fillValidNameAndSurname() {
+    onNameChange(NAME)
+    onSurnameChange(SURNAME)
+  }
+
+  private fun savedProfile(
+      role: Role,
+      circleIds: List<String> = emptyList(),
+      nickname: String? = null,
+  ) =
       UserProfile(
           uid = "uid",
           role = role,
-          person = Person(id = "uid", firstName = NAME, lastName = SURNAME),
+          person = Person(id = "uid", firstName = NAME, lastName = SURNAME, nickname = nickname),
           circleIds = circleIds,
       )
 
