@@ -1,5 +1,6 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.model.validation
 
@@ -127,6 +128,7 @@ object InputValidation {
   const val NAME_MAX_LENGTH = 50
   const val SHORT_TEXT_MAX_LENGTH = 50
   const val DESCRIPTION_MAX_LENGTH = 750
+  const val TEXT_MAX_LENGTH = 5000
   const val PLACE_QUERY_MAX_LENGTH = 100
   // The longest address SMTP allows (RFC 5321)
   const val EMAIL_MAX_LENGTH = 254
@@ -156,6 +158,9 @@ object InputValidation {
 
   /** A media description: any characters but invisible ones, on several lines. */
   val DESCRIPTION = InputRule(maxLength = DESCRIPTION_MAX_LENGTH, multiLine = true)
+
+  /** A story body: any characters but invisible ones, on several lines. */
+  val TEXT = InputRule(maxLength = TEXT_MAX_LENGTH, multiLine = true)
 
   /** A place typed to be searched for. */
   val PLACE_QUERY = InputRule(maxLength = PLACE_QUERY_MAX_LENGTH, required = false)

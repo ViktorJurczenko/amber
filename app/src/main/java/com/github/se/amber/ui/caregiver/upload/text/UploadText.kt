@@ -50,8 +50,8 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.MAX_CHAR_DESCRIPTION
 import com.github.se.amber.ui.theme.MAX_CHAR_NAME
+import com.github.se.amber.ui.theme.MAX_CHAR_TEXT
 import com.github.se.amber.ui.theme.MAX_LINE_DESCRIPTION
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
 import com.github.se.amber.ui.theme.TEXT_FIELD_DEFAULT
@@ -71,10 +71,10 @@ object UploadTextTestTags {
  * Displays the text upload screen.
  *
  * The form matches the picture upload screen, with a title field in place of the camera and gallery
- * buttons. The title box is [MediaItem.Text.title], which this screen does not save yet. The
- * description box keeps that label, but its text is the story body, [MediaItem.Text.text]. A text
- * story has no shared caption, so [MediaItem.description] stays empty. What is typed is sent to
- * [viewModel]. [onUpload] and [goBack] only move between screens.
+ * buttons. The title box is [MediaItem.Text.title]. The description box keeps that label, but its
+ * text is the story body, [MediaItem.Text.text]. A text story has no shared caption, so
+ * [MediaItem.description] stays null. What is typed is sent to [viewModel]. [onUpload] and [goBack]
+ * only move between screens.
  *
  * @param viewModel the view model that owns the story being typed.
  * @param onUpload called after the view model reports that the story was uploaded.
@@ -147,7 +147,7 @@ fun UploadTextScreen(
           }
 
           // Labeled "Description" like the audio screen. The value is the story body (`text`),
-          // not MediaItem.description, which stays empty for a text story.
+          // not MediaItem.description, which stays null for a text story.
           Column(Modifier.testTag(UploadTextTestTags.DESCRIPTION)) {
             DisplayTextField(
                 modifier = Modifier.height(TEXT_FIELD_BIG),
@@ -157,7 +157,7 @@ fun UploadTextScreen(
                 placeholder = stringResource(R.string.uploadTextDescriptionPlaceholder),
                 emptyErrorMessage = stringResource(R.string.uploadTextDescriptionEmpty),
                 maxLines = MAX_LINE_DESCRIPTION,
-                maxChar = MAX_CHAR_DESCRIPTION,
+                maxChar = MAX_CHAR_TEXT,
             )
           }
 
