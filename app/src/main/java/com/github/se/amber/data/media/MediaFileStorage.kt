@@ -129,6 +129,30 @@ internal fun personPhotoPath(circleId: String, personId: String, photoId: String
   return "careCircles/$circleId/people/$personId/$photoId.jpg"
 }
 
+/**
+ * Checks that [storagePath] is a person photo of [circleId]
+ * (`careCircles/{circleId}/people/{personId}/{photoId}.jpg`), with the same id rules as
+ * [personPhotoPath]. The Storage rules would refuse another path; failing here names the circle.
+ *
+ * @throws IllegalArgumentException if [storagePath] is not that photo.
+ */
+internal fun requirePersonPhotoOf(circleId: String, storagePath: String) {
+  val parts = storagePath.split('/')
+  val fileName = parts.getOrNull(4).orEmpty()
+  val photoId = fileName.removeSuffix(".jpg")
+  require(
+      parts.size == 5 &&
+          parts[0] == "careCircles" &&
+          parts[1] == circleId &&
+          parts[2] == "people" &&
+          isStorageId(parts[3]) &&
+          fileName.endsWith(".jpg") &&
+          isStorageId(photoId),
+  ) {
+    "Photo $storagePath isn't a photo of care circle $circleId"
+  }
+}
+
 private fun isStorageId(id: String) = id.isNotBlank() && '/' !in id && '_' !in id
 
 /**

@@ -23,7 +23,7 @@ class PersonPhotoRepositoryProvider(
       val context = Firebase.app.applicationContext
       PersonPhotoRepositoryFirebase(
           fileStorage = MediaFileStorageFirebase(),
-          cache = MediaFileCache(File(context.cacheDir, "people")),
+          cache = MediaFileCache(File(context.cacheDir, CACHE_DIR)),
           firestore = Firebase.firestore,
           authRepository = AuthRepositoryProvider.repository,
       )
@@ -34,5 +34,7 @@ class PersonPhotoRepositoryProvider(
   companion object {
     /** The app-wide instance. Don't use it in tests. */
     val default = PersonPhotoRepositoryProvider()
+
+    private const val CACHE_DIR = "people"
   }
 }

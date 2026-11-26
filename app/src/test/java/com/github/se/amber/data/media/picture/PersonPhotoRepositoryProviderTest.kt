@@ -19,6 +19,8 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 class PersonPhotoRepositoryProviderTest {
+  private val fake: PersonPhotoRepository = mockk()
+
   @After
   fun tearDown() {
     unmockkStatic(FirebaseApp::class, FirebaseFirestore::class)
@@ -26,9 +28,33 @@ class PersonPhotoRepositoryProviderTest {
   }
 
   @Test
-  fun defaultIsSharedAndItsFactoryBuildsTheFirebaseRepository() {
-    assertSame(PersonPhotoRepositoryProvider.default, PersonPhotoRepositoryProvider.default)
+  fun repositoryIsBuiltOnlyOnce() {
+    var builds = 0
+    val provider = PersonPhotoRepositoryProvider {
+      builds++
+      fake
+    }
 
+    assertSame(fake, provider.repository)
+    assertSame(fake, provider.repository)
+    assertEquals(1, builds)
+  }
+
+  @Test
+  fun repositoryIsBuiltAgainAfterAFactoryFailure() {
+    var attempts = 0
+    val provider = PersonPhotoRepositoryProvider {
+      if (attempts++ == 0) throw IllegalStateException("Firebase not initialized")
+      fake
+    }
+
+    runCatching { provider.repository }
+
+    assertSame(fake, provider.repository)
+  }
+
+  @Test
+  fun defaultFactoryBuildsTheFirebaseRepository() {
     val context = mockk<Context>()
     val app = mockk<FirebaseApp>()
     every { app.applicationContext } returns context
@@ -39,8 +65,8 @@ class PersonPhotoRepositoryProviderTest {
     mockkObject(AuthRepositoryProvider)
     every { AuthRepositoryProvider.repository } returns mockk()
 
-    val repository = PersonPhotoRepositoryProvider().repository
+    val provider = PersonPhotoRepositoryProvider()
 
-    assertEquals(PersonPhotoRepositoryFirebase::class.java, repository.javaClass)
+    assertEquals(PersonPhotoRepositoryFirebase::class.java, provider.repository.javaClass)
   }
 }
