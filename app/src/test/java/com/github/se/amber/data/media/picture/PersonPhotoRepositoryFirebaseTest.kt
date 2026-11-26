@@ -268,6 +268,9 @@ class PersonPhotoRepositoryFirebaseTest {
             "careCircles/$CIRCLE_ID/people/${PERSON}_2/$PHOTO_ID.jpg",
             "photos/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.jpg",
             "careCircles/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.png",
+            "careCircles/$CIRCLE_ID/people/$PERSON.jpg", // too few segments
+            "careCircles/$CIRCLE_ID/places/$PERSON/$PHOTO_ID.jpg", // not under people
+            "careCircles/$CIRCLE_ID/people/$PERSON/${PHOTO_ID}_1.jpg", // invalid photo id
         )
     for (path in outside) {
       val result = repository().getPhotoFile(circle, path)
