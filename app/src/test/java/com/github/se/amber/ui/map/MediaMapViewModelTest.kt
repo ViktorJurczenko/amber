@@ -668,6 +668,27 @@ class MediaMapViewModelTest {
   }
 
   @Test
+  fun aPinNearYouIsNoLongerNearOnceTheNextCirclesPinsFail() {
+    mediaLocationRepository.failures["circle2"] = denied
+    val viewModel = createViewModel()
+    viewModel.showMap()
+    locationUpdates.updates.value = LocationUpdate.Position(nearLausanne)
+    assertEquals(
+        MediaMapLocationState.Located(nearLausanne, listOf(twoPins[0])),
+        viewModel.location(),
+    )
+
+    activeCircleRepository.activeId.tryEmit("circle2")
+
+    // the next circle's pins really failed, not just loaded empty
+    assertEquals(
+        MediaMapUIState.BlockingError(R.string.mediaMapErrorLoadMedia),
+        viewModel.uiState.value,
+    )
+    assertEquals(MediaMapLocationState.Located(nearLausanne), viewModel.location())
+  }
+
+  @Test
   fun thePinNearYouFollowsThePinsAsTheyChange() {
     mediaLocationRepository.markers.value = mapOf("circle1" to genevaOnly)
     val viewModel = createViewModel()

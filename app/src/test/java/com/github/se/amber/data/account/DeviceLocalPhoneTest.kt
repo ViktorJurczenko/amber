@@ -1,9 +1,12 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
 import coil3.ImageLoader
 import coil3.memory.MemoryCache
+import com.github.se.amber.data.directions.LAST_ROUTE_FILE_NAME
+import com.github.se.amber.data.directions.LAST_ROUTE_TEMPORARY_SUFFIX
 import com.github.se.amber.data.media.image.MediaImageMemory
 import com.github.se.amber.model.media.MediaRepository
 import io.mockk.coEvery
@@ -32,8 +35,11 @@ class DeviceLocalPhoneTest {
   private lateinit var picked: File
   private lateinit var captured: File
   private lateinit var otherFile: File
+  private lateinit var pickedNotAPicture: File
   private lateinit var recorded: File
   private lateinit var pickedMemo: File
+  private lateinit var lastRoute: File
+  private lateinit var routeLeftover: File
   private lateinit var phone: DeviceLocalPhone
   private val calls = mutableListOf<String>()
 
@@ -51,11 +57,18 @@ class DeviceLocalPhoneTest {
           writeText("photo")
         }
     otherFile = File(cacheDir, "other.txt").apply { writeText("kept") }
+    pickedNotAPicture = File(cacheDir, "picked_notes.txt").apply { writeText("kept") }
     recorded = File(cacheDir, "recording_123.m4a").apply { writeText("memo") }
     pickedMemo =
         File(cacheDir, "audio/picked_123.m4a").apply {
           parentFile!!.mkdirs()
           writeText("memo")
+        }
+    lastRoute = File(cacheDir, LAST_ROUTE_FILE_NAME).apply { writeText("{}") }
+    // a temporary copy an app killed mid-save left, named like RouteFile names them
+    routeLeftover =
+        File(cacheDir, "${LAST_ROUTE_FILE_NAME}123$LAST_ROUTE_TEMPORARY_SUFFIX").apply {
+          writeText("{}")
         }
     phone =
         DeviceLocalPhone(
@@ -71,7 +84,10 @@ class DeviceLocalPhoneTest {
     var filesStillThere = false
     every { memoryCache.clear() } answers
         {
-          filesStillThere = listOf(picked, captured, recorded, pickedMemo).all { it.exists() }
+          filesStillThere =
+              listOf(picked, captured, recorded, pickedMemo, lastRoute, routeLeftover).all {
+                it.exists()
+              }
           calls += "clearMemory"
         }
 
@@ -82,7 +98,11 @@ class DeviceLocalPhoneTest {
     assertFalse(captured.parentFile!!.exists())
     assertFalse(recorded.exists())
     assertFalse(pickedMemo.exists())
+    assertFalse(lastRoute.exists())
+    assertFalse(routeLeftover.exists())
     assertTrue(otherFile.exists())
+    // only the copies of picked pictures go, not any file with their prefix
+    assertTrue(pickedNotAPicture.exists())
     assertEquals(listOf("clearMedia", "clearMemory"), calls)
   }
 

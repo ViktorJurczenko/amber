@@ -13,6 +13,7 @@ import com.github.se.amber.data.account.DeletionMarker
 import com.github.se.amber.data.account.SharedPreferencesDeletionMarker
 import com.github.se.amber.data.media.image.MediaPictureFetcher
 import com.github.se.amber.data.media.image.MediaPictureKeyer
+import com.github.se.amber.data.work.AmberWorkerFactory
 import com.github.se.amber.model.media.MediaRepositoryProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,9 +26,9 @@ import kotlinx.coroutines.launch
  * - the app's image loader, so that `MediaImage` gets its pictures from the media repository and
  *   keeps them decoded under their media id. It has no network fetcher: Coil never downloads
  *   anything by itself, the repository does;
- * - WorkManager, so that background jobs are created by [MediaRepositoryProvider.workerFactory] and
- *   get what they need. Its automatic setup is turned off in the manifest, so it reads
- *   [workManagerConfiguration] instead.
+ * - WorkManager, so that background jobs are created by [AmberWorkerFactory] and get what they
+ *   need. Its automatic setup is turned off in the manifest, so it reads [workManagerConfiguration]
+ *   instead.
  *
  * The only thing done at startup is finishing an interrupted account deletion, if there is one.
  */
@@ -73,6 +74,6 @@ class AmberApplication : Application(), SingletonImageLoader.Factory, Configurat
           .build()
 
   override val workManagerConfiguration: Configuration by lazy {
-    Configuration.Builder().setWorkerFactory(MediaRepositoryProvider.workerFactory).build()
+    Configuration.Builder().setWorkerFactory(AmberWorkerFactory()).build()
   }
 }

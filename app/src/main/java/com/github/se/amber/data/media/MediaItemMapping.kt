@@ -1,5 +1,6 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.media
@@ -58,7 +59,7 @@ fun MediaItem.toMap(): Map<String, Any?> {
                 "transcript" to transcript,
                 "waveform" to waveform,
             )
-        is MediaItem.Text -> mapOf(TYPE to TYPE_TEXT, "text" to text)
+        is MediaItem.Text -> mapOf(TYPE to TYPE_TEXT, "title" to title, "text" to text)
       }
   return common + own
 }
@@ -132,12 +133,14 @@ private class Fields(private val map: Map<String, Any?>) {
               authorId = authorId,
               storagePath = storagePath,
               createdAt = createdAt,
-              description = description,
+              // A text can have no description: a stored null stays null instead of becoming ""
+              description = stringOrNull("description"),
               date = date,
               location = location,
               shownIds = shownIds,
               authorizedIds = authorizedIds,
               status = status,
+              title = string("title"),
               text = string("text"),
           )
       else -> null // missing or unknown type
