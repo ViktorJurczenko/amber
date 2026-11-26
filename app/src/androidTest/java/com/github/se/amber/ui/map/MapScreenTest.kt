@@ -139,7 +139,9 @@ class MapScreenTest {
 
     val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     search.performTextInput("Laus")
-    composeTestRule.waitUntil(TIME_OUT) { viewModel.placeSearchState.value.suggestions.isNotEmpty() }
+    composeTestRule.waitUntil(TIME_OUT) {
+      viewModel.placeSearchState.value.suggestions.isNotEmpty()
+    }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
     search.assertTextEquals("Lausanne")

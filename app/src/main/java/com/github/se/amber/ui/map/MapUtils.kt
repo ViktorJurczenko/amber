@@ -1,5 +1,4 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
-// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -124,6 +123,7 @@ internal fun MapSearchField(
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
         testTag = MapTestTags.SEARCH,
     )
+    // Selecting a place leaves its name in the field and closes the popup.
     if (state.query.isNotBlank() && state.selectedPlace == null) {
       Surface(
           modifier =
@@ -137,6 +137,8 @@ internal fun MapSearchField(
         Column(
             modifier = Modifier.heightIn(max = TEXT_FIELD_BIG).verticalScroll(rememberScrollState())
         ) {
+
+          // Loading and error messages take priority over suggestions from an earlier search
           when {
             state.query.trim().length < MAP_MIN_PLACE_QUERY_LENGTH ->
                 MapSearchHint(
@@ -248,6 +250,7 @@ internal fun MapPositionCard(
         horizontalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+      // Give the status text the space left beside the recenter button
       Column(
           modifier = Modifier.weight(WEIGHT_ONE),
           verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_MINI),
