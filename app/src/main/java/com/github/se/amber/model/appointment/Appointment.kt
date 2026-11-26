@@ -26,24 +26,27 @@ import com.github.se.amber.model.location.GeoLocation
  * Rules: readable and writable by every member of the circle (CareCircle.memberIds). On every save,
  * the rules check that:
  * - the document holds only the fields of this class, and [id] is the document id;
- * - it passes the checks of `validationError`: [title] isn't blank, [startAt] is set, and
- *   [durationMinutes] is null or between 1 and 1440;
+ * - it passes the checks of `validationError`: [title] isn't blank, [startAt] is set,
+ *   [durationMinutes] is null or between 1 and 1440, and [reminderMinutesBefore] holds at most 5
+ *   values from 0 to 7 days;
  * - [lastEndAt] is [startAt] plus [durationMinutes], or plus 60 minutes when it is null;
  * - every field has the type this class expects, so the app can read it back;
  * - [updatedBy] is the user saving it;
  * - every attendee is a member of the circle.
  *
- * On create, [createdBy] must be the user saving it. An edit can't change [createdBy] or
- * [createdAt].
+ * On create, [createdBy] must be the user saving it, and [patientId] must be the circle's
+ * patientId, which can't be "". An edit can't change [createdBy], [createdAt] or [patientId].
  *
  * Account deletion: the backend deletes the appointments the user created. On the others, it
- * removes the user from [attendeeIds], and sets [updatedBy] to "" if they saved it last.
+ * removes the user from [attendeeIds], and sets [updatedBy] to "" if they saved it last. When the
+ * user is the patient, it deletes every appointment of the circle, since [patientId] can't change.
  *
- * Planned, not handled yet:
- * - reminders: a notification on the patient's phone before [startAt], scheduled locally so it
- *   works offline. Would add a field such as `reminderMinutesBefore: List<Int>`.
- * - recurrence (e.g. weekly physio): will add a recurrence rule field; for now each occurrence is
- *   its own appointment.
+ * Reminders: [reminderMinutesBefore] says when they come. Everyone linked to the appointment gets
+ * them: [patientId] and the attendees (see `isLinkedTo`).
+ *
+ * Recurrence (e.g. weekly physio) isn't handled yet. For now each occurrence is its own
+ * appointment. Read appointments through `occurrencesIn`, so repeating ones can be added later
+ * without changing the callers.
  *
  * New fields must get a default value, so documents written before they existed can still be read.
  * Computed values must be extension functions, like [validationError]. Firestore stores every
@@ -65,6 +68,17 @@ data class Appointment(
     // Where, and who comes along
     override val location: GeoLocation? = null, // copied from a Place, or entered
     override val attendeeIds: List<String> = emptyList(),
+
+    // When the reminders come
+
+    // In minutes before startAt. For example [60, 1440] means 1 hour and 1 day before. An empty
+    // list means no reminder. Every linked person gets the same reminders, since there is one list
+    // per appointment.
+    val reminderMinutesBefore: List<Int> = DEFAULT_REMINDER_MINUTES,
+
+    // The circle's patient (CareCircle.patientId). Set by the repository on create. It never
+    // changes after.
+    val patientId: String = "",
 
     // Stored for queries. Set by the repository.
 

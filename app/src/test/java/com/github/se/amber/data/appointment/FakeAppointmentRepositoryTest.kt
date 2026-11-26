@@ -4,6 +4,7 @@ package com.github.se.amber.data.appointment
 
 import com.github.se.amber.data.Synced
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.circle.CareCircle
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,14 +23,19 @@ import org.junit.Test
 class FakeAppointmentRepositoryTest {
   private val repository = FakeAppointmentRepository()
 
+  // add() copies the circle's patient into each appointment. The tests' appointments already hold
+  // "pat", so they can be compared with what was saved.
+  private val circle = CareCircle(id = "circle", patientId = "pat")
+  private val otherCircle = CareCircle(id = "other circle", patientId = "pat")
+
   @Test
   fun writesChangeTheSavedAppointments() = runTest {
-    val first = Appointment(id = repository.newId(), title = "Physio")
-    val second = Appointment(id = repository.newId(), title = "Dentist")
+    val first = Appointment(id = repository.newId(), title = "Physio", patientId = "pat")
+    val second = Appointment(id = repository.newId(), title = "Dentist", patientId = "pat")
     assertNotEquals(first.id, second.id)
 
-    repository.addAppointment("circle", first)
-    repository.addAppointment("circle", second)
+    repository.addAppointment(circle, first)
+    repository.addAppointment(circle, second)
     repository.updateAppointment("circle", first.copy(title = "Physio at 10"))
     repository.deleteAppointment("circle", second.id)
 
@@ -38,17 +44,50 @@ class FakeAppointmentRepositoryTest {
   }
 
   @Test
+  fun addCopiesThePatientOfTheCircle() = runTest {
+    // The caller's value is ignored, like in the real repository.
+    val fromCaller = Appointment(id = "a1", title = "Physio", patientId = "someone")
+
+    val saved = repository.addAppointment(circle, fromCaller).getOrThrow()
+
+    assertEquals("pat", saved.patientId)
+    assertEquals(listOf(saved), repository.appointmentsOf("circle"))
+  }
+
+  @Test
+  fun aCircleWithoutPatientGetsNoAppointment() = runTest {
+    val result = repository.addAppointment(circle.copy(patientId = ""), Appointment(id = "a1"))
+
+    assertEquals(AppointmentError.NoPatient(), result.exceptionOrNull())
+    assertEquals(emptyList<Appointment>(), repository.appointmentsOf("circle"))
+  }
+
+  @Test
   fun observeAppointmentsListsTheDayAndFollowsTheChanges() = runTest {
     // Written out: 17 November 2026 at 00:00 UTC, the fake's default zone.
     val dayStart = 1_794_873_600_000L
     val hour = 1.hours.inWholeMilliseconds
     // No duration, so each one lasts the default 60 minutes.
-    val acrossMidnight = Appointment(id = "a1", title = "Night care", startAt = dayStart - hour / 2)
-    val yesterday = Appointment(id = "a2", title = "Dentist", startAt = dayStart - 2 * hour)
-    val later = Appointment(id = "a3", title = "Physio", startAt = dayStart + 10 * hour)
-    val tomorrow = Appointment(id = "a4", title = "Hairdresser", startAt = dayStart + 24 * hour)
+    val acrossMidnight =
+        Appointment(
+            id = "a1",
+            title = "Night care",
+            startAt = dayStart - hour / 2,
+            patientId = "pat",
+        )
+    val yesterday =
+        Appointment(id = "a2", title = "Dentist", startAt = dayStart - 2 * hour, patientId = "pat")
+    val later =
+        Appointment(id = "a3", title = "Physio", startAt = dayStart + 10 * hour, patientId = "pat")
+    val tomorrow =
+        Appointment(
+            id = "a4",
+            title = "Hairdresser",
+            startAt = dayStart + 24 * hour,
+            patientId = "pat",
+        )
     for (appointment in listOf(later, yesterday, tomorrow, acrossMidnight)) {
-      repository.addAppointment("circle", appointment)
+      repository.addAppointment(circle, appointment)
     }
     val lists = mutableListOf<List<Synced<Appointment>>>()
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -56,7 +95,7 @@ class FakeAppointmentRepositoryTest {
     }
 
     // A change in another circle doesn't make this list emit again.
-    repository.addAppointment("other circle", later)
+    repository.addAppointment(otherCircle, later)
     repository.deleteAppointment("circle", later.id)
     runCurrent()
 
@@ -89,7 +128,7 @@ class FakeAppointmentRepositoryTest {
 
     // assertSame: the errors are equal by type, so assertEquals would accept a new instance.
     val appointment = Appointment(id = "a1", title = "Physio")
-    assertSame(error, repository.addAppointment("circle", appointment).exceptionOrNull())
+    assertSame(error, repository.addAppointment(circle, appointment).exceptionOrNull())
     assertSame(error, repository.updateAppointment("circle", appointment).exceptionOrNull())
     assertSame(error, repository.deleteAppointment("circle", "a1").exceptionOrNull())
     assertEquals(emptyList<Appointment>(), repository.appointmentsOf("circle"))

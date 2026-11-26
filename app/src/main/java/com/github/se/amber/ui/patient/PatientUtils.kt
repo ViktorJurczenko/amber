@@ -1,11 +1,13 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.patient
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
@@ -27,22 +31,37 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS_PATIENT
 import com.github.se.amber.ui.theme.DISABLED_ALPHA
+import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
+import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
+import com.github.se.amber.ui.theme.MIN_LINE_DEFAULT
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH
@@ -58,6 +77,8 @@ object PatientUtilsTestTags {
   const val BUTTON_WITH_ICON = "PatientUtils_test_tag_button_with_icon"
   const val BUTTON_ICON = "PatientUtils_test_tag_button_icon"
   const val ICON_BUTTON = "PatientUtils_test_tag_icon_button"
+  const val TEXT_FIELD = "PatientUtils_test_tag_text_field"
+  const val TEXT_FIELD_ERROR = "PatientUtils_test_tag_text_field_error"
 }
 
 /**
@@ -247,6 +268,140 @@ fun DisplayPatientCircularIconButton(
           modifier = Modifier.size(PATIENT_ICON_SIZE),
       )
     }
+  }
+}
+
+/**
+ * Displays a patient text field using theme colors for its text, border, and validation messages.
+ * Character and line limits produce guidance after the field has received focus; callers own the
+ * actual input value.
+ *
+ * @param modifier Modifier applied to the text field.
+ * @param value Current text supplied by the caller.
+ * @param onValueChange Called whenever the user edits the text.
+ * @param label Optional label displayed above the input while focused or filled.
+ * @param placeholder Optional hint displayed while the input is empty.
+ * @param emptyErrorMessage Message shown after focus when the input is blank.
+ * @param minLines Minimum number of visible input lines.
+ * @param maxLines Maximum number of visible input lines when [singleLine] is false.
+ * @param maxChar Character threshold for the guidance message; the caller enforces any hard limit.
+ * @param singleLine Whether the keyboard should keep the input on one line.
+ * @param error Validation message shown instead of [emptyErrorMessage] when present.
+ * @param leadingIcon Optional icon before the input text.
+ * @param keyboardOptions Keyboard type and IME action for the field.
+ * @param keyboardActions Callbacks for IME actions such as Search.
+ * @param testTag Tag used to find this field in UI tests.
+ */
+@Composable
+fun DisplayPatientTextField(
+    modifier: Modifier = Modifier,
+    value: String = "",
+    onValueChange: (String) -> Unit = {},
+    label: String? = null,
+    placeholder: String? = null,
+    emptyErrorMessage: String? = null,
+    minLines: Int = MIN_LINE_DEFAULT,
+    maxLines: Int = MAX_LINE_DEFAULT,
+    maxChar: Int = MAX_CHAR_DEFAULT,
+    singleLine: Boolean = false,
+    error: String? = null,
+    leadingIcon: ImageVector? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    testTag: String = PatientUtilsTestTags.TEXT_FIELD,
+) {
+  require(maxChar > 0) { "maxChar must be positive, was $maxChar" }
+  require(minLines > 0) { "minLines must be positive, was $minLines" }
+  require(singleLine || minLines <= maxLines) {
+    "minLines ($minLines) must not exceed maxLines ($maxLines)"
+  }
+
+  var isFocused by remember { mutableStateOf(false) }
+  var hasBeenFocused by rememberSaveable { mutableStateOf(false) }
+
+  Column(modifier = modifier.fillMaxWidth()) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label =
+            label?.let {
+              {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+              }
+            },
+        placeholder =
+            placeholder?.let {
+              {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+              }
+            },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+        modifier =
+            Modifier.fillMaxWidth()
+                .border(
+                    width = BORDER_THICKNESS_PATIENT,
+                    color =
+                        if (isFocused) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.tertiary,
+                    shape = RoundedCornerShape(ROUND_CORNER),
+                )
+                .onFocusChanged { focus ->
+                  isFocused = focus.isFocused
+                  if (focus.isFocused) hasBeenFocused = true
+                }
+                .testTag(testTag),
+        shape = RoundedCornerShape(ROUND_CORNER),
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+            ),
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = if (singleLine) MIN_LINE_DEFAULT else maxLines,
+        isError = error != null,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+    )
+
+    if (value.length >= maxChar && hasBeenFocused) {
+      Text(
+          text = pluralStringResource(R.plurals.textFieldMaxCharReached, maxChar, maxChar),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+    if (!singleLine && value.lines().size >= maxLines && hasBeenFocused) {
+      Text(
+          text = pluralStringResource(R.plurals.textFieldMaxLinesReached, maxLines, maxLines),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+    val shownError = error ?: emptyErrorMessage?.takeIf { value.isBlank() && hasBeenFocused }
+    if (shownError != null) {
+      Text(
+          text = shownError,
+          modifier = Modifier.testTag(PatientUtilsTestTags.TEXT_FIELD_ERROR),
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Patient text field")
+@Composable
+internal fun DisplayPatientTextFieldPreview() {
+  AmberAppTheme(darkTheme = false) {
+    DisplayPatientTextField(placeholder = stringResource(R.string.patientMapSearchHint))
   }
 }
 
