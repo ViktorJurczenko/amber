@@ -45,6 +45,7 @@ import com.google.maps.android.compose.CameraPositionState
 import io.mockk.mockk
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -158,12 +159,19 @@ class MapScreenTest {
 
   @Test
   fun mapPreviewDisplaysMapAndPatientNavigation() {
-    composeTestRule.setContent { MapScreenPreview() }
+    val suppliedModel = createViewModel().apply { updateSearchQuery("La") }
+    val useSuppliedModel = mutableStateOf(false)
+    composeTestRule.setContent {
+      if (useSuppliedModel.value) MapScreenPreview(viewModel = suppliedModel)
+      else MapScreenPreview()
+    }
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Map))
         .assertIsSelected()
+    composeTestRule.runOnIdle { useSuppliedModel.value = true }
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertTextEquals("La")
   }
 
   @Test
@@ -198,6 +206,11 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
         .assertIsDisplayed()
+    waitForCameraTarget(firstCamera, lastKnown)
+
+    // The next fresh fix should center the camera currently attached to the map.
+    composeTestRule.runOnIdle { useSecondCamera.value = true }
+    composeTestRule.waitForIdle()
 
     val fresh = DevicePosition(46.53, 6.64)
     updates.value = LocationUpdate.Position(fresh)
@@ -207,6 +220,7 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
+    waitForCameraTarget(secondCamera, fresh)
 
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
@@ -214,7 +228,6 @@ class MapScreenTest {
     composeTestRule.waitForIdle()
     assertEquals(MapRecenterAction.MoveTo(fresh), viewModel.recenter())
 
-    composeTestRule.runOnIdle { useSecondCamera.value = true }
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     val later = DevicePosition(46.54, 6.65)
     updates.value = LocationUpdate.Position(later)
@@ -224,6 +237,8 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
+    composeTestRule.waitForIdle()
+    waitForCameraTarget(secondCamera, fresh)
 
     val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     search.performTextInput("La")
@@ -235,6 +250,14 @@ class MapScreenTest {
     search.performImeAction()
     composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.selectedPlace == place }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  /** Maps rounds coordinates when it reports the camera target back to Compose. */
+  private fun waitForCameraTarget(camera: CameraPositionState, expected: DevicePosition) {
+    composeTestRule.waitUntil(TIME_OUT) {
+      val target = camera.position.target
+      abs(target.latitude - expected.lat) < 0.0001 && abs(target.longitude - expected.lng) < 0.0001
+    }
   }
 
   // ActivityResultRegistry that answers deterministically and counts requests
