@@ -77,9 +77,7 @@ class CalendarTest {
    * [Calendar], gives it back instead of creating one that uses the Firebase repositories.
    */
   private fun storeFakeViewModelInTheActivity() {
-    val factory = viewModelFactory {
-      initializer { viewModelWithoutAppointments(YearMonth.now()) }
-    }
+    val factory = viewModelFactory { initializer { viewModelWithoutAppointments(YearMonth.now()) } }
     ViewModelProvider(composeTestRule.activity, factory)[CalendarViewModel::class.java]
   }
 
