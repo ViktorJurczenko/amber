@@ -510,6 +510,34 @@ class PersonPhotoRepositoryFirebaseTest {
   }
 
   @Test
+  fun savePendingPhotoReturnsAFailureWhenThePictureCannotBePrepared() = runTest {
+    val notAPicture = File(tmp.root, "notes.txt").apply { writeText("nope") }
+
+    val result = repository().savePendingPhoto(notAPicture)
+
+    assertSame(PersonPhotoError.CannotPreparePhoto, result.exceptionOrNull())
+    assertFalse(pendingPhoto.exists())
+  }
+
+  @Test
+  fun savePendingPhotoRethrowsCancellation() = runTest {
+    val dispatcher =
+        object : CoroutineDispatcher() {
+          override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
+            context[Job]?.cancel(CancellationException("stopped"))
+            block.run()
+          }
+        }
+
+    val error = runCatching {
+      repository(ioDispatcher = dispatcher).savePendingPhoto(picture())
+    }.exceptionOrNull()
+
+    assertTrue(error is CancellationException)
+    assertEquals("stopped", error?.message)
+  }
+
+  @Test
   fun uploadPendingPhotoUploadsThenDeletesThePendingFile() = runTest {
     val repo = repository()
     assertTrue(repo.savePendingPhoto(picture()).isSuccess)
@@ -648,6 +676,17 @@ class PersonPhotoRepositoryFirebaseTest {
     val notSignedIn = signedOut.uploadPendingPhoto(circle)
 
     assertSame(PersonPhotoError.NotAuthenticated, notSignedIn.exceptionOrNull())
+    assertTrue(pendingPhoto.isFile)
+  }
+
+  @Test
+  fun uploadPendingPhotoFailsWhenTheUidIsBlankAndKeepsTheFile() = runTest {
+    val blankUid = repository(signedInAs(""))
+    assertTrue(blankUid.savePendingPhoto(picture()).isSuccess)
+
+    val result = blankUid.uploadPendingPhoto(circle)
+
+    assertSame(PersonPhotoError.NotAuthenticated, result.exceptionOrNull())
     assertTrue(pendingPhoto.isFile)
   }
 
