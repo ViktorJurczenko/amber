@@ -46,6 +46,23 @@ class ReminderCheckingAppointmentRepositoryTest {
   }
 
   @Test
+  fun aCheckThatFailsKeepsTheSaveSuccessful() = runBlocking {
+    val failing =
+        ReminderCheckingAppointmentRepository(fake) {
+          checks++
+          throw SecurityException("no exact alarm")
+        }
+
+    val added = failing.addAppointment(CIRCLE, APPOINTMENT)
+    val edited = failing.updateAppointment(CIRCLE.id, APPOINTMENT.copy(title = "Dentist"))
+
+    assertTrue(added.isSuccess)
+    assertEquals("Dentist", edited.getOrThrow().title)
+    assertEquals(listOf("Dentist"), fake.appointmentsOf(CIRCLE.id).map { it.title })
+    assertEquals(2, checks)
+  }
+
+  @Test
   fun aDeletionRunsNoCheck() = runBlocking {
     fake.addAppointment(CIRCLE, APPOINTMENT)
 

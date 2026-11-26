@@ -7,7 +7,6 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.data.appointment.AppointmentRepositoryProvider
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
-import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
@@ -95,9 +94,6 @@ class AppointmentReminderCheckProviderTest {
         AppointmentRepositoryProvider { FakeAppointmentRepository() }
     mockkObject(ProfileRepositoryProvider.Companion)
     every { ProfileRepositoryProvider.default } returns ProfileRepositoryProvider { mockk() }
-    mockkObject(ActiveCircleRepositoryProvider.Companion)
-    every { ActiveCircleRepositoryProvider.default } returns
-        ActiveCircleRepositoryProvider { mockk() }
     mockkObject(AppointmentReminderProvider.Companion)
     every { AppointmentReminderProvider.default } returns AppointmentReminderProvider { mockk() }
     val before = System.currentTimeMillis()
