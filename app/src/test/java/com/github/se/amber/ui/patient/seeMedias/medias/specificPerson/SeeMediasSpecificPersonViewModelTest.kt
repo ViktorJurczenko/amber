@@ -81,6 +81,7 @@ class SeeMediasSpecificPersonViewModelTest {
     coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
     coEvery { circleRepository.getCircle("circle1") } returns Result.success(circle)
     coEvery { mediaRepository.observeApprovedMedia("circle1") } returns flowOf(emptyList())
+    coEvery { profileRepository.getProfile(any()) } returns Result.success(null)
   }
 
   @After
