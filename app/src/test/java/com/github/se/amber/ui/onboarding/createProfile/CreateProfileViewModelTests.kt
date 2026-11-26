@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.createProfile
 
@@ -59,11 +60,15 @@ class CreateProfileViewModelTests {
 
   @Before
   fun setUp() {
-    Dispatchers.setMain(StandardTestDispatcher())
+    val testDispatcher = StandardTestDispatcher()
+    Dispatchers.setMain(testDispatcher)
     profileRepository = mockk()
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(null)
     successCount = 0
     lastSuccessRole = null
     viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    // the start-up read finds no saved profile, so each test starts from the empty form
+    testDispatcher.scheduler.advanceUntilIdle()
   }
 
   @After
@@ -79,6 +84,7 @@ class CreateProfileViewModelTests {
     assertEquals(CreateProfileUIState(), viewModel.uiState.value)
     assertNull(viewModel.uiState.value.nameError)
     assertNull(viewModel.uiState.value.surnameError)
+    assertNull(viewModel.uiState.value.nicknameError)
   }
 
   // ---------- Name format ----------
@@ -129,6 +135,17 @@ class CreateProfileViewModelTests {
     viewModel.onSurnameChange("Lovelace")
 
     assertEquals("Lovelace", viewModel.uiState.value.surname)
+  }
+
+  @Test
+  fun onNicknameChange_updatesNicknameAndStopsAtNameMaxLength() {
+    viewModel.onNicknameChange(NICKNAME)
+
+    assertEquals(NICKNAME, viewModel.uiState.value.nickname)
+
+    viewModel.onNicknameChange("A".repeat(InputValidation.NAME_MAX_LENGTH + 20))
+
+    assertEquals(InputValidation.NAME_MAX_LENGTH, viewModel.uiState.value.nickname.length)
   }
 
   @Test
@@ -253,6 +270,65 @@ class CreateProfileViewModelTests {
           role = Role.PATIENT,
       )
     }
+  }
+
+  @Test
+  fun onRoleSelected_withNickname_sendsTrimmedNickname() = runTest {
+    coEvery { profileRepository.createProfile(any(), any()) } returns Result.success(Unit)
+    viewModel.onNameChange(NAME)
+    viewModel.onSurnameChange(SURNAME)
+    viewModel.onNicknameChange("  $NICKNAME  ")
+
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(NICKNAME, viewModel.uiState.value.nickname)
+    assertEquals(1, successCount)
+    coVerify(exactly = 1) {
+      profileRepository.createProfile(
+          person = Person(firstName = NAME, lastName = SURNAME, nickname = NICKNAME),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  @Test
+  fun onRoleSelected_blankNickname_staysValidAndSendsNull() = runTest {
+    coEvery { profileRepository.createProfile(any(), any()) } returns Result.success(Unit)
+    viewModel.onNameChange(NAME)
+    viewModel.onSurnameChange(SURNAME)
+    viewModel.onNicknameChange("   ")
+
+    assertNull(viewModel.uiState.value.nicknameError)
+    assertTrue(viewModel.uiState.value.canSubmit)
+
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals("", viewModel.uiState.value.nickname)
+    coVerify(exactly = 1) {
+      profileRepository.createProfile(
+          person = Person(firstName = NAME, lastName = SURNAME, nickname = null),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  @Test
+  fun onRoleSelected_invalidNickname_showsFormatErrorAndDoesNotCallRepository() = runTest {
+    viewModel.onNameChange(NAME)
+    viewModel.onSurnameChange(SURNAME)
+    viewModel.onNicknameChange("Ada2")
+
+    val state = viewModel.uiState.value
+    assertEquals(UiText.Resource(R.string.inputErrorNameFormat), state.nicknameError)
+    assertFalse(state.canSubmit)
+
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(0, successCount)
+    coVerify(exactly = 0) { profileRepository.createProfile(any(), any()) }
   }
 
   @Test
@@ -638,6 +714,150 @@ class CreateProfileViewModelTests {
     }
   }
 
+  @Test
+  fun onRoleSelected_sameRoleAfterEditingNickname_savesTheEditedNickname() = runTest {
+    coEvery { profileRepository.createProfile(any(), any()) } returns Result.success(Unit)
+    coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns Result.success(Unit)
+    fillValidNameAndSurname()
+    viewModel.onNicknameChange(NICKNAME)
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    viewModel.onNicknameChange(NAME)
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(2, successCount)
+    coVerify(exactly = 1) {
+      profileRepository.updateOnboardingProfile(
+          person = Person(firstName = NAME, lastName = SURNAME, nickname = NAME),
+          role = Role.PATIENT,
+      )
+    }
+  }
+
+  @Test
+  fun onRoleSelected_existingProfileWithSameRoleButOtherNickname_writesTheTypedNickname() =
+      runTest {
+        coEvery { profileRepository.createProfile(any(), any()) } returns
+            Result.failure(ProfileCreationError.ProfileAlreadyExists)
+        coEvery { profileRepository.getCurrentProfile() } returns
+            Result.success(
+                savedProfile(role = Role.PATIENT)
+                    .copy(
+                        person =
+                            Person(
+                                id = "uid",
+                                firstName = NAME,
+                                lastName = SURNAME,
+                                nickname = "Old",
+                            )
+                    )
+            )
+        coEvery { profileRepository.updateOnboardingProfile(any(), any()) } returns
+            Result.success(Unit)
+        fillValidNameAndSurname()
+        viewModel.onNicknameChange(NICKNAME)
+
+        viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+        advanceUntilIdle()
+
+        assertEquals(1, successCount)
+        coVerify(exactly = 1) {
+          profileRepository.updateOnboardingProfile(
+              person = Person(firstName = NAME, lastName = SURNAME, nickname = NICKNAME),
+              role = Role.PATIENT,
+          )
+        }
+      }
+
+  @Test
+  fun onRoleSelected_existingProfileAlreadyMatchingIncludingNickname_navigatesWithoutWrite() =
+      runTest {
+        coEvery { profileRepository.createProfile(any(), any()) } returns
+            Result.failure(ProfileCreationError.ProfileAlreadyExists)
+        coEvery { profileRepository.getCurrentProfile() } returns
+            Result.success(
+                savedProfile(role = Role.PATIENT)
+                    .copy(
+                        person =
+                            Person(
+                                id = "uid",
+                                firstName = NAME,
+                                lastName = SURNAME,
+                                nickname = NICKNAME,
+                            )
+                    )
+            )
+        fillValidNameAndSurname()
+        viewModel.onNicknameChange(NICKNAME)
+
+        viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+        advanceUntilIdle()
+
+        assertEquals(1, successCount)
+        coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
+      }
+
+  @Test
+  fun relaunch_keepsTheSavedNicknameWhenTheNamesAreRetyped() = runTest {
+    val saved =
+        savedProfile(role = Role.PATIENT)
+            .copy(
+                person =
+                    Person(id = "uid", firstName = NAME, lastName = SURNAME, nickname = NICKNAME)
+            )
+    coEvery { profileRepository.getCurrentProfile() } returns Result.success(saved)
+    coEvery { profileRepository.createProfile(any(), any()) } returns
+        Result.failure(ProfileCreationError.ProfileAlreadyExists)
+    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    advanceUntilIdle()
+
+    assertEquals(NICKNAME, viewModel.uiState.value.nickname)
+
+    viewModel.onNameChange(NAME)
+    viewModel.onSurnameChange(SURNAME)
+    viewModel.onRoleSelected(Role.PATIENT, onSuccess)
+    advanceUntilIdle()
+
+    assertEquals(1, successCount)
+    coVerify(exactly = 1) {
+      profileRepository.createProfile(
+          person = Person(firstName = NAME, lastName = SURNAME, nickname = NICKNAME),
+          role = Role.PATIENT,
+      )
+    }
+    coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
+  }
+
+  @Test
+  fun aNicknameTypedBeforeTheSavedProfileArrivesIsKept() = runTest {
+    val load = CompletableDeferred<Result<UserProfile?>>()
+    coEvery { profileRepository.getCurrentProfile() } coAnswers { load.await() }
+    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    runCurrent()
+
+    val typed = "Nini"
+    viewModel.onNicknameChange(typed)
+    load.complete(
+        Result.success(
+            savedProfile(role = Role.PATIENT)
+                .copy(
+                    person =
+                        Person(
+                            id = "uid",
+                            firstName = NAME,
+                            lastName = SURNAME,
+                            nickname = NICKNAME,
+                        )
+                )
+        )
+    )
+    advanceUntilIdle()
+
+    assertEquals(typed, viewModel.uiState.value.nickname)
+  }
+
   /** Picks Patient on a new screen with a valid name and returns the message it shows. */
   private fun TestScope.failedMessageOfAFreshScreen(): Int? {
     viewModel = CreateProfileViewModel(profileRepository = profileRepository)
@@ -664,5 +884,6 @@ class CreateProfileViewModelTests {
     /** The valid name [fillValidNameAndSurname] types, which [savedProfile] also holds. */
     const val NAME = "Ada"
     const val SURNAME = "Lovelace"
+    const val NICKNAME = "Nana"
   }
 }

@@ -104,6 +104,7 @@
     <string name="createProfileQuestion">What should we call you?</string>
     <string name="createProfileName">Name</string>
     <string name="createProfileSurname">Surname</string>
+    <string name="createProfileNickname">Nickname - optional</string>
     <string name="createProfileSelectRole">Please select your role</string>
     <string name="createProfilePatient">Patient</string>
     <string name="createProfileCaregiver">Caregiver</string>
