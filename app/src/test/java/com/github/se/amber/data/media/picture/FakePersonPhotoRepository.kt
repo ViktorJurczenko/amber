@@ -10,8 +10,9 @@ import java.io.File
  *
  * [calls] records every call, in order: "setPhoto {circleId}:{personId}" or "getPhotoFile
  * {circleId}:{storagePath}". A photo passed to [setPhoto] is kept under the path it records in
- * [photos] and [files], and [getPhotoFile] returns that file. Set [error] to make every call return
- * that failure and change nothing.
+ * [photos] and [files], and [getPhotoFile] returns that file. A later [setPhoto] for the same
+ * person drops the previous path, because the contract deletes the previous photo. Set [error] to
+ * make every call return that failure and change nothing.
  */
 class FakePersonPhotoRepository : PersonPhotoRepository {
 
@@ -34,8 +35,11 @@ class FakePersonPhotoRepository : PersonPhotoRepository {
     error?.let {
       return Result.failure(it)
     }
+    val people = photos.getOrPut(circle.id) { mutableMapOf() }
+    val previous = people[personId]
     val storagePath = "careCircles/${circle.id}/people/$personId/${++nextPhotoId}.jpg"
-    photos.getOrPut(circle.id) { mutableMapOf() }[personId] = storagePath
+    people[personId] = storagePath
+    if (previous != null) files.remove(previous)
     files[storagePath] = file
     return Result.success(Unit)
   }

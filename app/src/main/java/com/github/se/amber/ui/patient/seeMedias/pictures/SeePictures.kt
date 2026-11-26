@@ -48,6 +48,7 @@ fun SeePicturesScreen(
     pictureViewModel: SeePicturesViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onTabSelected: (Tab) -> Unit = {},
+    onPersonClick: (String) -> Unit = {},
 ) {
   val uiState by pictureViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -58,6 +59,7 @@ fun SeePicturesScreen(
       onErrorShown = pictureViewModel::clearErrorMsg,
       onBackClick = onBackClick,
       onTabSelected = onTabSelected,
+      onPersonClick = onPersonClick,
   ) { picture, circle, modifier ->
     MediaImage(
         circle = circle,

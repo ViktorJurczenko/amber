@@ -1,6 +1,7 @@
 // Written by Neha Chakraborty and Copilot
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.data.profile
 
@@ -23,11 +24,7 @@ class FirebaseProfileRepository(
 ) : ProfileRepository {
 
   override suspend fun createProfile(person: Person, role: Role): Result<Unit> {
-    val cleanedPerson =
-        person.copy(
-            firstName = person.firstName.trim(),
-            lastName = person.lastName.trim(),
-        )
+    val cleanedPerson = person.cleanedForOnboarding()
     if (cleanedPerson.firstName.isBlank()) {
       return Result.failure(ProfileCreationError.InvalidPersonDetails)
     }
@@ -60,11 +57,7 @@ class FirebaseProfileRepository(
   }
 
   override suspend fun updateOnboardingProfile(person: Person, role: Role): Result<Unit> {
-    val cleanedPerson =
-        person.copy(
-            firstName = person.firstName.trim(),
-            lastName = person.lastName.trim(),
-        )
+    val cleanedPerson = person.cleanedForOnboarding()
     if (cleanedPerson.firstName.isBlank() || cleanedPerson.lastName.isBlank()) {
       return Result.failure(ProfileUpdateError.InvalidPersonDetails)
     }
@@ -86,7 +79,7 @@ class FirebaseProfileRepository(
                 profileReference,
                 existing.copy(
                     role = role,
-                    person = cleanedPerson.copy(id = uid, nickname = existing.person.nickname),
+                    person = cleanedPerson.copy(id = uid),
                     circleIds = emptyList(),
                 ),
             )
@@ -185,3 +178,11 @@ class FirebaseProfileRepository(
     val ROLE_FIELD = UserProfile::role.name
   }
 }
+
+/** Trims names and stores a blank nickname as null, matching CareCircle person writes. */
+private fun Person.cleanedForOnboarding(): Person =
+    copy(
+        firstName = firstName.trim(),
+        lastName = lastName.trim(),
+        nickname = nickname?.trim()?.takeIf { it.isNotEmpty() },
+    )

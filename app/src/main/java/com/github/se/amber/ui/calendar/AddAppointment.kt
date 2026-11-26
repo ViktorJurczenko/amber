@@ -64,7 +64,8 @@ object AddAppointmentTestTags {
  *
  * @param viewModel the view model that owns the appointment being typed.
  * @param date the day of the appointment, the day clicked on the calendar. Today by default.
- * @param goBack called when the caregiver cancels, and once the appointment is added.
+ * @param goBack called when the caregiver clicks cancel.
+ * @param onAddEvent called once the appointment has been added, never when the add fails.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +73,7 @@ fun AddAppointmentScreen(
     viewModel: AddAppointmentViewModel = viewModel(),
     date: LocalDate = LocalDate.now(),
     goBack: () -> Unit = {},
+    onAddEvent: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val errorMsgRes = uiState.errorMsgRes
@@ -85,11 +87,11 @@ fun AddAppointmentScreen(
     }
   }
 
-  val currentGoBack by rememberUpdatedState(goBack)
+  val currentOnAddEvent by rememberUpdatedState(onAddEvent)
   LaunchedEffect(Unit) {
     viewModel.events.collect { event ->
       when (event) {
-        AddAppointmentEvent.Added -> currentGoBack()
+        AddAppointmentEvent.Added -> currentOnAddEvent()
       }
     }
   }
