@@ -412,8 +412,8 @@
     <string name="seeAudiosErrorLoadMedia">Failed to load the media.</string>
 
     <!-- SeeMediasSpecificPerson -->
-    <string name="seeMediasSpecificPersonTitle">See Medias with this person</string>
-    <string name="seeMediasSpecificPersonEmpty">There are no medias with this person yet.</string>
+    <string name="seeMediasSpecificPersonTitle">See Medias with %1$s</string>
+    <string name="seeMediasSpecificPersonEmpty">There are no medias with %1$s yet.</string>
     <string name="seeMediasSpecificPersonUnknownName">this person</string>
     <string name="seeMediasSpecificPersonRetry">Retry</string>
     <string name="seeMediasSpecificPersonErrorNoProfile">No profile found.</string>
