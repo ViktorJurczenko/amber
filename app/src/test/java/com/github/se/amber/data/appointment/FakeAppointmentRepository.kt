@@ -44,6 +44,9 @@ class FakeAppointmentRepository(private val zone: ZoneId = ZoneOffset.UTC) : App
   /** When not null, [getAppointments] fails with this error. */
   var readFailWith: AppointmentError? = null
 
+  /** What [getAppointments] gives as [AppointmentsRead.isFromCache]. */
+  var readFromCache = false
+
   /** What [hasUnsyncedWrites] returns. Every write of the fake is synced at once unless set. */
   var unsyncedWrites = false
 
@@ -94,7 +97,8 @@ class FakeAppointmentRepository(private val zone: ZoneId = ZoneOffset.UTC) : App
 
   /**
    * The appointments [observeAppointments] would list first, read once. The fake has no server and
-   * no cache, so it always gives what it holds, unless [readFailWith] is set.
+   * no cache, so it always gives what it holds, unless [readFailWith] is set. It says they come
+   * from the cache when [readFromCache] is set.
    *
    * @return the appointments sorted by start, or a failure with [readFailWith].
    */
@@ -102,11 +106,12 @@ class FakeAppointmentRepository(private val zone: ZoneId = ZoneOffset.UTC) : App
       circleId: String,
       firstDay: LocalDate,
       days: Int,
-  ): Result<List<Appointment>> {
+  ): Result<AppointmentsRead> {
     readFailWith?.let {
       return Result.failure(it)
     }
-    return Result.success(observeAppointments(circleId, firstDay, days).first().map { it.value })
+    val appointments = observeAppointments(circleId, firstDay, days).first().map { it.value }
+    return Result.success(AppointmentsRead(appointments, readFromCache))
   }
 
   /** @return "appointment-1", then "appointment-2", and so on. */

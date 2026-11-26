@@ -8,6 +8,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.test.core.app.ApplicationProvider
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -50,7 +51,12 @@ class AndroidAppointmentReminderNotifierTest {
       )
 
   private fun shownText(): String =
-      manager.activeNotifications.single().notification.extras.getString(Notification.EXTRA_TEXT)!!
+      manager.activeNotifications
+          .single()
+          .notification
+          .extras
+          .getString(Notification.EXTRA_TEXT)
+          .orEmpty()
 
   @Test
   fun showsTheDayTimeTitleAndTheOthersInEnglish() {
@@ -66,8 +72,37 @@ class AndroidAppointmentReminderNotifierTest {
   }
 
   @Test
+  fun expandingShowsTheWholeTextAndTheLockScreenCanHideIt() {
+    notifier.show(reminder(otherNames = listOf("Marie", "Paul", "Jean")))
+
+    val shown = manager.activeNotifications.single().notification
+    assertEquals(
+        "Tomorrow 14:00 · Doctor · with Marie, Paul and Jean",
+        shown.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString(),
+    )
+    assertEquals(Notification.VISIBILITY_PRIVATE, shown.visibility)
+    // a lock screen that hides sensitive content shows the title only
+    val lockScreen = shown.publicVersion.extras
+    assertEquals("Upcoming appointment", lockScreen.getString(Notification.EXTRA_TITLE))
+    assertNull(lockScreen.getCharSequence(Notification.EXTRA_TEXT))
+  }
+
+  @Test
+  fun keepsOnlyTheApplicationContext() {
+    // a context whose own services can't be used, like an activity's once it is gone
+    val activity =
+        object : ContextWrapper(context) {
+          override fun getSystemService(name: String): Any = error("the activity's $name")
+        }
+
+    AndroidAppointmentReminderNotifier(activity).show(reminder())
+
+    assertEquals(1, manager.activeNotifications.size)
+  }
+
+  @Test
   @Config(qualifiers = "fr")
-  fun showsTheReminderInFrench() {
+  fun writesTheReminderInFrench() {
     notifier.show(reminder())
 
     assertEquals("Demain 14:00 · Doctor · avec Marie", shownText())
@@ -75,19 +110,18 @@ class AndroidAppointmentReminderNotifierTest {
         "Rappels de rendez-vous",
         manager.getNotificationChannel(AndroidAppointmentReminderNotifier.CHANNEL_ID).name,
     )
-  }
-
-  @Test
-  @Config(qualifiers = "fr")
-  fun writesTodayALaterDayAndNoOneElse() {
     assertEquals(
         "Aujourd'hui 14:00 · Doctor",
         reminderText(context, reminder(daysAfterToday = 0, otherNames = emptyList())),
     )
-    // Friday 15 January 2027 + 3 days
+    // Friday 15 January 2027 + 3 days: the weekday gets a capital letter
     assertEquals(
-        "lundi 18 janvier 14:00 · Doctor · avec Marie",
-        reminderText(context, reminder(daysAfterToday = 3)),
+        "Lundi 18 janvier 14:00 · Doctor · avec Marie et Paul",
+        reminderText(context, reminder(daysAfterToday = 3, otherNames = listOf("Marie", "Paul"))),
+    )
+    assertEquals(
+        "Demain 14:00 · Doctor · avec Marie, Paul et Jean",
+        reminderText(context, reminder(otherNames = listOf("Marie", "Paul", "Jean"))),
     )
   }
 
@@ -100,24 +134,11 @@ class AndroidAppointmentReminderNotifierTest {
   }
 
   @Test
-  @Config(qualifiers = "fr")
-  fun joinsTheLastTwoNamesWithEtInFrench() {
-    assertEquals(
-        "Demain 14:00 · Doctor · avec Marie et Paul",
-        reminderText(context, reminder(otherNames = listOf("Marie", "Paul"))),
-    )
-    assertEquals(
-        "Demain 14:00 · Doctor · avec Marie, Paul et Jean",
-        reminderText(context, reminder(otherNames = listOf("Marie", "Paul", "Jean"))),
-    )
-  }
-
-  @Test
   fun showingTheSameReminderAgainReplacesIt() {
     notifier.show(reminder())
     notifier.show(reminder(otherNames = emptyList()))
 
-    assertEquals(1, manager.activeNotifications.size)
+    assertEquals("Tomorrow 14:00 · Doctor", shownText())
   }
 
   @Test

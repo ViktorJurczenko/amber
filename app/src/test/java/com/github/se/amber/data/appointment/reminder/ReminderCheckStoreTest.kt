@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
 import java.io.IOException
 import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.flow.flow
@@ -14,41 +15,72 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
-/** Checks that the time of the last check is kept in a real DataStore file. */
+/** Checks that the time of the last check is kept in a real DataStore file, for each user. */
 class ReminderCheckStoreTest {
 
-  private fun TestScope.store(): ReminderCheckStore {
-    val directory = createTempDirectory(prefix = "reminders")
-    return DataStoreReminderCheckStore(
-        PreferenceDataStoreFactory.create(
-            scope = backgroundScope,
-            produceFile = { directory.resolve("reminders.preferences_pb").toFile() },
-        )
-    )
-  }
+  private val file = createTempDirectory(prefix = "reminders").resolve("r.preferences_pb").toFile()
 
-  @Test fun isEmptyAtFirst() = runTest { assertNull(store().lastCheckedAt()) }
+  private fun TestScope.store(file: File = this@ReminderCheckStoreTest.file): ReminderCheckStore =
+      DataStoreReminderCheckStore(
+          PreferenceDataStoreFactory.create(
+              corruptionHandler = reminderCheckCorruptionHandler(),
+              scope = backgroundScope,
+              produceFile = { file },
+          )
+      )
+
+  @Test fun isEmptyAtFirst() = runTest { assertNull(store().lastCheckedAt(ANNA)) }
 
   @Test
   fun keepsTheTimeAndClearEmptiesIt() = runTest {
     val store = store()
-    store.setLastCheckedAt(1_000L)
-    store.setLastCheckedAt(2_000L)
-    assertEquals(2_000L, store.lastCheckedAt())
+    store.setLastCheckedAt(ANNA, 1_000L)
+    store.setLastCheckedAt(ANNA, 2_000L)
+    assertEquals(2_000L, store.lastCheckedAt(ANNA))
 
     store.clear()
 
-    assertNull(store.lastCheckedAt())
+    assertNull(store.lastCheckedAt(ANNA))
   }
 
   @Test
-  fun aReadThatFailsCountsAsNothingStored() = runTest {
+  fun eachAccountHasItsOwnLastCheck() = runTest {
+    val store = store()
+    store.setLastCheckedAt(ANNA, 1_000L)
+    store.setLastCheckedAt(BEN, 2_000L)
+
+    assertEquals(1_000L, store.lastCheckedAt(ANNA))
+    assertEquals(2_000L, store.lastCheckedAt(BEN))
+
+    // sign-out forgets every account's time
+    store.clear()
+    assertNull(store.lastCheckedAt(ANNA))
+    assertNull(store.lastCheckedAt(BEN))
+  }
+
+  @Test
+  fun aReadThatFailsIsPassedOn() = runTest {
     val broken: DataStore<Preferences> = mockk {
       every { data } returns flow { throw IOException("disk") }
     }
 
-    assertNull(DataStoreReminderCheckStore(broken).lastCheckedAt())
+    assertThrows(IOException::class.java) {
+      kotlinx.coroutines.runBlocking { DataStoreReminderCheckStore(broken).lastCheckedAt(ANNA) }
+    }
+  }
+
+  @Test
+  fun aCorruptFileCountsAsNothingStored() = runTest {
+    file.writeBytes(byteArrayOf(-1, -1, -1, -1))
+
+    assertNull(store().lastCheckedAt(ANNA))
+  }
+
+  private companion object {
+    const val ANNA = "anna"
+    const val BEN = "ben"
   }
 }

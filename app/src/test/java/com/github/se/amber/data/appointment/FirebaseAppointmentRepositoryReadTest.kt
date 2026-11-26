@@ -161,12 +161,12 @@ class FirebaseAppointmentRepositoryReadTest {
   @Test
   fun getAppointmentsGivesTheServersAnswerSortedByStart() = runTest {
     val query = windowQuery()
-    every { query.get() } returns
+    every { query.get(Source.SERVER) } returns
         Tasks.forResult(queryResult(document(physio), unreadableDocument(), document(checkUp)))
 
-    val read = repository.getAppointments(circleId, day, days = 1)
+    val read = repository.getAppointments(circleId, day, days = 1).getOrThrow()
 
-    assertEquals(listOf(checkUp, physio), read.getOrThrow())
+    assertEquals(AppointmentsRead(listOf(checkUp, physio), isFromCache = false), read)
     verify(exactly = 0) { query.get(Source.CACHE) }
   }
 
@@ -174,12 +174,12 @@ class FirebaseAppointmentRepositoryReadTest {
   fun aServerTooSlowGivesTheCacheAfterFiveSeconds() = runTest {
     val query = windowQuery()
     // Never completes, like a server that doesn't answer
-    every { query.get() } returns TaskCompletionSource<QuerySnapshot>().task
+    every { query.get(Source.SERVER) } returns TaskCompletionSource<QuerySnapshot>().task
     every { query.get(Source.CACHE) } returns Tasks.forResult(queryResult(document(overnight)))
 
     val read = repository.getAppointments(circleId, day, days = 1)
 
-    assertEquals(listOf(overnight), read.getOrThrow())
+    assertEquals(AppointmentsRead(listOf(overnight), isFromCache = true), read.getOrThrow())
     // Written out: the repository waits 5 seconds for the server, then reads the cache
     assertEquals(5_000L, currentTime)
   }
@@ -187,19 +187,22 @@ class FirebaseAppointmentRepositoryReadTest {
   @Test
   fun offlineGivesTheCache() = runTest {
     val query = windowQuery()
-    every { query.get() } returns
+    every { query.get(Source.SERVER) } returns
         Tasks.forException(
             FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
         )
     every { query.get(Source.CACHE) } returns Tasks.forResult(queryResult(document(physio)))
 
-    assertEquals(listOf(physio), repository.getAppointments(circleId, day, days = 1).getOrThrow())
+    assertEquals(
+        AppointmentsRead(listOf(physio), isFromCache = true),
+        repository.getAppointments(circleId, day, days = 1).getOrThrow(),
+    )
   }
 
   @Test
   fun aStoppedReadIsPassedOnAndNotReportedAsAFailure() = runTest {
     val query = windowQuery()
-    every { query.get() } returns Tasks.forCanceled()
+    every { query.get(Source.SERVER) } returns Tasks.forCanceled()
 
     val stopped = runCatching { repository.getAppointments(circleId, day, days = 1) }
 
@@ -215,7 +218,7 @@ class FirebaseAppointmentRepositoryReadTest {
     verify(exactly = 0) { firestore.collection(any()) }
 
     val query = windowQuery()
-    every { query.get() } returns
+    every { query.get(Source.SERVER) } returns
         Tasks.forException(
             FirebaseFirestoreException("denied", FirebaseFirestoreException.Code.PERMISSION_DENIED)
         )

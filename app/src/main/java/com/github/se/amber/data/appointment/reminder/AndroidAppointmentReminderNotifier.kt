@@ -16,7 +16,10 @@ import java.time.format.DateTimeFormatter
 
 /**
  * Shows the reminders with Android's [NotificationManager], on their own channel, so the user can
- * turn them off alone. Tapping one opens the app.
+ * turn them off alone. Tapping one opens the app. Expanding one shows its whole text.
+ *
+ * On a lock screen set to hide sensitive content, it shows only "Upcoming appointment": the title
+ * of an appointment can be medical. A lock screen set to show everything shows the whole text.
  *
  * On Android 13 and later, it shows nothing until the user allows notifications in the system
  * settings, since the app doesn't ask for the permission yet.
@@ -26,7 +29,7 @@ import java.time.format.DateTimeFormatter
 class AndroidAppointmentReminderNotifier(context: Context) : AppointmentReminderNotifier {
 
   private val context = context.applicationContext
-  private val manager = context.getSystemService(NotificationManager::class.java)
+  private val manager = this.context.getSystemService(NotificationManager::class.java)
 
   override fun show(reminder: ReminderNotification) {
     if (!canPost()) return
@@ -47,11 +50,23 @@ class AndroidAppointmentReminderNotifier(context: Context) : AppointmentReminder
               PendingIntent.FLAG_IMMUTABLE,
           )
         }
+    val title = context.getString(R.string.appointmentReminderTitle)
+    val text = reminderText(context, reminder)
+    // What a lock screen that hides sensitive content shows instead: the title only
+    val lockScreenVersion =
+        NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.amber_logomark)
+            .setContentTitle(title)
+            .build()
     val notification =
         NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.amber_logomark)
-            .setContentTitle(context.getString(R.string.appointmentReminderTitle))
-            .setContentText(reminderText(context, reminder))
+            .setContentTitle(title)
+            .setContentText(text)
+            // Collapsed, the text is cut to one line, so a few names would be lost
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(lockScreenVersion)
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .build()
@@ -84,8 +99,8 @@ class AndroidAppointmentReminderNotifier(context: Context) : AppointmentReminder
 
 /**
  * The text of [reminder], in the language of [context]: "Tomorrow 14:00 · Doctor · with Marie". The
- * day is "Today", "Tomorrow", or the weekday and the date for a later day. Every word, pattern and
- * separator comes from strings.xml, so each language sets its own.
+ * day is "Today", "Tomorrow", or the weekday and the date for a later day, with a capital letter.
+ * Every word, pattern and separator comes from strings.xml, so each language sets its own.
  */
 internal fun reminderText(context: Context, reminder: ReminderNotification): String {
   val locale = context.resources.configuration.locales[0]
@@ -95,7 +110,11 @@ internal fun reminderText(context: Context, reminder: ReminderNotification): Str
       when (reminder.start.toLocalDate()) {
         reminder.today -> context.getString(R.string.appointmentReminderToday)
         reminder.today.plusDays(1) -> context.getString(R.string.appointmentReminderTomorrow)
-        else -> format(R.string.appointmentReminderDatePattern)
+        // A weekday can be lowercase, like "lundi", but it starts the text
+        else ->
+            format(R.string.appointmentReminderDatePattern).replaceFirstChar {
+              it.titlecase(locale)
+            }
       }
   val time = format(R.string.appointmentReminderTimePattern)
   return if (reminder.otherNames.isEmpty()) {

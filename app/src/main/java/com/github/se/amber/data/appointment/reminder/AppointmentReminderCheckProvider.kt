@@ -4,7 +4,6 @@ package com.github.se.amber.data.appointment.reminder
 
 import android.content.Context
 import com.github.se.amber.data.appointment.AppointmentRepositoryProvider
-import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.google.firebase.Firebase
@@ -33,7 +32,6 @@ class AppointmentReminderCheckProvider(
         AppointmentReminderCheck(
             appointmentRepository = AppointmentRepositoryProvider.default.repository,
             profileRepository = ProfileRepositoryProvider.default.repository,
-            activeCircleRepository = ActiveCircleRepositoryProvider.default.repository,
             authRepository = AuthRepositoryProvider.repository,
             poster = AppointmentReminderProvider.default.poster,
             store = DataStoreReminderCheckStore(context.reminderCheckDataStore),

@@ -5,6 +5,7 @@ package com.github.se.amber.data.appointment.reminder
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -25,6 +26,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowLog
 
 /** Checks which broadcasts run the reminder check, and that a slow check is stopped in time. */
@@ -60,16 +62,26 @@ class AppointmentReminderReceiverTest {
   }
 
   @Test
-  fun theReceiverAndroidCreatesRunsTheAppsCheck() {
+  fun androidCanCreateTheReceiverWithNoArguments() {
     mockkObject(AppointmentReminderCheckProvider.Companion)
     every { AppointmentReminderCheckProvider.default } returns
         AppointmentReminderCheckProvider { check }
 
-    AppointmentReminderReceiver(scope = scope)
+    // the constructor Android calls, so the app's check and scope are the defaults
+    AppointmentReminderReceiver::class
+        .java
+        .getDeclaredConstructor()
+        .newInstance()
         .onReceive(context, Intent(AppointmentReminderReceiver.ACTION_TIMER))
-    scope.runCurrent()
+    coVerify(exactly = 1, timeout = 5_000) { check.run() }
 
-    coVerify(exactly = 1) { check.run() }
+    // a broadcast delivered by the system, which creates the receiver from the manifest
+    context.sendBroadcast(
+        Intent(AppointmentReminderReceiver.ACTION_TIMER)
+            .setClass(context, AppointmentReminderReceiver::class.java)
+    )
+    shadowOf(Looper.getMainLooper()).idle()
+    coVerify(exactly = 2, timeout = 5_000) { check.run() }
   }
 
   @Test
@@ -107,6 +119,10 @@ class AppointmentReminderReceiverTest {
     receive(AppointmentReminderReceiver.ACTION_TIMER)
 
     coVerify(exactly = 2) { check.run() }
+    assertEquals(
+        listOf("The reminder check failed", "The reminder check failed"),
+        ShadowLog.getLogsForTag(AppointmentReminderReceiver.TAG).map { it.msg },
+    )
   }
 
   @Test
