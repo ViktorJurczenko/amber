@@ -62,6 +62,26 @@ class ReminderCheckStoreTest {
   }
 
   @Test
+  fun keepsTheShownRemindersOfEachUserUntilTheirNextCheck() = runTest {
+    val store = store()
+    assertEquals(emptySet<String>(), store.shownSinceLastCheck(ANNA))
+    store.addShown(ANNA, setOf("a"))
+    store.addShown(ANNA, emptySet())
+    store.addShown(ANNA, setOf("b"))
+    store.addShown(BEN, setOf("c"))
+
+    assertEquals(setOf("a", "b"), store.shownSinceLastCheck(ANNA))
+
+    // a new last check forgets only that user's shown reminders
+    store.setLastCheckedAt(ANNA, 1_000L)
+    assertEquals(emptySet<String>(), store.shownSinceLastCheck(ANNA))
+    assertEquals(setOf("c"), store.shownSinceLastCheck(BEN))
+
+    store.clear()
+    assertEquals(emptySet<String>(), store.shownSinceLastCheck(BEN))
+  }
+
+  @Test
   fun aReadThatFailsIsPassedOn() = runTest {
     val broken: DataStore<Preferences> = mockk {
       every { data } returns flow { throw IOException("disk") }

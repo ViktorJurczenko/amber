@@ -32,7 +32,8 @@ import kotlinx.coroutines.sync.withLock
  * or saves an appointment, which set the timer for now. Each [run] reads the appointments of every
  * circle of the signed-in user, keeps the ones the user is linked to, and expands them with
  * `occurrencesIn`. Then it:
- * 1. shows every reminder due since the user's last check, through [poster];
+ * 1. shows every reminder due since the user's last check, through [poster], unless it already
+ *    showed it;
  * 2. stores the current time as the user's last check;
  * 3. sets [timer] for the next reminder, or for 6 hours from now if none comes sooner.
  *
@@ -46,17 +47,15 @@ import kotlinx.coroutines.sync.withLock
  * It reads the appointments with `getAppointments`, which asks the server first. That is how a
  * check sees the changes made on other phones while this app was closed. It waits for the server
  * for at most 5 seconds, since the alarm that runs it only has a few seconds. Offline, or when the
- * server is too slow, it plans from what the phone has already loaded. It then still shows what is
- * due and stores the time, but it sets the timer 15 minutes ahead at the latest, to ask the server
- * again soon.
+ * server is too slow, it plans from what the phone has already loaded, and sets the timer 15
+ * minutes ahead at the latest, to ask the server again soon.
  *
- * One case is accepted. Someone saves an appointment after one of its reminder times, so that
- * reminder moves to the save. If a check then runs from the cache, before this phone has loaded
- * that save, it doesn't see the appointment, and it still stores the current time as the last
- * check. The next check from the server sees the appointment, but the moved reminder now lies
- * before the last check, so it is skipped. The appointment's other reminders still come. Keeping
- * the last check instead would show the reminders already shown again at each try, and bring back
- * the ones the user had swiped away.
+ * What the phone has loaded can miss an appointment saved on another phone. So after a read from
+ * the cache, the check shows what is due but keeps the last check, and only a read from the server
+ * moves it. A reminder the cache missed then still comes with the next answer from the server, if
+ * its appointment hasn't started. To not show a reminder twice, the store remembers the reminders
+ * shown since the last check, and forgets them when the last check moves. Otherwise each try would
+ * show them again, and bring back the ones the user had swiped away.
  *
  * It runs on every member's phone, but shows only the appointments the user is linked to: the
  * patient gets all of them, a caregiver only the ones they attend.
@@ -110,7 +109,9 @@ class AppointmentReminderCheck(
   }
 
   /**
-   * Shows the reminders due since the user's last check, and stores [now] as their last check.
+   * Shows the reminders due since the user's last check that it hasn't shown yet. After a read from
+   * the server, stores [now] as the last check. After a read from the cache, keeps it and remembers
+   * what it showed.
    *
    * @return when the timer goes off next: the first reminder within 6 hours, or 6 hours from now.
    *   15 minutes from now at the latest after a read from the cache, and 15 minutes from now if the
@@ -127,12 +128,14 @@ class AppointmentReminderCheck(
         } ?: return recheckAt
     if (profile.circleIds.isEmpty()) return recheckAt
     val last = store.lastCheckedAt(uid) ?: now
+    val alreadyShown = store.shownSinceLastCheck(uid)
     val zone = zone()
     val today = localDateOf(now, zone)
     val reads = readEveryCircle(profile.circleIds, today) ?: return retryAt
     val window = dayWindow(today, WINDOW_DAYS, zone)
 
     var timerAt = recheckAt
+    val shown = mutableSetOf<String>()
     for ((circleId, read) in reads) {
       val occurrences =
           read.appointments.filter { it.isLinkedTo(uid) }.flatMap { it.occurrencesIn(window, zone) }
@@ -141,16 +144,28 @@ class AppointmentReminderCheck(
           // soonest first, so the last one of each occurrence is the latest
           .associateBy { it.occurrence.id to it.occurrence.startAt }
           .values
-          .forEach { post(circleId, it) }
+          .filter { it.key !in alreadyShown }
+          .forEach {
+            post(circleId, it)
+            shown += it.key
+          }
       // planReminders only keeps the reminders until recheckAt, so the timer is never set more
       // than 6 hours ahead. A reminder further away is planned by a later check.
       planReminders(occurrences, now, recheckAt).firstOrNull()?.let {
         timerAt = minOf(timerAt, it.fireAt)
       }
     }
+    if (reads.values.any { it.isFromCache }) {
+      store.addShown(uid, shown)
+      return minOf(timerAt, retryAt)
+    }
     store.setLastCheckedAt(uid, now)
-    return if (reads.values.any { it.isFromCache }) minOf(timerAt, retryAt) else timerAt
+    return timerAt
   }
+
+  /** Names the reminder, so the store can tell it was shown. */
+  private val PlannedReminder.key: String
+    get() = "${occurrence.id}@${occurrence.startAt}@$minutesBefore"
 
   /**
    * Reads the appointments of [circleIds] at the same time.

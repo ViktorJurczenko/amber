@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
 import kotlinx.coroutines.flow.first
@@ -31,7 +32,8 @@ internal fun reminderCheckCorruptionHandler() = ReplaceFileCorruptionHandler { e
 
 /**
  * Remembers when this phone last checked the reminders of each user, so the next check shows only
- * what came due since then.
+ * what came due since then. It also remembers the reminders shown since then, so none is shown
+ * twice while the check reads from the cache.
  *
  * When nothing is stored for a user, the check uses the current time. So a new install or a new
  * sign-in doesn't show old reminders. Each user has their own time, so two accounts used on the
@@ -46,10 +48,22 @@ interface ReminderCheckStore {
    */
   suspend fun lastCheckedAt(uid: String): Long?
 
-  /** Stores [millis] as the time of the last check for [uid]. */
+  /**
+   * @return the keys of the reminders shown to [uid] since their last check, empty if none.
+   * @throws IOException if they can't be read.
+   */
+  suspend fun shownSinceLastCheck(uid: String): Set<String>
+
+  /** Adds [keys] to the reminders shown to [uid] since their last check. */
+  suspend fun addShown(uid: String, keys: Set<String>)
+
+  /**
+   * Stores [millis] as the time of the last check for [uid], and forgets the reminders shown before
+   * it, in one write.
+   */
   suspend fun setLastCheckedAt(uid: String, millis: Long)
 
-  /** Forgets the last check of every user. Sign-out calls it. */
+  /** Forgets the last check, and the reminders shown, of every user. Sign-out calls it. */
   suspend fun clear()
 }
 
@@ -59,8 +73,19 @@ class DataStoreReminderCheckStore(private val dataStore: DataStore<Preferences>)
 
   override suspend fun lastCheckedAt(uid: String): Long? = dataStore.data.first()[key(uid)]
 
+  override suspend fun shownSinceLastCheck(uid: String): Set<String> =
+      dataStore.data.first()[shownKey(uid)].orEmpty()
+
+  override suspend fun addShown(uid: String, keys: Set<String>) {
+    if (keys.isEmpty()) return
+    dataStore.edit { it[shownKey(uid)] = it[shownKey(uid)].orEmpty() + keys }
+  }
+
   override suspend fun setLastCheckedAt(uid: String, millis: Long) {
-    dataStore.edit { it[key(uid)] = millis }
+    dataStore.edit {
+      it[key(uid)] = millis
+      it.remove(shownKey(uid))
+    }
   }
 
   override suspend fun clear() {
@@ -69,4 +94,7 @@ class DataStoreReminderCheckStore(private val dataStore: DataStore<Preferences>)
 
   /** The key of [uid]'s time, like the active circle's key. */
   private fun key(uid: String) = longPreferencesKey("last_checked_at_$uid")
+
+  /** The key of the reminders shown to [uid] since their last check. */
+  private fun shownKey(uid: String) = stringSetPreferencesKey("shown_since_check_$uid")
 }
