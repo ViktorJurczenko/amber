@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -231,6 +232,7 @@ fun MapScreen(
 
 /** Preview of the patient map; [viewModel] can be supplied by tests to avoid live repositories. */
 @Preview(showBackground = true, showSystemUi = true)
+@NonRestartableComposable
 @Composable
 internal fun MapScreenPreview(viewModel: MediaMapViewModel = viewModel()) {
   AmberAppTheme { MapScreen(viewModel = viewModel) }
