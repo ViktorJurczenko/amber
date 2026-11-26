@@ -5,7 +5,9 @@ package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
@@ -132,6 +134,7 @@ class SeeMediasSpecificPersonScreenTest {
       playbackStates: MutableStateFlow<Map<String, AudioPlaybackState>> =
           MutableStateFlow(emptyMap()),
       personName: MutableStateFlow<String?> = MutableStateFlow("Eva"),
+      recomposeTrigger: MutableIntState = mutableIntStateOf(0),
       onBackClick: () -> Unit = {},
       onTabSelected: (Tab) -> Unit = {},
       onPersonClick: (String) -> Unit = {},
@@ -143,6 +146,9 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule.setContent {
       CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
         AmberAppTheme(dynamicColor = false) {
+          // Read here: bumping the trigger recomposes this call with unchanged parameters,
+          // so the screen itself is skipped
+          recomposeTrigger.intValue
           SeeMediasSpecificPersonScreen(
               personId = "person1",
               viewModel = viewModel,
@@ -393,14 +399,18 @@ class SeeMediasSpecificPersonScreenTest {
     val updated = MediaItem.Audio(id = "a1", durationMs = 2_000L)
     val uiState = MutableStateFlow<SeeGeneralMediasUIState<MediaItem>>(contentOf(first))
     val playbackStates = MutableStateFlow<Map<String, AudioPlaybackState>>(emptyMap())
-    val viewModel = setContent(uiState = uiState, playbackStates = playbackStates)
+    val trigger = mutableIntStateOf(0)
+    val viewModel =
+        setContent(uiState = uiState, playbackStates = playbackStates, recomposeTrigger = trigger)
 
+    // Recomposition with the same item: the remembered lambdas are reused
     composeTestRule.runOnIdle {
       playbackStates.value = mapOf("a1" to AudioPlaybackState.Playing(1_000L, 5_000L))
     }
     composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
     verify(exactly = 1) { viewModel.onPlayPause(first) }
 
+    // The item changes (same id, other data): the lambdas must capture the new one
     composeTestRule.runOnIdle { uiState.value = contentOf(updated) }
     composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
     composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RESTART).performClick()
@@ -408,9 +418,15 @@ class SeeMediasSpecificPersonScreenTest {
     verify(exactly = 1) { viewModel.onRestart(updated) }
     verify(exactly = 0) { viewModel.onRestart(first) }
 
+    // Retry after an error also uses the new item
     composeTestRule.runOnIdle { playbackStates.value = mapOf("a1" to AudioPlaybackState.Error()) }
     composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
     verify(exactly = 2) { viewModel.onPlayPause(updated) }
+
+    // Same parameters again: the screen is skipped and everything still works
+    composeTestRule.runOnIdle { trigger.intValue++ }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
+    verify(exactly = 3) { viewModel.onPlayPause(updated) }
   }
 
   // ---------------------------------------------------------------------------------------------
