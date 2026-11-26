@@ -19,6 +19,7 @@ import java.io.IOException
 import java.io.OutputStream
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -68,73 +69,53 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
-  fun aLandscapePhotoIsScaledDownToTheLongestSide() {
-    val landscape = File(tmp.root, "landscape.jpg")
-    writePreparedJpeg(picture(width = 1500, height = 400), landscape)
-    val fitted = decode(landscape)
-    try {
-      assertEquals(MAX_SIDE, fitted.width)
-      assertEquals((400L * MAX_SIDE / 1500).toInt(), fitted.height)
-    } finally {
-      fitted.recycle()
-    }
+  fun aLargePhotoIsScaledDownToTheLongestSide() {
+    assertPreparedSize(
+        picture(width = 1500, height = 400),
+        width = MAX_SIDE,
+        height = (400L * MAX_SIDE / 1500).toInt(),
+    )
+    assertPreparedSize(
+        picture(width = 400, height = 1500),
+        width = (400L * MAX_SIDE / 1500).toInt(),
+        height = MAX_SIDE,
+    )
   }
 
   @Test
-  fun aTallPhotoIsScaledDownToTheLongestSide() {
-    val tall = File(tmp.root, "tall.jpg")
-    writePreparedJpeg(picture(width = 400, height = 1500), tall)
-    val fitted = decode(tall)
-    try {
-      assertEquals((400L * MAX_SIDE / 1500).toInt(), fitted.width)
-      assertEquals(MAX_SIDE, fitted.height)
-    } finally {
-      fitted.recycle()
-    }
-  }
-
-  @Test
-  fun aQuarterTurnMovesTheTopHalfToTheRight() {
+  fun theExifOrientationIsBakedIntoThePixels() {
+    fun redOnTop(orientation: Int) =
+        halves(top = Color.RED, bottom = Color.BLUE, orientation = orientation)
+    // 90° clockwise moves the top half to the right.
     assertColors(
-        halves(
-            top = Color.RED,
-            bottom = Color.BLUE,
-            orientation = ExifInterface.ORIENTATION_ROTATE_90,
-        ),
+        "rotate 90",
+        redOnTop(ExifInterface.ORIENTATION_ROTATE_90),
         left = Color.BLUE,
         right = Color.RED,
     )
-  }
-
-  @Test
-  fun aHalfTurnMovesTheTopHalfToTheBottom() {
+    // 180° moves the top half to the bottom.
     assertColors(
-        halves(
-            top = Color.RED,
-            bottom = Color.BLUE,
-            orientation = ExifInterface.ORIENTATION_ROTATE_180,
-        ),
+        "rotate 180",
+        redOnTop(ExifInterface.ORIENTATION_ROTATE_180),
         top = Color.BLUE,
         bottom = Color.RED,
     )
-  }
-
-  @Test
-  fun aThreeQuarterTurnMovesTheTopHalfToTheLeft() {
+    // 270° clockwise moves the top half to the left.
     assertColors(
-        halves(
-            top = Color.RED,
-            bottom = Color.BLUE,
-            orientation = ExifInterface.ORIENTATION_ROTATE_270,
-        ),
+        "rotate 270",
+        redOnTop(ExifInterface.ORIENTATION_ROTATE_270),
         left = Color.RED,
         right = Color.BLUE,
     )
-  }
-
-  @Test
-  fun aHorizontalFlipSwapsTheTwoHalves() {
+    // Mirrored first, then turned. Swapping those two steps fails this case.
     assertColors(
+        "transpose",
+        redOnTop(ExifInterface.ORIENTATION_TRANSPOSE),
+        left = Color.RED,
+        right = Color.BLUE,
+    )
+    assertColors(
+        "flip horizontal",
         halves(
             left = Color.RED,
             right = Color.BLUE,
@@ -146,16 +127,32 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
-  fun aTransposedPhotoIsMirroredAndThenTurned() {
-    assertColors(
-        halves(
-            top = Color.RED,
-            bottom = Color.BLUE,
-            orientation = ExifInterface.ORIENTATION_TRANSPOSE,
-        ),
-        left = Color.RED,
-        right = Color.BLUE,
+  fun everyPersonPhotoErrorExists() {
+    val source = IllegalStateException("missing")
+    val unknown = PersonPhotoError.Unknown(source)
+    assertEquals("No user is signed in", PersonPhotoError.NotAuthenticated.message)
+    assertEquals("The care circle has no storage bucket", PersonPhotoError.NoStorageBucket.message)
+    assertEquals("The photo cannot be prepared", PersonPhotoError.CannotPreparePhoto.message)
+    assertEquals(
+        "You do not have permission to access this photo",
+        PersonPhotoError.PermissionDenied.message,
     )
+    assertEquals("Unable to reach photo storage", PersonPhotoError.Network.message)
+    assertEquals("The photo operation failed", unknown.message)
+    assertSame(source, unknown.source)
+  }
+
+  @Test
+  fun aPictureWhosePixelsCannotBeDecodedIsRejected() {
+    mockkStatic(BitmapFactory::class)
+    try {
+      stubDecodedBitmap(null)
+      assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
+        writePreparedJpeg(picture(), File(tmp.root, "undecodable.jpg"))
+      }
+    } finally {
+      unmockkStatic(BitmapFactory::class)
+    }
   }
 
   @Test
@@ -313,7 +310,20 @@ class PersonPhotoPrepareTest {
         )
       }
 
+  private fun assertPreparedSize(source: File, width: Int, height: Int) {
+    val prepared = File(tmp.root, "fitted-${source.name}")
+    writePreparedJpeg(source, prepared)
+    val decoded = decode(prepared)
+    try {
+      assertEquals(width, decoded.width)
+      assertEquals(height, decoded.height)
+    } finally {
+      decoded.recycle()
+    }
+  }
+
   private fun assertColors(
+      name: String,
       source: File,
       left: Int? = null,
       right: Int? = null,
@@ -324,23 +334,37 @@ class PersonPhotoPrepareTest {
     writePreparedJpeg(source, prepared)
     val decoded = decode(prepared)
     try {
-      if (left != null) assertNear(left, decoded.getPixel(decoded.width / 4, decoded.height / 2))
-      if (right != null) {
-        assertNear(right, decoded.getPixel(decoded.width * 3 / 4, decoded.height / 2))
+      if (left != null) {
+        assertNear(name, "left", left, decoded.getPixel(decoded.width / 4, decoded.height / 2))
       }
-      if (top != null) assertNear(top, decoded.getPixel(decoded.width / 2, decoded.height / 4))
+      if (right != null) {
+        assertNear(
+            name,
+            "right",
+            right,
+            decoded.getPixel(decoded.width * 3 / 4, decoded.height / 2),
+        )
+      }
+      if (top != null) {
+        assertNear(name, "top", top, decoded.getPixel(decoded.width / 2, decoded.height / 4))
+      }
       if (bottom != null) {
-        assertNear(bottom, decoded.getPixel(decoded.width / 2, decoded.height * 3 / 4))
+        assertNear(
+            name,
+            "bottom",
+            bottom,
+            decoded.getPixel(decoded.width / 2, decoded.height * 3 / 4),
+        )
       }
     } finally {
       decoded.recycle()
     }
   }
 
-  private fun assertNear(expected: Int, actual: Int) {
-    fun channel(name: String, expectedChannel: Int, actualChannel: Int) {
+  private fun assertNear(name: String, side: String, expected: Int, actual: Int) {
+    fun channel(channelName: String, expectedChannel: Int, actualChannel: Int) {
       assertTrue(
-          "$name of ${hex(expected)} vs ${hex(actual)}",
+          "$name $side: $channelName of ${hex(expected)} vs ${hex(actual)}",
           abs(expectedChannel - actualChannel) <= COLOR_TOLERANCE,
       )
     }
@@ -350,7 +374,7 @@ class PersonPhotoPrepareTest {
   }
 
   /** Returns [bitmap] from the second decode. The bounds pass reports a tiny upright image. */
-  private fun stubDecodedBitmap(bitmap: Bitmap) {
+  private fun stubDecodedBitmap(bitmap: Bitmap?) {
     every { BitmapFactory.decodeFile(any<String>(), any()) } answers
         {
           val options = secondArg<BitmapFactory.Options>()
