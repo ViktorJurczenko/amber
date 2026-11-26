@@ -368,10 +368,48 @@ class AppointmentReminderCheckTest {
 
     run()
 
-    // shown and stored, so the next try doesn't show it again
+    // shown, but the cache can miss an appointment, so only the server moves the last check
     assertEquals(listOf("due"), posted.map { it.occurrence.id })
-    assertEquals(NOW, store.last)
+    assertEquals(NOW - 10 * MINUTE, store.last)
+    assertEquals(setOf("due@${NOW + 55 * MINUTE}@60"), store.shown[PATIENT])
     assertEquals(NOW + 15 * MINUTE, timer.setAt)
+  }
+
+  @Test
+  fun aReminderTheCacheMissedComesWithTheNextServerAnswer() {
+    // the last answer from the server came 35 minutes ago
+    store.last = NOW - 35 * MINUTE
+    appointments.readFromCache = true
+    run()
+    assertEquals(emptyList<PlannedReminder>(), posted)
+
+    // the server has an appointment saved on another phone, due 5 minutes before the cache read
+    save(appointment("missed", start = NOW + 55 * MINUTE))
+    appointments.readFromCache = false
+    now = NOW + 15 * MINUTE
+    run()
+
+    assertEquals(listOf("missed"), posted.map { it.occurrence.id })
+    assertEquals(NOW + 15 * MINUTE, store.last)
+  }
+
+  @Test
+  fun aReminderIsShownOnceAcrossCacheAnswersAndTheNextServerAnswer() {
+    store.last = NOW - 10 * MINUTE
+    save(appointment("due", start = NOW + 55 * MINUTE))
+    appointments.readFromCache = true
+
+    run()
+    now = NOW + 15 * MINUTE
+    run()
+    appointments.readFromCache = false
+    now = NOW + 30 * MINUTE
+    run()
+
+    assertEquals(listOf("due"), posted.map { it.occurrence.id })
+    // the server moved the last check, so the shown reminders are forgotten
+    assertEquals(NOW + 30 * MINUTE, store.last)
+    assertEquals(null, store.shown[PATIENT])
   }
 
   @Test
@@ -499,6 +537,7 @@ class AppointmentReminderCheckTest {
   /** A [ReminderCheckStore] in memory, which counts its reads. */
   private class MemoryStore : ReminderCheckStore {
     val times = mutableMapOf<String, Long>()
+    val shown = mutableMapOf<String, Set<String>>()
     var reads = 0
 
     /** The user whose time [last] reads and writes: the one signed in. */
@@ -512,12 +551,20 @@ class AppointmentReminderCheckTest {
 
     override suspend fun lastCheckedAt(uid: String): Long? = times[uid].also { reads++ }
 
+    override suspend fun shownSinceLastCheck(uid: String): Set<String> = shown[uid].orEmpty()
+
+    override suspend fun addShown(uid: String, keys: Set<String>) {
+      shown[uid] = shown[uid].orEmpty() + keys
+    }
+
     override suspend fun setLastCheckedAt(uid: String, millis: Long) {
       times[uid] = millis
+      shown.remove(uid)
     }
 
     override suspend fun clear() {
       times.clear()
+      shown.clear()
     }
   }
 
