@@ -5,6 +5,8 @@ package com.github.se.amber.data.session
 import android.app.AlarmManager
 import android.content.Context
 import com.github.se.amber.data.appointment.reminder.AlarmManagerReminderTimer
+import com.github.se.amber.data.appointment.reminder.DataStoreReminderCheckStore
+import com.github.se.amber.data.appointment.reminder.reminderCheckDataStore
 import com.github.se.amber.model.authentication.AuthRepository
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
@@ -14,6 +16,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -59,11 +63,17 @@ class SessionRepositoryProviderTest {
     // the code uses that context, and so does this test
     val appContext = Firebase.app.applicationContext
     val alarms = shadowOf(appContext.getSystemService(AlarmManager::class.java))
+    // the store the app's check reads, on the same context
+    val store = DataStoreReminderCheckStore(appContext.reminderCheckDataStore)
+    store.setLastCheckedAt("anna", 1_000L)
     AlarmManagerReminderTimer(appContext).set(1_800_000_000_000L)
+    assertEquals(1_000L, store.lastCheckedAt("anna"))
+    assertNotNull(alarms.peekNextScheduledAlarm())
 
     assertTrue(repository.signOut().isSuccess)
 
     assertNull(alarms.peekNextScheduledAlarm())
+    assertNull(store.lastCheckedAt("anna"))
     coVerify(exactly = 1) { auth.signOut() }
   }
 }

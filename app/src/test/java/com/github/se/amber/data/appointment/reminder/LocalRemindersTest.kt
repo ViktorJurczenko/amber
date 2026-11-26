@@ -13,6 +13,7 @@ import io.mockk.mockk
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -51,19 +52,23 @@ class LocalRemindersTest {
   @Test
   fun theAndroidRemindersCancelTheTimerAndRemoveTheShownReminders() = runBlocking {
     shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+    val alarms = shadowOf(context.getSystemService(AlarmManager::class.java))
+    val notifications = context.getSystemService(NotificationManager::class.java)
+    // the store the app's check uses, so the next user doesn't start from this time
+    val store = DataStoreReminderCheckStore(context.reminderCheckDataStore)
+    store.setLastCheckedAt("anna", 1_000L)
     AlarmManagerReminderTimer(context).set(1_800_000_000_000L)
     val today = LocalDate.of(2027, 1, 15)
     AndroidAppointmentReminderNotifier(context)
         .show(ReminderNotification("t1", "Doctor", today.atTime(14, 0), today, emptyList()))
+    assertEquals(1_000L, store.lastCheckedAt("anna"))
+    assertNotNull(alarms.peekNextScheduledAlarm())
+    assertEquals(listOf("t1"), notifications.activeNotifications.map { it.tag })
 
     LocalReminders.android(context).clearAll()
 
-    assertNull(
-        shadowOf(context.getSystemService(AlarmManager::class.java)).peekNextScheduledAlarm()
-    )
-    assertEquals(
-        0,
-        context.getSystemService(NotificationManager::class.java).activeNotifications.size,
-    )
+    assertNull(store.lastCheckedAt("anna"))
+    assertNull(alarms.peekNextScheduledAlarm())
+    assertEquals(emptyList<String>(), notifications.activeNotifications.map { it.tag })
   }
 }
