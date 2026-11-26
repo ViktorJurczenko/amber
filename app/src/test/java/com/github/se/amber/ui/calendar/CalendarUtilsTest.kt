@@ -8,17 +8,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.YearMonth
+import java.time.ZoneId
+import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** Tests [calendarCells]: the layout of a month in a grid; and [calendarIconSize] */
+/**
+ * Tests [calendarCells]: the layout of a month in a grid; [calendarIconSize]; and
+ * [appointmentDays]: the days that have an appointment.
+ */
 class CalendarUtilsTest {
   // ---------- calendarCells ----------
 
@@ -116,6 +124,92 @@ class CalendarUtilsTest {
   @Test
   fun iconSizeOfACaregiverIsTheCaregiverIconSize() {
     assertEquals(CAREGIVER_ICON_SIZE, calendarIconSize(isPatient = false))
+  }
+
+  // ---------- appointmentDays ----------
+
+  private fun appointmentAt(start: LocalDateTime, minutes: Int = 60) =
+      Appointment(
+          startAt = start.toInstant(ZoneOffset.UTC).toEpochMilli(),
+          lastEndAt = start.plusMinutes(minutes.toLong()).toInstant(ZoneOffset.UTC).toEpochMilli(),
+          durationMinutes = minutes,
+      )
+
+  private fun daysInNovember(vararg appointments: Appointment) =
+      appointmentDays(appointments.toList(), november, ZoneOffset.UTC)
+
+  @Test
+  fun noAppointmentGivesNoDay() {
+    assertEquals(emptySet<Int>(), daysInNovember())
+  }
+
+  @Test
+  fun eachDayWithAnAppointmentIsGiven() {
+    val days =
+        daysInNovember(
+            appointmentAt(LocalDateTime.of(2026, 11, 12, 9, 0)),
+            appointmentAt(LocalDateTime.of(2026, 11, 20, 9, 0)),
+        )
+    assertEquals(setOf(12, 20), days)
+  }
+
+  @Test
+  fun twoAppointmentsOnTheSameDayGiveThatDayOnce() {
+    val days =
+        daysInNovember(
+            appointmentAt(LocalDateTime.of(2026, 11, 12, 9, 0)),
+            appointmentAt(LocalDateTime.of(2026, 11, 12, 15, 0)),
+        )
+    assertEquals(setOf(12), days)
+  }
+
+  @Test
+  fun theFirstAndLastDaysOfTheMonthAreIncluded() {
+    val days =
+        daysInNovember(
+            appointmentAt(LocalDateTime.of(2026, 11, 1, 0, 0)),
+            appointmentAt(LocalDateTime.of(2026, 11, 30, 23, 0)),
+        )
+    assertEquals(setOf(1, 30), days)
+  }
+
+  @Test
+  fun anAppointmentOfAnotherMonthIsIgnored() {
+    val days = daysInNovember(appointmentAt(LocalDateTime.of(2026, 12, 12, 9, 0)))
+    assertEquals(emptySet<Int>(), days)
+  }
+
+  @Test
+  fun anAppointmentEndingAfterMidnightOnlyGivesItsStartDay() {
+    val days = daysInNovember(appointmentAt(LocalDateTime.of(2026, 11, 12, 23, 30)))
+    assertEquals(setOf(12), days)
+  }
+
+  @Test
+  fun anAppointmentStartedInThePreviousMonthIsIgnored() {
+    val days = daysInNovember(appointmentAt(LocalDateTime.of(2026, 10, 31, 23, 30)))
+    assertEquals(emptySet<Int>(), days)
+  }
+
+  @Test
+  fun theDayIsCountedInTheGivenZone() {
+    // 23:30 UTC on the 12th is already the 13th one hour east.
+    val appointment = appointmentAt(LocalDateTime.of(2026, 11, 12, 23, 30))
+    val days = appointmentDays(listOf(appointment), november, ZoneOffset.ofHours(1))
+    assertEquals(setOf(13), days)
+  }
+
+  @Test
+  fun byDefaultTheDaysOfTheCurrentMonthInThePhoneZoneAreGiven() {
+    val today = LocalDate.now()
+    val noon = today.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val appointment = Appointment(startAt = noon, durationMinutes = 60)
+    assertEquals(setOf(today.dayOfMonth), appointmentDays(listOf(appointment)))
+  }
+
+  @Test
+  fun withoutAnyParameterThereIsNoDay() {
+    assertEquals(emptySet<Int>(), appointmentDays())
   }
 
   /**

@@ -21,7 +21,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.TextUnit
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.se.amber.R
+import com.github.se.amber.data.appointment.FakeUserAppointmentsObserver
+import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.ui.calendar.CalendarTestTags.CALENDAR
 import com.github.se.amber.ui.calendar.CalendarTestTags.MONTH_TITLE
 import com.github.se.amber.ui.calendar.CalendarTestTags.NEXT_MONTH_BUTTON
@@ -33,7 +38,10 @@ import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneOffset
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -42,8 +50,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowToast
 
-/** Tests [Calendar]: the box, the month navigation, the weekdays and the days. */
+/**
+ * Tests [Calendar]: the box, the month navigation, the weekdays, the days and the circles of the
+ * days that have an appointment.
+ */
 @RunWith(RobolectricTestRunner::class)
 class CalendarTest {
 
@@ -52,9 +64,28 @@ class CalendarTest {
   // November has 30 days, October and December have 31.
   private val november = YearMonth.of(2026, 11)
 
+  // A fake observer: the default one would use the Firebase repositories.
+  private fun viewModelWithoutAppointments(month: YearMonth = november) =
+      CalendarViewModel(
+          initialMonth = month,
+          appointmentsObserver =
+              FakeUserAppointmentsObserver { flowOf(Result.success(emptyList())) },
+      )
+
+  /**
+   * Puts a ViewModel with a fake observer in the activity, so that `viewModel()`, the default of
+   * [Calendar], gives it back instead of creating one that uses the Firebase repositories.
+   */
+  private fun storeFakeViewModelInTheActivity() {
+    val factory = viewModelFactory {
+      initializer { viewModelWithoutAppointments(YearMonth.now()) }
+    }
+    ViewModelProvider(composeTestRule.activity, factory)[CalendarViewModel::class.java]
+  }
+
   private fun launch(onDayClick: (LocalDate) -> Unit = {}) {
     // Created here, not in setContent: a ViewModel must not be constructed in a composable.
-    val viewModel = CalendarViewModel(november)
+    val viewModel = viewModelWithoutAppointments()
     composeTestRule.setContent {
       AmberAppTheme { Calendar(onDayClick = onDayClick, viewModel = viewModel) }
     }
@@ -207,16 +238,11 @@ class CalendarTest {
 
   // ---------- default parameters ----------
 
-  // Note: currently, using the "real" ViewModel is safe and can't hit the network.
-  // If CalendarViewModel start using an AppointmentRepository: viewModel() would then use
-  // the default Firebase repository.
-  // The following tests should then no longer call Calendar() with the defaults,
-  // and should pass it a fake repository.
-
   @Test
   fun displaysTheCalendarWithTheDefaultParametersAndChangesItsMonth() {
     // Case for no viewModel and no onDayClick:
-    // the calendar uses its own ViewModel and ignores the clicks.
+    // the calendar gets its ViewModel from the activity and ignores the clicks.
+    storeFakeViewModelInTheActivity()
     composeTestRule.setContent { AmberAppTheme { Calendar() } }
     composeTestRule.onNodeWithTag(CALENDAR).assertIsDisplayed()
     val before = monthTitle()
@@ -258,6 +284,7 @@ class CalendarTest {
 
   @Test
   fun previewDisplaysTheCalendar() {
+    storeFakeViewModelInTheActivity()
     composeTestRule.setContent { CalendarPreview() }
     composeTestRule.onNodeWithTag(CALENDAR).assertIsDisplayed()
   }
@@ -336,11 +363,88 @@ class CalendarTest {
         .assertWidthIsEqualTo(CAREGIVER_ICON_SIZE)
   }
 
+  // ---------- appointments ----------
+
+  private fun appointmentsOn(vararg days: LocalDate): Result<List<Appointment>> =
+      Result.success(
+          days.map { day ->
+            val noon = day.atTime(12, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+            Appointment(startAt = noon, durationMinutes = 60)
+          }
+      )
+
+  private fun launchWithAppointments(
+      observer: FakeUserAppointmentsObserver,
+      isPatient: Boolean = true,
+  ) {
+    val viewModel = CalendarViewModel(november, ZoneOffset.UTC, observer)
+    composeTestRule.setContent {
+      AmberAppTheme { Calendar(isPatient = isPatient, viewModel = viewModel) }
+    }
+    composeTestRule.waitForIdle()
+  }
+
+  // The day is clickable, so it merges its children: the circle is only in the unmerged tree.
+  private fun circle(day: Int) =
+      composeTestRule.onNodeWithTag(CalendarTestTags.appointmentCircle(day), useUnmergedTree = true)
+
+  // The checks of one screen are grouped in one test, to launch it only once.
+  @Test
+  fun circlesOnlyTheDaysThatHaveAnAppointment() {
+    val appointments = appointmentsOn(LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 20))
+    launchWithAppointments(FakeUserAppointmentsObserver { flowOf(appointments) })
+    circle(12).assertIsDisplayed()
+    circle(20).assertIsDisplayed()
+    circle(13).assertDoesNotExist()
+  }
+
+  @Test
+  fun circlesFollowTheDisplayedMonth() {
+    val observer = FakeUserAppointmentsObserver { window ->
+      // The day is the month number: the 11th in November, the 12th in December.
+      flowOf(appointmentsOn(window.firstDay.withDayOfMonth(window.firstDay.monthValue)))
+    }
+    launchWithAppointments(observer)
+    circle(11).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NEXT_MONTH_BUTTON).performClick()
+    circle(12).assertIsDisplayed()
+    circle(11).assertDoesNotExist()
+  }
+
+  @Test
+  fun anAppointmentAddedWhileTheCalendarIsShownGetsACircle() {
+    val appointments = MutableStateFlow(appointmentsOn())
+    launchWithAppointments(FakeUserAppointmentsObserver { appointments })
+    circle(12).assertDoesNotExist()
+    appointments.value = appointmentsOn(LocalDate.of(2026, 11, 12))
+    composeTestRule.waitForIdle()
+    circle(12).assertIsDisplayed()
+  }
+
+  @Test
+  fun loadsTheAppointmentsOfTheRoleOfTheViewer() {
+    val observer = FakeUserAppointmentsObserver { flowOf(appointmentsOn()) }
+    launchWithAppointments(observer, isPatient = false)
+    assertEquals(listOf(false), observer.roles)
+  }
+
+  @Test
+  fun showsAMessageWhenTheAppointmentsCannotBeLoaded() {
+    ShadowToast.reset()
+    launchWithAppointments(
+        FakeUserAppointmentsObserver { flowOf(Result.failure(IllegalStateException())) }
+    )
+    assertEquals(
+        composeTestRule.activity.getString(R.string.calendarErrorLoadAppointments),
+        ShadowToast.getTextOfLatestToast(),
+    )
+  }
+
   // ---------- modifier ----------
 
   @Test
   fun appliesTheModifierGivenToTheCalendar() {
-    val viewModel = CalendarViewModel(november)
+    val viewModel = viewModelWithoutAppointments()
     composeTestRule.setContent {
       AmberAppTheme {
         Calendar(
