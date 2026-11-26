@@ -4,6 +4,7 @@ package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DontMemoize
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -97,9 +98,9 @@ fun SeeMediasSpecificPersonScreen(
               state =
                   playbackStates[item.id] ?: AudioPlaybackState.Idle(durationMs = item.durationMs),
               waveform = item.waveform,
-              onPlayPause = { viewModel.onPlayPause(item) },
-              onRestart = { viewModel.onRestart(item) },
-              onRetry = { viewModel.onPlayPause(item) },
+              onPlayPause = @DontMemoize { viewModel.onPlayPause(item) },
+              onRestart = @DontMemoize { viewModel.onRestart(item) },
+              onRetry = @DontMemoize { viewModel.onPlayPause(item) },
           )
       is MediaItem.Picture ->
           MediaImage(
