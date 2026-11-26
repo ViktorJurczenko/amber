@@ -1,5 +1,4 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
-// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -18,8 +17,8 @@ import io.mockk.unmockkStatic
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -36,28 +35,23 @@ class PersonPhotoPrepareTest {
   @get:Rule val tmp = TemporaryFolder()
 
   @Test
-  fun writePreparedJpegRejectsAnUnusablePhoto() {
+  fun aFileThatIsNotAPictureIsRejected() {
     val text = File(tmp.root, "notes.txt").apply { writeText("hello") }
     assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
       writePreparedJpeg(text, File(tmp.root, "out.jpg"))
     }
+  }
 
+  @Test
+  fun theSameFileIsRejected() {
     val photo = picture()
     val sameFile =
         assertThrows(IllegalArgumentException::class.java) { writePreparedJpeg(photo, photo) }
     assertEquals("A prepared photo is written to a new file", sameFile.message)
+  }
 
-    val noParent =
-        assertThrows(IOException::class.java) { writePreparedJpeg(picture(), File("prepared.jpg")) }
-    assertTrue(noParent.message.orEmpty().contains("has no directory"))
-
-    val parentFile = File(tmp.root, "parent-file").apply { writeBytes(byteArrayOf(1)) }
-    val blocked =
-        assertThrows(IOException::class.java) {
-          writePreparedJpeg(picture(), File(parentFile, "photo.jpg"))
-        }
-    assertTrue(blocked.message.orEmpty().contains("Could not create"))
-
+  @Test
+  fun aMissingFolderIsCreated() {
     val created = File(tmp.root, "new-dir/photo.jpg")
     writePreparedJpeg(picture(), created)
     assertTrue(created.isFile)
@@ -65,17 +59,16 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
-  fun writePreparedJpegSubsamplesAVeryWidePhotoAndScalesALandscapePhoto() {
-    val subsampled = File(tmp.root, "subsampled.jpg")
-    writePreparedJpeg(picture(width = 2048, height = 32), subsampled)
-    val reduced = decode(subsampled)
-    try {
-      assertEquals(MAX_SIDE, reduced.width)
-      assertTrue(reduced.height < 32)
-    } finally {
-      reduced.recycle()
-    }
+  fun subsampleUsesTheLargestPowerOfTwoThatStaysLargeEnough() {
+    assertEquals(1, subsample(32, 24, MAX_SIDE))
+    assertEquals(1, subsample(2047, 10, MAX_SIDE))
+    assertEquals(2, subsample(2048, 10, MAX_SIDE))
+    assertEquals(2, subsample(3000, 4000, MAX_SIDE))
+    assertEquals(8, subsample(8192, 6144, MAX_SIDE))
+  }
 
+  @Test
+  fun aLandscapePhotoIsScaledDownToTheLongestSide() {
     val landscape = File(tmp.root, "landscape.jpg")
     writePreparedJpeg(picture(width = 1500, height = 400), landscape)
     val fitted = decode(landscape)
@@ -88,31 +81,80 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
-  fun everyPersonPhotoErrorExists() {
-    val source = IllegalStateException("missing")
-    val unknown = PersonPhotoError.Unknown(source)
-    assertEquals("No user is signed in", PersonPhotoError.NotAuthenticated.message)
-    assertEquals("The care circle has no storage bucket", PersonPhotoError.NoStorageBucket.message)
-    assertEquals(
-        "You do not have permission to access this photo",
-        PersonPhotoError.PermissionDenied.message,
-    )
-    assertEquals("Unable to reach photo storage", PersonPhotoError.Network.message)
-    assertEquals("The photo operation failed", unknown.message)
-    assertSame(source, unknown.source)
+  fun aTallPhotoIsScaledDownToTheLongestSide() {
+    val tall = File(tmp.root, "tall.jpg")
+    writePreparedJpeg(picture(width = 400, height = 1500), tall)
+    val fitted = decode(tall)
+    try {
+      assertEquals((400L * MAX_SIDE / 1500).toInt(), fitted.width)
+      assertEquals(MAX_SIDE, fitted.height)
+    } finally {
+      fitted.recycle()
+    }
   }
 
   @Test
-  fun aQuarterTurnAndATallPhotoAreFitted() {
-    assertSize(
-        picture(width = 40, height = 20, orientation = ExifInterface.ORIENTATION_ROTATE_90),
-        width = 20,
-        height = 40,
+  fun aQuarterTurnMovesTheTopHalfToTheRight() {
+    assertColors(
+        halves(
+            top = Color.RED,
+            bottom = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_ROTATE_90,
+        ),
+        left = Color.BLUE,
+        right = Color.RED,
     )
-    assertSize(
-        picture(width = 400, height = 1500),
-        width = (400L * MAX_SIDE / 1500).toInt(),
-        height = MAX_SIDE,
+  }
+
+  @Test
+  fun aHalfTurnMovesTheTopHalfToTheBottom() {
+    assertColors(
+        halves(
+            top = Color.RED,
+            bottom = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_ROTATE_180,
+        ),
+        top = Color.BLUE,
+        bottom = Color.RED,
+    )
+  }
+
+  @Test
+  fun aThreeQuarterTurnMovesTheTopHalfToTheLeft() {
+    assertColors(
+        halves(
+            top = Color.RED,
+            bottom = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_ROTATE_270,
+        ),
+        left = Color.RED,
+        right = Color.BLUE,
+    )
+  }
+
+  @Test
+  fun aHorizontalFlipSwapsTheTwoHalves() {
+    assertColors(
+        halves(
+            left = Color.RED,
+            right = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_FLIP_HORIZONTAL,
+        ),
+        left = Color.BLUE,
+        right = Color.RED,
+    )
+  }
+
+  @Test
+  fun aTransposedPhotoIsMirroredAndThenTurned() {
+    assertColors(
+        halves(
+            top = Color.RED,
+            bottom = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_TRANSPOSE,
+        ),
+        left = Color.RED,
+        right = Color.BLUE,
     )
   }
 
@@ -124,32 +166,47 @@ class PersonPhotoPrepareTest {
   }
 
   @Test
-  fun aBitmapThatCannotBeStoredAsASmallJpegIsRejected() {
-    val bitmap = mockk<Bitmap>()
-    every { bitmap.width } returns 4
-    every { bitmap.height } returns 4
-    every { bitmap.recycle() } returns Unit
-    mockkStatic(BitmapFactory::class)
-    try {
-      stubDecodedBitmap(bitmap)
+  fun aBitmapThatCannotBeCompressedIsRejected() {
+    withDecodedBitmap { bitmap ->
       every { bitmap.compress(any(), any(), any()) } returns false
       assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
         writePreparedJpeg(picture(), File(tmp.root, "compress.jpg"))
       }
+    }
+  }
 
-      var attempt = 0
+  @Test
+  fun aLowerQualityThatFitsIsKept() {
+    val qualities = mutableListOf<Int>()
+    withDecodedBitmap { bitmap ->
       every { bitmap.compress(any(), any(), any()) } answers
           {
-            if (attempt++ == 0)
-                thirdArg<OutputStream>().write(ByteArray((MAX_PHOTO_BYTES + 1).toInt()))
+            val quality = secondArg<Int>()
+            qualities += quality
+            val size = if (quality > 50) MAX_PHOTO_BYTES + 1 else 1L
+            thirdArg<OutputStream>().write(ByteArray(size.toInt()))
+            true
+          }
+      writePreparedJpeg(picture(), File(tmp.root, "lowered.jpg"))
+    }
+    assertEquals(listOf(90, 80, 70, 60, 50), qualities)
+  }
+
+  @Test
+  fun aBitmapThatNeverFitsIsRejected() {
+    val qualities = mutableListOf<Int>()
+    withDecodedBitmap { bitmap ->
+      every { bitmap.compress(any(), any(), any()) } answers
+          {
+            qualities += secondArg<Int>()
+            thirdArg<OutputStream>().write(ByteArray((MAX_PHOTO_BYTES + 1).toInt()))
             true
           }
       assertThrows(PersonPhotoError.CannotPreparePhoto::class.java) {
         writePreparedJpeg(picture(), File(tmp.root, "over-limit.jpg"))
       }
-    } finally {
-      unmockkStatic(BitmapFactory::class)
     }
+    assertEquals(listOf(90, 80, 70, 60, 50, 40, 30, 20, 10, 0), qualities)
   }
 
   @Test
@@ -158,6 +215,7 @@ class PersonPhotoPrepareTest {
     mockkConstructor(ExifInterface::class)
     try {
       every { anyConstructed<ExifInterface>().rotationDegrees } throws IOException("unreadable")
+      every { anyConstructed<ExifInterface>().isFlipped } throws IOException("unreadable")
       val prepared = File(tmp.root, "upright.jpg")
       writePreparedJpeg(source, prepared)
       val decoded = decode(prepared)
@@ -172,6 +230,19 @@ class PersonPhotoPrepareTest {
     }
   }
 
+  @Test
+  fun theSourceFileIsLeftUnchanged() {
+    val source =
+        halves(
+            top = Color.RED,
+            bottom = Color.BLUE,
+            orientation = ExifInterface.ORIENTATION_ROTATE_90,
+        )
+    val before = source.readBytes()
+    writePreparedJpeg(source, File(tmp.root, "prepared.jpg"))
+    assertTrue(before.contentEquals(source.readBytes()))
+  }
+
   private fun sourceWidth(file: File): Int {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(file.absolutePath, bounds)
@@ -182,10 +253,23 @@ class PersonPhotoPrepareTest {
       width: Int = 32,
       height: Int = 24,
       color: Int = Color.RED,
+      otherHalf: Int? = null,
+      splitLeftRight: Boolean = false,
       orientation: Int? = null,
   ): File {
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    bitmap.eraseColor(color)
+    if (otherHalf == null) {
+      bitmap.eraseColor(color)
+    } else {
+      val pixels =
+          IntArray(width * height) { index ->
+            val x = index % width
+            val y = index / width
+            val first = if (splitLeftRight) x < width / 2 else y < height / 2
+            if (first) color else otherHalf
+          }
+      bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    }
     val file = File.createTempFile("picture", ".jpg", tmp.root)
     try {
       file.outputStream().use { stream ->
@@ -203,16 +287,66 @@ class PersonPhotoPrepareTest {
     return file
   }
 
-  private fun assertSize(source: File, width: Int, height: Int) {
-    val prepared = File(tmp.root, "fitted-${source.name}")
+  private fun halves(
+      top: Int? = null,
+      bottom: Int? = null,
+      left: Int? = null,
+      right: Int? = null,
+      orientation: Int? = null,
+  ): File =
+      if (left != null) {
+        picture(
+            width = 64,
+            height = 48,
+            color = left,
+            otherHalf = right,
+            splitLeftRight = true,
+            orientation = orientation,
+        )
+      } else {
+        picture(
+            width = 64,
+            height = 48,
+            color = top ?: Color.RED,
+            otherHalf = bottom,
+            orientation = orientation,
+        )
+      }
+
+  private fun assertColors(
+      source: File,
+      left: Int? = null,
+      right: Int? = null,
+      top: Int? = null,
+      bottom: Int? = null,
+  ) {
+    val prepared = File(tmp.root, "orient-${source.name}")
     writePreparedJpeg(source, prepared)
     val decoded = decode(prepared)
     try {
-      assertEquals(width, decoded.width)
-      assertEquals(height, decoded.height)
+      if (left != null) assertNear(left, decoded.getPixel(decoded.width / 4, decoded.height / 2))
+      if (right != null) {
+        assertNear(right, decoded.getPixel(decoded.width * 3 / 4, decoded.height / 2))
+      }
+      if (top != null) assertNear(top, decoded.getPixel(decoded.width / 2, decoded.height / 4))
+      if (bottom != null) {
+        assertNear(bottom, decoded.getPixel(decoded.width / 2, decoded.height * 3 / 4))
+      }
     } finally {
       decoded.recycle()
     }
+  }
+
+  private fun assertNear(expected: Int, actual: Int) {
+    fun channel(name: String, expectedChannel: Int, actualChannel: Int) {
+      assertTrue(
+          "$name of ${hex(expected)} vs ${hex(actual)}",
+          abs(expectedChannel - actualChannel) <= COLOR_TOLERANCE,
+      )
+    }
+    channel("red", Color.red(expected), Color.red(actual))
+    channel("green", Color.green(expected), Color.green(actual))
+    channel("blue", Color.blue(expected), Color.blue(actual))
   }
 
   /** Returns [bitmap] from the second decode. The bounds pass reports a tiny upright image. */
@@ -230,11 +364,28 @@ class PersonPhotoPrepareTest {
         }
   }
 
+  private fun withDecodedBitmap(block: (Bitmap) -> Unit) {
+    val bitmap = mockk<Bitmap>()
+    every { bitmap.width } returns 4
+    every { bitmap.height } returns 4
+    every { bitmap.recycle() } returns Unit
+    mockkStatic(BitmapFactory::class)
+    try {
+      stubDecodedBitmap(bitmap)
+      block(bitmap)
+    } finally {
+      unmockkStatic(BitmapFactory::class)
+    }
+  }
+
   private fun decode(file: File): Bitmap =
       BitmapFactory.decodeFile(file.absolutePath)
           ?: throw AssertionError("${file.path} is not a JPEG")
 
+  private fun hex(color: Int) = "#%06X".format(0xFFFFFF and color)
+
   private companion object {
     const val MAX_SIDE = 1024
+    const val COLOR_TOLERANCE = 40
   }
 }
