@@ -134,7 +134,7 @@ internal fun SeeMediasSpecificPersonPreview() {
         onTabSelected = {},
         onPersonClick = {},
         titleArgs = listOf("Eva"),
-    ) { _, _, _ ->
-    }
+        itemContent = { _, _, _ -> Unit },
+    )
   }
 }

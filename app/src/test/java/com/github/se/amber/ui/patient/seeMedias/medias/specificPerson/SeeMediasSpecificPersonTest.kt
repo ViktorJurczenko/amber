@@ -5,6 +5,9 @@ package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
@@ -52,7 +55,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -439,23 +441,94 @@ class SeeMediasSpecificPersonScreenTest {
   }
 
   @Test
-  fun clicking_the_person_already_shown_does_not_call_onPersonClick() {
-    val shownPerson =
+  fun audio_callbacks_follow_recompositions_and_item_changes() {
+    val first = MediaItem.Audio(id = "a1", durationMs = 1_000L)
+    val updated = MediaItem.Audio(id = "a1", durationMs = 2_000L)
+    val uiState = MutableStateFlow<SeeGeneralMediasUIState<MediaItem>>(contentOf(first))
+    val playbackStates = MutableStateFlow<Map<String, AudioPlaybackState>>(emptyMap())
+    val viewModel = setContent(uiState = uiState, playbackStates = playbackStates)
+
+    composeTestRule.runOnIdle {
+      playbackStates.value = mapOf("a1" to AudioPlaybackState.Playing(1_000L, 5_000L))
+    }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
+    verify(exactly = 1) { viewModel.onPlayPause(first) }
+
+    composeTestRule.runOnIdle { uiState.value = contentOf(updated) }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RESTART).performClick()
+    verify(exactly = 1) { viewModel.onPlayPause(updated) }
+    verify(exactly = 1) { viewModel.onRestart(updated) }
+    verify(exactly = 0) { viewModel.onRestart(first) }
+
+    composeTestRule.runOnIdle { playbackStates.value = mapOf("a1" to AudioPlaybackState.Error()) }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
+    verify(exactly = 2) { viewModel.onPlayPause(updated) }
+  }
+
+  @Test
+  fun person_click_ignores_the_shown_person_and_follows_the_callback() {
+    val twoPeople =
         CareCircle(
             id = "circle1",
-            people = mapOf("person1" to Person(id = "person1", firstName = "Eva")),
+            people =
+                mapOf(
+                    "person1" to Person(id = "person1", firstName = "Eva"),
+                    "p2" to Person(id = "p2", firstName = "Marc"),
+                ),
         )
-    coEvery { circleRepository.getCircle("circle1") } returns Result.success(shownPerson)
-    val media = MediaItem.Picture(id = "m2", shownIds = listOf("person1"))
-    var clickedId: String? = null
-    setContent(
-        state = SeeGeneralMediasUIState.Content(profile, shownPerson, listOf<MediaItem>(media)),
-        onPersonClick = { clickedId = it },
-    )
+    coEvery { circleRepository.getCircle("circle1") } returns Result.success(twoPeople)
+    val media = MediaItem.Picture(id = "m1", shownIds = listOf("person1", "p2"))
+    val playbackStates = MutableStateFlow<Map<String, AudioPlaybackState>>(emptyMap())
+    val viewModel = mockk<SeeMediasSpecificPersonViewModel>(relaxed = true)
+    every { viewModel.uiState } returns
+        MutableStateFlow(
+            SeeGeneralMediasUIState.Content(profile, twoPeople, listOf<MediaItem>(media))
+        )
+    every { viewModel.playbackStates } returns playbackStates
+    every { viewModel.personName } returns MutableStateFlow<String?>("Eva")
 
-    composeTestRule.clickRelatedPerson("m2")
+    val first = mutableListOf<String>()
+    val second = mutableListOf<String>()
+    var callback by mutableStateOf<(String) -> Unit>({ first += it })
 
-    assertNull(clickedId)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides mediaCardOwner) {
+        AmberAppTheme(dynamicColor = false) {
+          SeeMediasSpecificPersonScreen(
+              personId = "person1",
+              viewModel = viewModel,
+              onPersonClick = callback,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("m1")).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(MediaCardTestTags.relatedItem("m1", 1))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    // Items are not visible on the test screen: trigger the click action directly
+    fun click(index: Int) =
+        composeTestRule
+            .onNodeWithTag(MediaCardTestTags.relatedItem("m1", index))
+            .performSemanticsAction(SemanticsActions.OnClick)
+
+    click(0) // person1: the person already shown, ignored
+    click(1) // p2
+    // Recomposition with the same callback: remembered lambda reused
+    composeTestRule.runOnIdle { playbackStates.value = mapOf("x" to AudioPlaybackState.Error()) }
+    click(1)
+    assertEquals(listOf("p2", "p2"), first)
+
+    // New callback: the lambda is recreated
+    composeTestRule.runOnIdle { callback = { second += it } }
+    click(1)
+    assertEquals(listOf("p2"), second)
+    assertEquals(2, first.size)
   }
 
   // ---------------------------------------------------------------------------------------------
