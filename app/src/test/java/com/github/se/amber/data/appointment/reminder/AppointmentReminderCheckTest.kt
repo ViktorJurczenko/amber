@@ -4,8 +4,8 @@ package com.github.se.amber.data.appointment.reminder
 
 import com.github.se.amber.data.appointment.AppointmentError
 import com.github.se.amber.data.appointment.AppointmentRepository
+import com.github.se.amber.data.appointment.AppointmentsRead
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
-import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.PlannedReminder
@@ -16,12 +16,12 @@ import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -42,19 +42,10 @@ class AppointmentReminderCheckTest {
   private val poster: AppointmentReminderPoster = mockk()
   private val store = MemoryStore()
   private val timer = RecordingTimer()
-  private var activeCircle: String? = CIRCLE
+  private var circles = listOf(CIRCLE)
   private var now = NOW
   private val posted = mutableListOf<PlannedReminder>()
-
-  private val activeCircles =
-      object : ActiveCircleRepository {
-        override fun activeCircleId(uid: String, circleIds: List<String>): Flow<String?> =
-            flowOf(activeCircle?.takeIf { it in circleIds })
-
-        override suspend fun setActiveCircle(uid: String, id: String) = Unit
-
-        override suspend fun clear(uid: String) = Unit
-      }
+  private val postedIn = mutableListOf<String>()
 
   private val check = checkOn(appointments, store)
 
@@ -62,7 +53,6 @@ class AppointmentReminderCheckTest {
       AppointmentReminderCheck(
           repository,
           profiles,
-          activeCircles,
           auth,
           poster,
           store,
@@ -73,21 +63,32 @@ class AppointmentReminderCheckTest {
 
   init {
     signIn(PATIENT)
-    coEvery { poster.post(CIRCLE, any()) } answers
+    coEvery { poster.post(any(), any()) } answers
         {
           posted += secondArg<PlannedReminder>()
+          postedIn += firstArg<String>()
           true
         }
   }
 
+  /**
+   * Signs [uid] in, with [circles] on their profile. The store then reads and writes their time.
+   */
   private fun signIn(uid: String?) {
     every { auth.currentUser } returns uid?.let(::AuthUser)
-    coEvery { profiles.getCurrentProfile() } returns
-        Result.success(uid?.let { UserProfile(uid = it, circleIds = listOf(CIRCLE)) })
+    coEvery { profiles.getCurrentProfile() } answers
+        {
+          Result.success(uid?.let { UserProfile(uid = it, circleIds = circles) })
+        }
+    uid?.let { store.user = it }
   }
 
   private fun save(vararg appointment: Appointment) = runBlocking {
     appointment.forEach { appointments.addAppointment(CIRCLE_WITH_PATIENT, it) }
+  }
+
+  private fun saveIn(circle: CareCircle, vararg appointment: Appointment) = runBlocking {
+    appointment.forEach { appointments.addAppointment(circle, it) }
   }
 
   private fun run() = runBlocking { check.run() }
@@ -209,8 +210,8 @@ class AppointmentReminderCheckTest {
 
     for ((uid, expected) in listOf(ANNA to listOf("withAnna"), BEN to emptyList())) {
       posted.clear()
-      store.last = NOW - 10 * MINUTE
       signIn(uid)
+      store.last = NOW - 10 * MINUTE
       run()
       assertEquals(uid, expected, posted.map { it.occurrence.id })
     }
@@ -266,11 +267,11 @@ class AppointmentReminderCheckTest {
   }
 
   @Test
-  fun withoutAnActiveCircleNothingIsShownAndTheTimerComesBackInSixHours() {
+  fun withoutACircleNothingIsShownAndTheTimerComesBackInSixHours() {
     store.last = NOW - 10 * MINUTE
     timer.setAt = NOW + HOUR
     save(appointment("due", start = NOW + 55 * MINUTE))
-    activeCircle = null
+    circles = emptyList()
 
     run()
 
@@ -308,12 +309,93 @@ class AppointmentReminderCheckTest {
   @Test
   fun appointmentsThatCantBeReadAreTriedAgainInFifteenMinutes() {
     store.last = NOW - 10 * MINUTE
-    appointments.readFailWith = AppointmentError.PermissionDenied()
+    save(appointment("due", start = NOW + 55 * MINUTE))
+    appointments.readFailWith = AppointmentError.Unknown(IllegalStateException("server error"))
 
     run()
 
+    assertEquals(emptyList<PlannedReminder>(), posted)
     assertEquals(NOW + 15 * MINUTE, timer.setAt)
     assertEquals(NOW - 10 * MINUTE, store.last)
+  }
+
+  @Test
+  fun aReminderOfACircleThatIsntOnScreenIsShown() {
+    store.last = NOW - 10 * MINUTE
+    circles = listOf(CIRCLE, OTHER_CIRCLE)
+    save(appointment("here", start = NOW + 55 * MINUTE))
+    saveIn(OTHER_CIRCLE_WITH_PATIENT, appointment("there", start = NOW + 56 * MINUTE))
+    // the next reminder of each circle: the other circle's comes first
+    save(appointment("hereLater", start = NOW + 4 * HOUR))
+    saveIn(OTHER_CIRCLE_WITH_PATIENT, appointment("thereLater", start = NOW + 3 * HOUR))
+
+    run()
+
+    assertEquals(listOf("here", "there"), posted.map { it.occurrence.id })
+    assertEquals(listOf(CIRCLE, OTHER_CIRCLE), postedIn)
+    assertEquals(NOW + 2 * HOUR, timer.setAt)
+    assertEquals(NOW, store.last)
+  }
+
+  @Test
+  fun aCircleTheUserCantReadIsSkippedAndTheOthersStillCome() {
+    store.last = NOW - 10 * MINUTE
+    circles = listOf(CIRCLE, OTHER_CIRCLE, "bad/id")
+    save(appointment("here", start = NOW + 55 * MINUTE))
+    val repository: AppointmentRepository = mockk {
+      coEvery { getAppointments(CIRCLE, any(), any()) } coAnswers
+          {
+            appointments.getAppointments(CIRCLE, secondArg(), thirdArg())
+          }
+      coEvery { getAppointments(OTHER_CIRCLE, any(), any()) } returns
+          Result.failure(AppointmentError.PermissionDenied())
+      coEvery { getAppointments("bad/id", any(), any()) } returns
+          Result.failure(AppointmentError.InvalidCircleId())
+    }
+
+    runBlocking { checkOn(repository, store).run() }
+
+    assertEquals(listOf("here"), posted.map { it.occurrence.id })
+    assertEquals(NOW + 6 * HOUR, timer.setAt)
+    assertEquals(NOW, store.last)
+  }
+
+  @Test
+  fun aCacheAnswerIsShownAndTriedAgainInFifteenMinutes() {
+    store.last = NOW - 10 * MINUTE
+    save(appointment("due", start = NOW + 55 * MINUTE))
+    appointments.readFromCache = true
+
+    run()
+
+    // shown and stored, so the next try doesn't show it again
+    assertEquals(listOf("due"), posted.map { it.occurrence.id })
+    assertEquals(NOW, store.last)
+    assertEquals(NOW + 15 * MINUTE, timer.setAt)
+  }
+
+  @Test
+  fun aCacheAnswerKeepsAReminderDueSoonerThanTheRetry() {
+    store.last = NOW - 10 * MINUTE
+    save(appointment("soon", start = NOW + 65 * MINUTE))
+    appointments.readFromCache = true
+
+    run()
+
+    assertEquals(NOW + 5 * MINUTE, timer.setAt)
+  }
+
+  @Test
+  fun eachUserHasTheirOwnLastCheck() {
+    store.last = NOW - 10 * MINUTE
+    save(appointment("due", start = NOW + 55 * MINUTE, attendees = listOf(ANNA)))
+    signIn(ANNA)
+
+    run()
+
+    // Anna has never checked on this phone, so she starts from now
+    assertEquals(emptyList<PlannedReminder>(), posted)
+    assertEquals(mapOf(PATIENT to NOW - 10 * MINUTE, ANNA to NOW), store.times)
   }
 
   @Test
@@ -349,7 +431,8 @@ class AppointmentReminderCheckTest {
     val added = appointment("added", start = NOW + 55 * MINUTE)
     val repository: AppointmentRepository = mockk {
       every { observeAppointments(CIRCLE, any(), any()) } returns flowOf(emptyList())
-      coEvery { getAppointments(CIRCLE, any(), any()) } returns Result.success(listOf(added))
+      coEvery { getAppointments(CIRCLE, any(), any()) } returns
+          Result.success(AppointmentsRead(listOf(added), isFromCache = false))
     }
 
     runBlocking { checkOn(repository, store).run() }
@@ -358,16 +441,19 @@ class AppointmentReminderCheckTest {
   }
 
   @Test
-  fun aRunThatFailsStillSetsTheTimer() {
+  fun aStoreThatCantBeReadIsTriedAgainInFifteenMinutes() {
+    store.last = NOW - 10 * MINUTE
+    save(appointment("due", start = NOW + 55 * MINUTE))
     val failing =
         object : ReminderCheckStore by store {
-          override suspend fun lastCheckedAt(): Long? = throw IllegalStateException("disk full")
+          override suspend fun lastCheckedAt(uid: String): Long? = throw IOException("disk error")
         }
 
-    assertThrows(IllegalStateException::class.java) {
-      runBlocking { checkOn(appointments, failing).run() }
-    }
+    assertThrows(IOException::class.java) { runBlocking { checkOn(appointments, failing).run() } }
 
+    // starting from now would skip the reminder, so nothing is shown and the time is kept
+    assertEquals(emptyList<PlannedReminder>(), posted)
+    assertEquals(NOW - 10 * MINUTE, store.last)
     assertEquals(NOW + 15 * MINUTE, timer.setAt)
   }
 
@@ -412,17 +498,26 @@ class AppointmentReminderCheckTest {
 
   /** A [ReminderCheckStore] in memory, which counts its reads. */
   private class MemoryStore : ReminderCheckStore {
-    var last: Long? = null
+    val times = mutableMapOf<String, Long>()
     var reads = 0
 
-    override suspend fun lastCheckedAt(): Long? = last.also { reads++ }
+    /** The user whose time [last] reads and writes: the one signed in. */
+    var user = PATIENT
 
-    override suspend fun setLastCheckedAt(millis: Long) {
-      last = millis
+    var last: Long?
+      get() = times[user]
+      set(value) {
+        if (value == null) times.remove(user) else times[user] = value
+      }
+
+    override suspend fun lastCheckedAt(uid: String): Long? = times[uid].also { reads++ }
+
+    override suspend fun setLastCheckedAt(uid: String, millis: Long) {
+      times[uid] = millis
     }
 
     override suspend fun clear() {
-      last = null
+      times.clear()
     }
   }
 
@@ -444,8 +539,11 @@ class AppointmentReminderCheckTest {
     const val PATIENT = "patient"
     const val ANNA = "anna"
     const val BEN = "ben"
+    const val OTHER_CIRCLE = "c2"
     val CIRCLE_WITH_PATIENT =
         CareCircle(id = CIRCLE, patientId = PATIENT, memberIds = listOf(PATIENT, ANNA, BEN))
+    val OTHER_CIRCLE_WITH_PATIENT =
+        CareCircle(id = OTHER_CIRCLE, patientId = PATIENT, memberIds = listOf(PATIENT))
 
     const val MINUTE = 60_000L
     const val HOUR = 60 * MINUTE

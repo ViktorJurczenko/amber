@@ -197,9 +197,10 @@ class FirebaseAppointmentRepository(
   }
 
   /**
-   * Runs the query of [observeAppointments] once with `get()`, which asks the server. It waits at
-   * most [AppointmentRepository.SERVER_WAIT_SECONDS] seconds. Then, or when the server can't be
-   * reached, it runs the same query on the cache with `get(Source.CACHE)`.
+   * Runs the query of [observeAppointments] once with `get(Source.SERVER)`, which asks only the
+   * server. It waits at most [AppointmentRepository.SERVER_WAIT_SECONDS] seconds. Then, or when the
+   * server can't be reached, it runs the same query on the cache with `get(Source.CACHE)`, and says
+   * so with [AppointmentsRead.isFromCache].
    *
    * Any other failure of the server, such as a refused read, is returned and not hidden by the
    * cache: the cache could list appointments the user may no longer read.
@@ -207,13 +208,14 @@ class FirebaseAppointmentRepository(
    * @param circleId the id of the care circle.
    * @param firstDay the first day of the window.
    * @param days how many days the window holds. It must be at least 1.
-   * @return the appointments sorted by start, then by id, or a failure with an [AppointmentError].
+   * @return the appointments sorted by start, then by id, and where they came from, or a failure
+   *   with an [AppointmentError].
    */
   override suspend fun getAppointments(
       circleId: String,
       firstDay: LocalDate,
       days: Int,
-  ): Result<List<Appointment>> {
+  ): Result<AppointmentsRead> {
     val window = dayWindow(firstDay, days, zone())
     if (!isValidDocumentId(circleId)) return Result.failure(AppointmentError.InvalidCircleId())
 
@@ -222,12 +224,13 @@ class FirebaseAppointmentRepository(
             .whereGreaterThan(LAST_END_AT_FIELD, window.startMillis)
             .whereLessThan(START_AT_FIELD, window.endMillis)
     return try {
-      val snapshot = fromServer(query) ?: query.get(Source.CACHE).await()
-      Result.success(
+      val server = fromServer(query)
+      val snapshot = server ?: query.get(Source.CACHE).await()
+      val appointments =
           snapshot.documents
               .mapNotNull { it.toAppointment() }
               .sortedWith(compareBy({ it.startAt }, { it.id }))
-      )
+      Result.success(AppointmentsRead(appointments, isFromCache = server == null))
     } catch (exception: CancellationException) {
       throw exception
     } catch (exception: Exception) {
@@ -236,14 +239,17 @@ class FirebaseAppointmentRepository(
   }
 
   /**
-   * Runs [query] on the server.
+   * Runs [query] on the server only. A plain `get()` would answer from the cache when offline,
+   * without saying so.
    *
    * @return its result, or null if the server didn't answer in time or can't be reached.
    * @throws Exception any other failure of the server.
    */
   private suspend fun fromServer(query: Query): QuerySnapshot? =
       try {
-        withTimeoutOrNull(AppointmentRepository.SERVER_WAIT_SECONDS.seconds) { query.get().await() }
+        withTimeoutOrNull(AppointmentRepository.SERVER_WAIT_SECONDS.seconds) {
+          query.get(Source.SERVER).await()
+        }
       } catch (exception: FirebaseFirestoreException) {
         if (exception.code != FirebaseFirestoreException.Code.UNAVAILABLE) throw exception
         null
