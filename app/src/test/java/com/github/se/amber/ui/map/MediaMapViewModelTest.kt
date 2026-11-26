@@ -34,6 +34,7 @@ import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -579,6 +581,35 @@ class MediaMapViewModelTest {
 
     assertEquals("Geneva", viewModel.placeSearchState.value.query)
     assertEquals(listOf(newPlace), viewModel.placeSearchState.value.suggestions)
+  }
+
+  @Test
+  fun lateResultMatchingTheSelectedPlaceNameDoesNotRestoreSuggestions() {
+    val scheduler = useStandardDispatcher().scheduler
+    val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    lateinit var finishOriginalSearch: () -> Unit
+    val repository = PlaceSearchRepository { query ->
+      if (query == "Lausanne") {
+        // This lookup delivers its callback even after the user edits the query.
+        suspendCancellableCoroutine<Unit> { callback ->
+          finishOriginalSearch = { callback.resume(Unit) }
+        }
+      }
+      Result.success(listOf(place))
+    }
+    val viewModel = createViewModel(placeSearch = repository)
+    viewModel.updateSearchQuery("Lausanne")
+    scheduler.advanceUntilIdle()
+    viewModel.updateSearchQuery("Laus")
+    scheduler.advanceUntilIdle()
+    viewModel.selectPlace(place)
+    val selection = viewModel.placeSearchState.value
+    assertEquals(place, selection.selectedPlace)
+    assertEquals("Lausanne", selection.query)
+
+    finishOriginalSearch()
+    scheduler.advanceUntilIdle()
+    assertEquals(selection, viewModel.placeSearchState.value)
   }
 
   @Test
