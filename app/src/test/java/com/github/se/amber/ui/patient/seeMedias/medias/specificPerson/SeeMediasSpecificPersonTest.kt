@@ -387,6 +387,32 @@ class SeeMediasSpecificPersonScreenTest {
     composeTestRule.onNodeWithTag(AudioPlaybackTestTags.TIME).assertTextEquals("0:00 / 1:05")
   }
 
+  @Test
+  fun audio_callbacks_follow_recompositions_and_item_changes() {
+    val first = MediaItem.Audio(id = "a1", durationMs = 1_000L)
+    val updated = MediaItem.Audio(id = "a1", durationMs = 2_000L)
+    val uiState = MutableStateFlow<SeeGeneralMediasUIState<MediaItem>>(contentOf(first))
+    val playbackStates = MutableStateFlow<Map<String, AudioPlaybackState>>(emptyMap())
+    val viewModel = setContent(uiState = uiState, playbackStates = playbackStates)
+
+    composeTestRule.runOnIdle {
+      playbackStates.value = mapOf("a1" to AudioPlaybackState.Playing(1_000L, 5_000L))
+    }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
+    verify(exactly = 1) { viewModel.onPlayPause(first) }
+
+    composeTestRule.runOnIdle { uiState.value = contentOf(updated) }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RESTART).performClick()
+    verify(exactly = 1) { viewModel.onPlayPause(updated) }
+    verify(exactly = 1) { viewModel.onRestart(updated) }
+    verify(exactly = 0) { viewModel.onRestart(first) }
+
+    composeTestRule.runOnIdle { playbackStates.value = mapOf("a1" to AudioPlaybackState.Error()) }
+    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
+    verify(exactly = 2) { viewModel.onPlayPause(updated) }
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Related person
   // ---------------------------------------------------------------------------------------------
@@ -438,32 +464,6 @@ class SeeMediasSpecificPersonScreenTest {
         .performSemanticsAction(SemanticsActions.OnClick)
 
     assertEquals("p1", clickedId)
-  }
-
-  @Test
-  fun audio_callbacks_follow_recompositions_and_item_changes() {
-    val first = MediaItem.Audio(id = "a1", durationMs = 1_000L)
-    val updated = MediaItem.Audio(id = "a1", durationMs = 2_000L)
-    val uiState = MutableStateFlow<SeeGeneralMediasUIState<MediaItem>>(contentOf(first))
-    val playbackStates = MutableStateFlow<Map<String, AudioPlaybackState>>(emptyMap())
-    val viewModel = setContent(uiState = uiState, playbackStates = playbackStates)
-
-    composeTestRule.runOnIdle {
-      playbackStates.value = mapOf("a1" to AudioPlaybackState.Playing(1_000L, 5_000L))
-    }
-    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
-    verify(exactly = 1) { viewModel.onPlayPause(first) }
-
-    composeTestRule.runOnIdle { uiState.value = contentOf(updated) }
-    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.PLAY_PAUSE).performClick()
-    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RESTART).performClick()
-    verify(exactly = 1) { viewModel.onPlayPause(updated) }
-    verify(exactly = 1) { viewModel.onRestart(updated) }
-    verify(exactly = 0) { viewModel.onRestart(first) }
-
-    composeTestRule.runOnIdle { playbackStates.value = mapOf("a1" to AudioPlaybackState.Error()) }
-    composeTestRule.onNodeWithTag(AudioPlaybackTestTags.RETRY).performClick()
-    verify(exactly = 2) { viewModel.onPlayPause(updated) }
   }
 
   @Test
