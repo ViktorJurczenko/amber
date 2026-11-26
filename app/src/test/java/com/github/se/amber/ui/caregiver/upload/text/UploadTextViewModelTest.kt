@@ -210,7 +210,7 @@ class UploadTextViewModelTest {
     val text = item as MediaItem.Text
     assertEquals("media1", text.id)
     assertEquals("user1", text.authorId)
-    assertEquals("", text.description)
+    assertNull(text.description)
     assertEquals(MemoryDate(year = 2024), text.date)
     assertEquals(lausanne, text.location)
     assertEquals(listOf("person1"), text.shownIds)
@@ -233,7 +233,7 @@ class UploadTextViewModelTest {
     val text = slot.captured as MediaItem.Text
     assertEquals("media1", text.id)
     assertEquals("user1", text.authorId)
-    assertEquals("", text.description)
+    assertNull(text.description)
     assertEquals("Market day", text.title)
     assertEquals("We bought bread.", text.text)
     assertEquals(lausanne, text.location)
