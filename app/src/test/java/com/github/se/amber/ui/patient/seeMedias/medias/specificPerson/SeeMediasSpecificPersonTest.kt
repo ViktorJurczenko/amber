@@ -26,15 +26,22 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.core.app.ApplicationProvider
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.CareCircleRepository
+import com.github.se.amber.data.media.image.MediaPictureFetcher
+import com.github.se.amber.data.media.image.MediaPictureKeyer
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
+import com.github.se.amber.model.media.MediaRepository
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.media.MEDIA_CARD_LOAD_TIMEOUT_MS
 import com.github.se.amber.ui.media.MediaCardTestTags
 import com.github.se.amber.ui.media.MediaCardViewModel
 import com.github.se.amber.ui.media.UnconfinedMainDispatcherRule
@@ -53,8 +60,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.util.Locale
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -67,6 +76,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowToast
 
+@OptIn(DelicateCoilApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -77,6 +87,9 @@ class SeeMediasSpecificPersonScreenTest {
   private val profileRepository = mockk<ProfileRepository>()
   private val circleRepository = mockk<CareCircleRepository>()
   private val activeCircleRepository = mockk<ActiveCircleRepository>()
+  // Pictures stay loading: no real repository, file or network is used
+  private val imageRepository =
+      mockk<MediaRepository> { coEvery { getFile(any(), any()) } coAnswers { awaitCancellation() } }
 
   private val profile = UserProfile(uid = "patient", role = Role.PATIENT, person = Person())
   private val circle = CareCircle(id = "circle1")
@@ -103,6 +116,22 @@ class SeeMediasSpecificPersonScreenTest {
     coEvery { profileRepository.getProfile(any()) } returns Result.success(profile)
     every { activeCircleRepository.activeCircleId(any(), any()) } returns flowOf("circle1")
     coEvery { circleRepository.getCircle("circle1") } returns Result.success(circleWithPerson)
+
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    SingletonImageLoader.setUnsafe(
+        ImageLoader.Builder(context)
+            .components {
+              add(MediaPictureKeyer())
+              add(MediaPictureFetcher.Factory { imageRepository })
+            }
+            .build()
+    )
+  }
+
+  @After
+  fun tearDown() {
+    // The loader is global: do not leak it into other test classes
+    SingletonImageLoader.reset()
   }
 
   /** Text of [id] in the current test language, with [args] for its placeholders. */
@@ -446,7 +475,7 @@ class SeeMediasSpecificPersonScreenTest {
     )
 
     composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("a1")).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+    composeTestRule.waitUntil(timeoutMillis = MEDIA_CARD_LOAD_TIMEOUT_MS) {
       composeTestRule
           .onAllNodesWithTag(MediaCardTestTags.relatedItem("a1", 0))
           .fetchSemanticsNodes()
@@ -469,7 +498,7 @@ class SeeMediasSpecificPersonScreenTest {
     )
 
     composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("m1")).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+    composeTestRule.waitUntil(timeoutMillis = MEDIA_CARD_LOAD_TIMEOUT_MS) {
       composeTestRule
           .onAllNodesWithTag(MediaCardTestTags.relatedItem("m1", 0))
           .fetchSemanticsNodes()
@@ -521,7 +550,7 @@ class SeeMediasSpecificPersonScreenTest {
     }
 
     composeTestRule.onNodeWithTag(MediaCardTestTags.toggleButtonTextShow("m1")).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+    composeTestRule.waitUntil(timeoutMillis = MEDIA_CARD_LOAD_TIMEOUT_MS) {
       composeTestRule
           .onAllNodesWithTag(MediaCardTestTags.relatedItem("m1", 1))
           .fetchSemanticsNodes()

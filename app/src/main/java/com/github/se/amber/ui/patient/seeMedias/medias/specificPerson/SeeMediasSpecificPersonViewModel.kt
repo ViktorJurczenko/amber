@@ -116,11 +116,13 @@ class SeeMediasSpecificPersonViewModel(
   private suspend fun loadPersonName(circle: CareCircle): String? {
     val person =
         circle.people[personId] ?: profileRepository.getProfile(personId).getOrNull()?.person
-    return person?.let { it.nickname?.takeIf(String::isNotBlank) ?: it.firstName }
+    return person?.let {
+      it.nickname?.takeIf(String::isNotBlank) ?: it.firstName.takeIf(String::isNotBlank)
+    }
   }
 
   override fun onCleared() {
     playback.release()
-    super.onCleared()
+    super.onCleared() // NOSONAR: the parent may add cleanup here later
   }
 }
