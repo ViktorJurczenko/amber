@@ -375,8 +375,8 @@ abstract class MediaViewModel<S : MediaUIState<S>>(
 
   /**
    * Whether [uploadMedia] requires a non-blank [CommonMediaUIState.description]. Picture and audio
-   * keep the default. A text story stores its body in its own state and leaves the shared
-   * description empty, so its ViewModel returns false.
+   * keep the default. A text story stores its body in its own state and leaves
+   * [MediaItem.description] null, so its ViewModel returns false.
    */
   protected open val requiresCommonDescription: Boolean
     get() = true

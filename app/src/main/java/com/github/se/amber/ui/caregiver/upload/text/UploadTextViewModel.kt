@@ -48,7 +48,8 @@ enum class UploadTextViewModelErrorMessage(@param:StringRes val messageRes: Int)
  * @property title the story title typed by the caregiver. It is [MediaItem.Text.title].
  * @property text the story body typed in the description box. This is [MediaItem.Text.text].
  * @property common the date, place and people shared with the other upload screens. A text story
- *   keeps [CommonMediaUIState.description] empty.
+ *   does not use a shared caption: [MediaItem.description] stays null, and
+ *   [CommonMediaUIState.description] is unused.
  */
 data class UploadTextUIState(
     val title: String = "",
@@ -98,8 +99,9 @@ open class UploadTextViewModel(
     ) {
 
   /**
-   * A text story keeps [CommonMediaUIState.description] empty. Its body lives in
-   * [UploadTextUIState.text], so the shared empty-description check must not block upload.
+   * A text story does not use a shared caption: [MediaItem.description] stays null and
+   * [CommonMediaUIState.description] is unused. Its body lives in [UploadTextUIState.text], so the
+   * shared description check must not block upload.
    */
   override val requiresCommonDescription: Boolean
     get() = false

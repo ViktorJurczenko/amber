@@ -176,7 +176,7 @@ class UploadTextViewModelTest {
   }
 
   @Test
-  fun sharedDescriptionStaysEmpty() {
+  fun sharedDescriptionStaysUnused() {
     val viewModel = openViewModel()
 
     viewModel.setTitle("Market day")
