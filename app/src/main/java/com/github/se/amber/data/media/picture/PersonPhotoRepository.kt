@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -12,9 +13,10 @@ interface PersonPhotoRepository {
    * Prepares [file] as a JPEG, uploads it as [personId]'s photo in [circle], writes that entry, and
    * then deletes the previous photo.
    *
-   * The entry is written only after the upload. If that write fails, the new file is deleted. A
-   * permission denial is success when this photo is already stored, because that upload cannot be
-   * repeated. A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
+   * The entry is written only after the upload. If that write fails, the new file is deleted. Each
+   * photo is uploaded to a new path, so changing one is a first upload. A permission denial is
+   * success when that path already holds the file: the Storage client retried an upload that had
+   * already landed. A failed [Result] contains a [PersonPhotoError]. Cancellation is rethrown.
    */
   suspend fun setPhoto(circle: CareCircle, personId: String, file: File): Result<Unit>
 
