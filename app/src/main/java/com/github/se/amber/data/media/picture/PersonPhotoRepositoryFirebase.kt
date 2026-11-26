@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -67,11 +68,7 @@ class PersonPhotoRepositoryFirebase(
       // this call does not also leave an empty file behind.
       val prepared =
           withContext(ioDispatcher) {
-            val destination =
-                File(
-                    System.getProperty("java.io.tmpdir"),
-                    "$PREPARED_PREFIX$photoId$JPEG_SUFFIX",
-                )
+            val destination = File(TEMP_DIR, "$PREPARED_PREFIX$photoId$JPEG_SUFFIX")
             writePreparedJpeg(file, destination)
           }
       try {
@@ -279,6 +276,7 @@ class PersonPhotoRepositoryFirebase(
     const val PROBE_PREFIX = "person-photo-probe-"
     const val JPEG_SUFFIX = ".jpg"
     const val PART_SUFFIX = ".part"
+    private val TEMP_DIR = File(requireNotNull(System.getProperty("java.io.tmpdir")))
 
     /** A probe that found no stored photo: the rules refused it, or the object is missing. */
     val PROBE_NOT_STORED =

@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -211,11 +212,11 @@ class PersonPhotoRepositoryFirebaseTest {
       } else if (probe.expected == null) {
         assertUnknown(result, requireNotNull(probe.error))
         assertEquals(label, OLD_PATH, photos[PERSON])
-        assertTrue(writes.isEmpty())
+        assertTrue(label, writes.isEmpty())
       } else {
         assertSame(label, probe.expected, result.exceptionOrNull())
-        assertEquals(OLD_PATH, photos[PERSON])
-        assertTrue(writes.isEmpty())
+        assertEquals(label, OLD_PATH, photos[PERSON])
+        assertTrue(label, writes.isEmpty())
       }
     }
   }
@@ -266,6 +267,8 @@ class PersonPhotoRepositoryFirebaseTest {
         listOf(
             "careCircles/other/people/$PERSON/$PHOTO_ID.jpg",
             "careCircles/$CIRCLE_ID/people/${PERSON}_2/$PHOTO_ID.jpg",
+            "photos/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.jpg",
+            "careCircles/$CIRCLE_ID/people/$PERSON/$PHOTO_ID.png",
         )
     for (path in outside) {
       val result = repository().getPhotoFile(circle, path)
@@ -387,6 +390,7 @@ class PersonPhotoRepositoryFirebaseTest {
     val source = picture()
     mockkStatic(File::class)
     try {
+      // writePreparedJpeg creates this file in writeNewFile, with the prefix "photo".
       every { File.createTempFile(any<String>(), any<String>(), any<File>()) } answers
           {
             if (firstArg<String>() == "photo") throw IOException("full")
@@ -421,6 +425,7 @@ class PersonPhotoRepositoryFirebaseTest {
     val source = picture()
     mockkStatic(File::class)
     try {
+      // writePreparedJpeg creates this file in writeNewFile, with the prefix "photo".
       every { File.createTempFile(any<String>(), any<String>(), any<File>()) } answers
           {
             if (firstArg<String>() == "photo") throw CancellationException("stopped")

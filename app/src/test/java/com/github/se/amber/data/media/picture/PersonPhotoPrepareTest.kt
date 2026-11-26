@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor Agent.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.picture
 
@@ -124,6 +125,44 @@ class PersonPhotoPrepareTest {
         left = Color.BLUE,
         right = Color.RED,
     )
+  }
+
+  @Test
+  fun aLargeTurnedPhotoIsTurnedBeforeItIsScaled() {
+    // 1200x600 with a quarter turn becomes 600x1200, then the long side is scaled to 1024.
+    val source =
+        picture(
+            width = 1200,
+            height = 600,
+            color = Color.RED,
+            otherHalf = Color.BLUE,
+            splitLeftRight = true,
+            orientation = ExifInterface.ORIENTATION_ROTATE_90,
+        )
+    val prepared = File(tmp.root, "turned-scaled.jpg")
+    writePreparedJpeg(source, prepared)
+
+    val decoded = decode(prepared)
+    try {
+      assertEquals(512, decoded.width)
+      assertEquals(MAX_SIDE, decoded.height)
+      // A quarter turn moves red (left) to the top and blue (right) to the bottom.
+      assertNear(
+          "turned",
+          "top",
+          Color.RED,
+          decoded.getPixel(decoded.width / 2, decoded.height / 4),
+      )
+      assertNear(
+          "turned",
+          "bottom",
+          Color.BLUE,
+          decoded.getPixel(decoded.width / 2, decoded.height * 3 / 4),
+      )
+    } finally {
+      decoded.recycle()
+    }
+    assertEquals(0, ExifInterface(prepared).rotationDegrees)
   }
 
   @Test
