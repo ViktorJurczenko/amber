@@ -31,6 +31,7 @@
     <string name="screenTitleCaregiverCreateInvitationCode">Create an invitation code</string>
     <string name="screenTitleDeleteAccount">Delete account</string>
     <string name="screenTitleCaregiverChangeCareCircle">Switch Care Circle</string>
+    <string name="screenTitleCaregiverAddAppointment">Add appointment</string>
     <string name="screenTitlePatientHome">Home</string>
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
@@ -498,4 +499,5 @@
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Previous month</string>
     <string name="calendarNextMonth">Next month</string>
+    <string name="calendarErrorLoadAppointments">Could not load the appointments</string>
 </resources>

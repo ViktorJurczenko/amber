@@ -42,6 +42,7 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
+import java.time.LocalDate
 
 object CaregiverHomeTestTags {
   const val TITLE = "caregiver_home_title"
@@ -56,12 +57,14 @@ object CaregiverHomeTestTags {
  *
  * @param viewModel ViewModel providing the patient information displayed on the screen.
  * @param onTabSelected Callback invoked when the user selects a bottom navigation tab.
+ * @param onDayClick Callback invoked with the date of the calendar day the caregiver clicks on.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaregiverHomeScreen(
     viewModel: CaregiverHomeViewModel = viewModel(),
     onTabSelected: (Tab) -> Unit = {},
+    onDayClick: (LocalDate) -> Unit = {},
 ) {
   val context = LocalContext.current
 
@@ -126,6 +129,7 @@ fun CaregiverHomeScreen(
           )
           Calendar(
               modifier = Modifier.padding(top = CAREGIVER_PADDING_ENORMOUS),
+              onDayClick = onDayClick,
               isPatient = false,
           )
         }

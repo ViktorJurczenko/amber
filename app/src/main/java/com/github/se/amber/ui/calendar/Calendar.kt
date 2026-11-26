@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.calendar
 
+import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -22,12 +23,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +42,7 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.CALENDAR_CELL_ASPECT_RATIO
+import com.github.se.amber.ui.theme.CALENDAR_CIRCLE_THICKNESS
 import com.github.se.amber.ui.theme.CALENDAR_WIDTH_FRACTION
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.PADDING_MINI
@@ -62,6 +67,8 @@ internal object CalendarTestTags {
   fun weekday(index: Int) = "calendar_weekday_$index"
 
   fun day(day: Int) = "calendar_day_$day"
+
+  fun appointmentCircle(day: Int) = "calendar_appointment_circle_$day"
 }
 
 /** Pattern of the title: the full month name, then the year ("November 2026" / "novembre 2026"). */
@@ -71,19 +78,19 @@ private const val MONTH_TITLE_PATTERN = "LLLL yyyy"
  * Displays a calendar in a box: the month and the arrows to change it at the top, the days of the
  * week under it, then every day of the month, week after week.
  *
- * The month names, the weekday names and the first day of the week follow the app language. A click
- * on a day calls [onDayClick].
+ * The month names, the weekday names and the first day of the week follow the app language. A day
+ * with an appointment is circled with the tertiary color. A click on a day calls [onDayClick].
  *
  * @param modifier modifier applied to the calendar box.
  * @param onDayClick called with the date of the day the user clicks on.
  * @param isPatient Boolean indicating if the user viewing the calendar is a Patient. A patient gets
  *   larger texts (month, year, weekdays, day numbers) and larger icons.
- * @param viewModel the ViewModel owning the displayed month. It starts on the current month.
+ * @param viewModel the ViewModel owning the displayed month and the days with an appointment. It
+ *   starts on the current month.
  */
 @Composable
 fun Calendar(
     modifier: Modifier = Modifier,
-    // Note: the signature of onDayClick may change once the appointment are taken into account
     onDayClick: (LocalDate) -> Unit = {},
     isPatient: Boolean = true,
     viewModel: CalendarViewModel = viewModel(),
@@ -92,6 +99,19 @@ fun Calendar(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   // The app language decides the month and weekday names and the first day of the week.
   val locale = LocalConfiguration.current.locales[0]
+  val context = LocalContext.current
+  val resources = LocalResources.current
+
+  // Loaded each time the calendar is shown, for example when coming back from another screen.
+  LaunchedEffect(viewModel, isPatient) { viewModel.loadAppointments(isPatient) }
+
+  val errorMsgRes = uiState.errorMsgRes
+  LaunchedEffect(errorMsgRes) {
+    if (errorMsgRes != null) {
+      Toast.makeText(context, resources.getString(errorMsgRes), Toast.LENGTH_SHORT).show()
+      viewModel.clearErrorMsg()
+    }
+  }
 
   Column(
       modifier =
@@ -121,6 +141,7 @@ fun Calendar(
         locale = locale,
         onDayClick = onDayClick,
         isPatient = isPatient,
+        appointmentDays = uiState.appointmentDays,
     )
   }
 }
@@ -213,6 +234,7 @@ internal fun CalendarWeekdays(
  * Every day of [month], one row per week. A day is clickable: [onDayClick] gets its date.
  *
  * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ * @param appointmentDays the days of [month] that have an appointment. They are circled.
  */
 @Composable
 @NonRestartableComposable
@@ -221,6 +243,7 @@ internal fun CalendarDays(
     locale: Locale = Locale.getDefault(),
     onDayClick: (LocalDate) -> Unit = {},
     isPatient: Boolean = true,
+    appointmentDays: Set<Int> = emptySet(),
 ) {
   val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
   val weeks = calendarCells(month, firstDayOfWeek).chunked(DayOfWeek.entries.size)
@@ -243,6 +266,7 @@ internal fun CalendarDays(
                   day = day,
                   onClick = { onDayClick(month.atDay(day)) },
                   isPatient = isPatient,
+                  hasAppointment = day in appointmentDays,
               )
             }
           }
@@ -256,12 +280,14 @@ internal fun CalendarDays(
  * A clickable day number. The click flash is round.
  *
  * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ * @param hasAppointment whether the day has an appointment, and so is circled.
  */
 @Composable
 internal fun CalendarDay(
     day: Int = 1,
     onClick: () -> Unit = {},
     isPatient: Boolean = true,
+    hasAppointment: Boolean = false,
 ) {
   Box(
       modifier =
@@ -273,6 +299,19 @@ internal fun CalendarDay(
               .testTag(CalendarTestTags.day(day)),
       contentAlignment = Alignment.Center,
   ) {
+    // Its own node, so that tests can find the circle with its test tag.
+    if (hasAppointment) {
+      Box(
+          modifier =
+              Modifier.matchParentSize()
+                  .border(
+                      CALENDAR_CIRCLE_THICKNESS,
+                      MaterialTheme.colorScheme.tertiary,
+                      CircleShape,
+                  )
+                  .testTag(CalendarTestTags.appointmentCircle(day))
+      )
+    }
     Text(
         text = day.toString(),
         style = calendarBodyTextStyle(isPatient),

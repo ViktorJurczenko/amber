@@ -1,9 +1,11 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.navigation
 
 import android.os.Bundle
 import androidx.navigation.NavHostController
+import java.time.LocalDate
 
 /**
  * Wrapper around [NavHostController] that centralizes the navigation logic of the app.
@@ -95,4 +97,24 @@ open class NavigationActions(private val navController: NavHostController) {
    * @return The person id, or an empty string when it is missing
    */
   fun personIdFrom(arguments: Bundle?): String = arguments?.getString(NavArgs.PERSON_ID).orEmpty()
+
+  /**
+   * Navigate to the screen adding an appointment.
+   *
+   * @param date The day of the appointment
+   */
+  open fun navigateToAddAppointment(date: LocalDate) {
+    navController.navigate(CaregiverScreen.AddAppointment.routeFor(date))
+  }
+
+  /**
+   * Reads the day of the appointment from the navigation [arguments].
+   *
+   * @param arguments The arguments of the back stack entry
+   * @return The day, or today when it is missing or can't be read
+   */
+  fun appointmentDateFrom(arguments: Bundle?): LocalDate {
+    val date = arguments?.getString(NavArgs.APPOINTMENT_DATE)
+    return date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
+  }
 }
