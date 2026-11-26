@@ -8,12 +8,15 @@ import com.github.se.amber.data.appointment.AppointmentError
 import com.github.se.amber.data.appointment.AppointmentRepository
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.CareCircleError
+import com.github.se.amber.data.circle.CareCircleRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.AppointmentValidationError
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthUser
 import com.github.se.amber.model.calendar.DEFAULT_DURATION_MINUTES
+import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
@@ -55,6 +58,8 @@ class AddAppointmentViewModelTest {
   private val authRepo = mockk<AuthRepository>()
   private val profileRepo = mockk<ProfileRepository>()
   private val activeCircleRepo = mockk<ActiveCircleRepository>()
+  private val careCircleRepo = mockk<CareCircleRepository>()
+  private val circle = CareCircle(id = CIRCLE, patientId = PATIENT)
   private val day = LocalDate.of(2026, 11, 21)
 
   @Before
@@ -64,6 +69,7 @@ class AddAppointmentViewModelTest {
     coEvery { profileRepo.getProfile(UID) } returns
         Result.success(UserProfile(uid = UID, circleIds = listOf(CIRCLE)))
     every { activeCircleRepo.activeCircleId(UID, listOf(CIRCLE)) } returns flowOf(CIRCLE)
+    coEvery { careCircleRepo.getCircle(CIRCLE) } returns Result.success(circle)
   }
 
   @After
@@ -120,7 +126,7 @@ class AddAppointmentViewModelTest {
   fun aSecondAddWhileAddingDoesNotCreateAnotherAppointment() {
     val (viewModel, _) = startPendingAdd()
     viewModel.addAppointment(day)
-    coVerify(exactly = 1) { pendingRepo.addAppointment(CIRCLE, any()) }
+    coVerify(exactly = 1) { pendingRepo.addAppointment(circle, any()) }
   }
 
   @Test
@@ -267,6 +273,13 @@ class AddAppointmentViewModelTest {
   }
 
   @Test
+  fun unreadableCareCircleSetsTheGenericMessage() {
+    coEvery { careCircleRepo.getCircle(CIRCLE) } returns Result.failure(CareCircleError.Network)
+    val viewModel = addWithTitle(TITLE)
+    assertEquals(R.string.addAppointmentErrorAdd, viewModel.uiState.value.errorMsgRes)
+  }
+
+  @Test
   fun unexpectedExceptionSetsTheGenericMessage() {
     coEvery { profileRepo.getProfile(UID) } throws IllegalStateException("boom")
     val viewModel = addWithTitle(TITLE)
@@ -284,7 +297,7 @@ class AddAppointmentViewModelTest {
   fun failureThatIsNotAnAppointmentErrorShowsTheGenericMessage() {
     val repo = mockk<AppointmentRepository>()
     every { repo.newId() } returns "appointment-1"
-    coEvery { repo.addAppointment(CIRCLE, any()) } returns
+    coEvery { repo.addAppointment(circle, any()) } returns
         Result.failure(IllegalStateException("boom"))
     val viewModel = viewModel(repo)
     viewModel.setTitle(TITLE)
@@ -337,6 +350,21 @@ class AddAppointmentViewModelTest {
   }
 
   @Test
+  fun invalidRemindersErrorSetsItsMessage() {
+    assertEquals(
+        R.string.addAppointmentErrorInvalidReminders,
+        messageFor(
+            AppointmentError.InvalidAppointment(AppointmentValidationError.INVALID_REMINDERS)
+        ),
+    )
+  }
+
+  @Test
+  fun noPatientSetsItsMessage() {
+    assertEquals(R.string.addAppointmentErrorNoPatient, messageFor(AppointmentError.NoPatient()))
+  }
+
+  @Test
   fun notFoundSetsItsMessage() {
     assertEquals(R.string.addAppointmentErrorNotFound, messageFor(AppointmentError.NotFound()))
   }
@@ -378,7 +406,7 @@ class AddAppointmentViewModelTest {
   private fun startPendingAdd(): Pair<AddAppointmentViewModel, CompletableDeferred<Unit>> {
     val answer = CompletableDeferred<Unit>()
     every { pendingRepo.newId() } returns "appointment-1"
-    coEvery { pendingRepo.addAppointment(CIRCLE, any()) } coAnswers
+    coEvery { pendingRepo.addAppointment(circle, any()) } coAnswers
         {
           answer.await()
           Result.success(secondArg<Appointment>())
@@ -411,12 +439,14 @@ class AddAppointmentViewModelTest {
               authRepo = authRepo,
               profileRepo = profileRepo,
               activeCircleRepo = activeCircleRepo,
+              careCircleRepo = careCircleRepo,
           )
           .also { viewModels += it }
 
   private companion object {
     const val UID = "user1"
     const val CIRCLE = "circle1"
+    const val PATIENT = "patient1"
     const val TITLE = "Dr. Martin"
   }
 }

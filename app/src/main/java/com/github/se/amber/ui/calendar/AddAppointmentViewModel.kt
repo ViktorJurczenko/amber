@@ -12,6 +12,8 @@ import com.github.se.amber.data.appointment.AppointmentRepository
 import com.github.se.amber.data.appointment.AppointmentRepositoryProvider
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
+import com.github.se.amber.data.circle.CareCircleRepository
+import com.github.se.amber.data.circle.CareCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.appointment.Appointment
@@ -55,7 +57,7 @@ data class AddAppointmentUIState(
 
 /** One-shot events sent by [AddAppointmentViewModel] to the add appointment screen. */
 sealed interface AddAppointmentEvent {
-  /** The appointment was saved, so the screen can be left. */
+  /** The appointment was saved, so the screen can tell its caller through `onAddEvent`. */
   data object Added : AddAppointmentEvent
 }
 
@@ -71,6 +73,7 @@ sealed interface AddAppointmentEvent {
  * @param authRepo The repository used to access the currently authenticated user.
  * @param profileRepo The repository used to load the authenticated user's profile.
  * @param activeCircleRepo The repository used to find the care circle the user is working in.
+ * @param careCircleRepo The repository used to load that care circle, which the appointment needs.
  */
 open class AddAppointmentViewModel(
     private val appointmentRepo: AppointmentRepository =
@@ -79,6 +82,8 @@ open class AddAppointmentViewModel(
     private val profileRepo: ProfileRepository = ProfileRepositoryProvider.default.repository,
     private val activeCircleRepo: ActiveCircleRepository =
         ActiveCircleRepositoryProvider.default.repository,
+    private val careCircleRepo: CareCircleRepository =
+        CareCircleRepositoryProvider.default.repository,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(AddAppointmentUIState())
 
@@ -128,7 +133,7 @@ open class AddAppointmentViewModel(
             //  1. a date
             //  2. a duration
             //  3. a location
-            //  4. chips for all the attendee
+            //  4. chips for all the attendees
             startAt =
                 date
                     .atTime(LocalTime.now())
@@ -153,8 +158,14 @@ open class AddAppointmentViewModel(
           fail(R.string.addAppointmentErrorNoCircle)
           return@launch
         }
+        val circle =
+            careCircleRepo.getCircle(circleId).getOrElse { error ->
+              Log.e(TAG, "Loading the care circle failed", error)
+              fail(R.string.addAppointmentErrorAdd)
+              return@launch
+            }
         appointmentRepo
-            .addAppointment(circleId, appointment)
+            .addAppointment(circle, appointment)
             .onSuccess {
               _events.send(AddAppointmentEvent.Added)
               _uiState.update { it.copy(isAdding = false) }
@@ -201,7 +212,10 @@ open class AddAppointmentViewModel(
               AppointmentValidationError.MISSING_START -> R.string.addAppointmentErrorMissingStart
               AppointmentValidationError.INVALID_DURATION ->
                   R.string.addAppointmentErrorInvalidDuration
+              AppointmentValidationError.INVALID_REMINDERS ->
+                  R.string.addAppointmentErrorInvalidReminders
             }
+        is AppointmentError.NoPatient -> R.string.addAppointmentErrorNoPatient
         is AppointmentError.NotFound -> R.string.addAppointmentErrorNotFound
         is AppointmentError.NotAuthenticated -> R.string.addAppointmentErrorNotSignedIn
         is AppointmentError.PermissionDenied -> R.string.addAppointmentErrorPermissionDenied
