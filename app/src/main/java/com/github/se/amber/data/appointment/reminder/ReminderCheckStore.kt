@@ -4,8 +4,10 @@ package com.github.se.amber.data.appointment.reminder
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
@@ -14,54 +16,57 @@ import kotlinx.coroutines.flow.first
 /**
  * The file of [DataStoreReminderCheckStore]. The check and sign-out both use it, and DataStore
  * needs a single instance per file, so it is declared once, here.
+ *
+ * A corrupt file is replaced with an empty one. Otherwise every read would fail, and no reminder
+ * would ever come. The check then starts from the current time, as after a new install.
  */
 internal val Context.reminderCheckDataStore: DataStore<Preferences> by
-    preferencesDataStore(name = "appointment_reminders")
+    preferencesDataStore(
+        name = "appointment_reminders",
+        corruptionHandler = reminderCheckCorruptionHandler(),
+    )
+
+/** Replaces a corrupt file of [reminderCheckDataStore] with an empty one. */
+internal fun reminderCheckCorruptionHandler() = ReplaceFileCorruptionHandler { emptyPreferences() }
 
 /**
- * Remembers when this phone last checked its reminders, so the next check shows only what came due
- * since then.
+ * Remembers when this phone last checked the reminders of each user, so the next check shows only
+ * what came due since then.
  *
- * When nothing is stored, the check uses the current time. So a new install or a new sign-in
- * doesn't show old reminders.
+ * When nothing is stored for a user, the check uses the current time. So a new install or a new
+ * sign-in doesn't show old reminders. Each user has their own time, so two accounts used on the
+ * same phone never share it.
  */
 interface ReminderCheckStore {
 
-  /** @return the time of the last check, in epoch milliseconds, or null if none is stored. */
-  suspend fun lastCheckedAt(): Long?
+  /**
+   * @return the time of the last check for [uid], in epoch milliseconds, or null if none is stored.
+   * @throws IOException if the time can't be read. The check then tries again later, since starting
+   *   from the current time would skip the reminders due meanwhile.
+   */
+  suspend fun lastCheckedAt(uid: String): Long?
 
-  /** Stores [millis] as the time of the last check. */
-  suspend fun setLastCheckedAt(millis: Long)
+  /** Stores [millis] as the time of the last check for [uid]. */
+  suspend fun setLastCheckedAt(uid: String, millis: Long)
 
-  /** Forgets the last check. Sign-out calls it. */
+  /** Forgets the last check of every user. Sign-out calls it. */
   suspend fun clear()
 }
 
-/**
- * Stores the time of the last check in Preferences DataStore, like the active circle.
- *
- * A read that fails with [IOException] counts as nothing stored, so the check starts from the
- * current time again.
- */
+/** Stores the time of the last check in Preferences DataStore, like the active circle. */
 class DataStoreReminderCheckStore(private val dataStore: DataStore<Preferences>) :
     ReminderCheckStore {
 
-  override suspend fun lastCheckedAt(): Long? =
-      try {
-        dataStore.data.first()[LAST_CHECKED_AT]
-      } catch (e: IOException) {
-        null
-      }
+  override suspend fun lastCheckedAt(uid: String): Long? = dataStore.data.first()[key(uid)]
 
-  override suspend fun setLastCheckedAt(millis: Long) {
-    dataStore.edit { it[LAST_CHECKED_AT] = millis }
+  override suspend fun setLastCheckedAt(uid: String, millis: Long) {
+    dataStore.edit { it[key(uid)] = millis }
   }
 
   override suspend fun clear() {
-    dataStore.edit { it.remove(LAST_CHECKED_AT) }
+    dataStore.edit { it.clear() }
   }
 
-  private companion object {
-    val LAST_CHECKED_AT = longPreferencesKey("last_checked_at")
-  }
+  /** The key of [uid]'s time, like the active circle's key. */
+  private fun key(uid: String) = longPreferencesKey("last_checked_at_$uid")
 }

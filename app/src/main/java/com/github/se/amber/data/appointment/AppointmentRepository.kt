@@ -85,14 +85,15 @@ interface AppointmentRepository {
    * comes after. Taking the first list stops the listener before that answer, so it reads old data.
    * An appointment added on another phone meanwhile would be missing.
    *
-   * So this read asks the server first. It waits at most [SERVER_WAIT_SECONDS] seconds, since
+   * So this read asks only the server first. It waits at most [SERVER_WAIT_SECONDS] seconds, since
    * background work only has a few seconds. If the server doesn't answer in time, or can't be
-   * reached, it reads what this phone has already loaded instead. That list can be old, or empty.
+   * reached, it reads what this phone has already loaded instead. That list can be old, or empty,
+   * so it comes with [AppointmentsRead.isFromCache] set.
    *
    * @param circleId the id of the care circle.
    * @param firstDay the first day of the window. It is included.
    * @param days how many days the window holds. It must be at least 1.
-   * @return the appointments, sorted by start, or a failure with an [AppointmentError]:
+   * @return the appointments and where they came from, or a failure with an [AppointmentError]:
    *   [AppointmentError.InvalidCircleId] for an invalid id, and [AppointmentError.PermissionDenied]
    *   when the user can't read the circle. Cancellation is rethrown.
    * @throws IllegalArgumentException if [days] is 0 or less. That is a bug in the caller.
@@ -101,7 +102,7 @@ interface AppointmentRepository {
       circleId: String,
       firstDay: LocalDate,
       days: Int,
-  ): Result<List<Appointment>>
+  ): Result<AppointmentsRead>
 
   /**
    * Generates a new appointment id on the phone, without writing anything. It works offline.
@@ -232,6 +233,15 @@ interface AppointmentRepository {
     const val SERVER_WAIT_SECONDS = 5L
   }
 }
+
+/**
+ * What [AppointmentRepository.getAppointments] read.
+ *
+ * @property appointments the appointments, sorted by start.
+ * @property isFromCache true when the server didn't answer, so they come from what this phone had
+ *   already loaded. They can then be old, or missing.
+ */
+data class AppointmentsRead(val appointments: List<Appointment>, val isFromCache: Boolean)
 
 /** The kinds of writes [AppointmentRepository] makes. */
 enum class AppointmentWrite {
