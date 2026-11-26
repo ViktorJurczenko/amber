@@ -830,6 +830,34 @@ class CreateProfileViewModelTests {
     coVerify(exactly = 0) { profileRepository.updateOnboardingProfile(any(), any()) }
   }
 
+  @Test
+  fun aNicknameTypedBeforeTheSavedProfileArrivesIsKept() = runTest {
+    val load = CompletableDeferred<Result<UserProfile?>>()
+    coEvery { profileRepository.getCurrentProfile() } coAnswers { load.await() }
+    viewModel = CreateProfileViewModel(profileRepository = profileRepository)
+    runCurrent()
+
+    val typed = "Nini"
+    viewModel.onNicknameChange(typed)
+    load.complete(
+        Result.success(
+            savedProfile(role = Role.PATIENT)
+                .copy(
+                    person =
+                        Person(
+                            id = "uid",
+                            firstName = NAME,
+                            lastName = SURNAME,
+                            nickname = NICKNAME,
+                        )
+                )
+        )
+    )
+    advanceUntilIdle()
+
+    assertEquals(typed, viewModel.uiState.value.nickname)
+  }
+
   /** Picks Patient on a new screen with a valid name and returns the message it shows. */
   private fun TestScope.failedMessageOfAFreshScreen(): Int? {
     viewModel = CreateProfileViewModel(profileRepository = profileRepository)
