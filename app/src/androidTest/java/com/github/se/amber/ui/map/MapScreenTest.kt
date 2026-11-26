@@ -4,6 +4,14 @@ package com.github.se.amber.ui.map
 
 import android.Manifest
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -13,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.core.app.ActivityOptionsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.github.se.amber.R
@@ -34,7 +43,8 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import io.mockk.mockk
-import kotlin.math.abs
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -46,13 +56,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Screen-level checks with local repositories; map tiles are not part of these assertions. */
+/** Screen checks use local repositories; the map tiles themselves are outside these assertions. */
 @RunWith(AndroidJUnit4::class)
 class MapScreenTest {
-  private fun cameraIsNear(camera: CameraPositionState, position: DevicePosition): Boolean =
-      abs(camera.position.target.latitude - position.lat) < 0.0001 &&
-          abs(camera.position.target.longitude - position.lng) < 0.0001
-
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
   @get:Rule
   val locationPermissionRule =
@@ -63,7 +69,7 @@ class MapScreenTest {
 
   private val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
 
-  /** The map gets no live profile, GPS or place service during these tests. */
+  /** Supplies controlled location and permission states without starting device services. */
   private fun createViewModel(
       updates: Flow<LocationUpdate> = MutableStateFlow(LocationUpdate.Searching),
       permissionStatus: () -> Boolean = { true },
@@ -103,48 +109,49 @@ class MapScreenTest {
   }
 
   @Test
-  fun mapShowsPatientLayoutAndRoutesTabSelection() {
+  fun mapDisplaysControlsAndRoutesSearchAndTabActions() {
     val viewModel = createViewModel()
+    val alternateViewModel = createViewModel()
+    val useAlternateCamera = mutableStateOf(false)
+    val firstCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val secondCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
     var chosenTab: Tab? = null
     composeTestRule.setContent {
-      AmberAppTheme { MapScreen(viewModel = viewModel, onTabSelected = { chosenTab = it }) }
+      AmberAppTheme {
+        MapScreen(
+            modifier =
+                Modifier.testTag(if (useAlternateCamera.value) "map_second" else "map_first"),
+            viewModel = if (useAlternateCamera.value) alternateViewModel else viewModel,
+            onTabSelected = { chosenTab = it },
+            cameraPositionState = if (useAlternateCamera.value) secondCamera else firstCamera,
+        )
+      }
     }
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
-
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.screenTitlePatientMap))
         .assertIsDisplayed()
-
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertIsDisplayed()
-
     composeTestRule.onNodeWithTag(MapTestTags.POSITION_CARD).assertIsDisplayed()
-
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Map))
         .assertIsSelected()
 
+    val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
+    search.performTextInput("Laus")
+    composeTestRule.waitUntil(TIME_OUT) { viewModel.placeSearchState.value.suggestions.isNotEmpty() }
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
+    search.assertTextEquals("Lausanne")
+    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+
+    composeTestRule.runOnIdle { useAlternateCamera.value = true }
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
         .performClick()
     assertEquals(PatientTab.Home, chosenTab)
-  }
-
-  @Test
-  fun selectingPlaceSuggestionUpdatesSearchFieldAndClosesPopup() {
-    val viewModel = createViewModel()
-    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
-
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).performTextInput("Lausanne")
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
-      viewModel.placeSearchState.value.suggestions.isNotEmpty()
-    }
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
-
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertTextEquals("Lausanne")
-    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
-    assertEquals(place, viewModel.placeSearchState.value.selectedPlace)
   }
 
   @Test
@@ -158,29 +165,28 @@ class MapScreenTest {
   }
 
   @Test
-  fun locationStatusRecenterAndKeyboardSearchFollowUserActions() {
+  fun locationFixesUpdateTheMapAndRecenterUsesTheFreshPosition() {
     val updates = MutableStateFlow<LocationUpdate>(LocationUpdate.Searching)
     val viewModel = createViewModel(updates)
-    val cameraPositionState =
-        CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val useSecondCamera = mutableStateOf(false)
+    val firstCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
+    val secondCamera = CameraPositionState(CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 14f))
     composeTestRule.setContent {
-      AmberAppTheme { MapScreen(viewModel = viewModel, cameraPositionState = cameraPositionState) }
-    }
-    val recenter =
-        composeTestRule.onNodeWithText(
-            composeTestRule.activity.getString(R.string.patientMapRecenter)
+      AmberAppTheme {
+        MapScreen(
+            viewModel = viewModel,
+            cameraPositionState = if (useSecondCamera.value) secondCamera else firstCamera,
         )
-    recenter.performClick()
+      }
+    }
+
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
     assertEquals(MediaMapLocationState.Searching, viewModel.locationState.value)
 
     updates.value = LocationUpdate.LocationOff
     composeTestRule.waitUntil(5_000) {
       viewModel.locationState.value == MediaMapLocationState.LocationOff
     }
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationOff))
-        .assertIsDisplayed()
-    recenter.performClick()
 
     val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
     updates.value = LocationUpdate.Position(lastKnown)
@@ -190,7 +196,6 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLastKnown))
         .assertIsDisplayed()
-    composeTestRule.waitUntil(5_000) { cameraIsNear(cameraPositionState, lastKnown) }
 
     val fresh = DevicePosition(46.53, 6.64)
     updates.value = LocationUpdate.Position(fresh)
@@ -200,14 +205,23 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    composeTestRule.waitUntil(5_000) { cameraIsNear(cameraPositionState, fresh) }
-    updates.value = LocationUpdate.Position(DevicePosition(46.54, 6.65))
-    composeTestRule.waitUntil(5_000) {
-      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position?.lat == 46.54
-    }
+
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
+        .performClick()
     composeTestRule.waitForIdle()
-    assertEquals(true, cameraIsNear(cameraPositionState, fresh))
-    recenter.performClick()
+    assertEquals(MapRecenterAction.MoveTo(fresh), viewModel.recenter())
+
+    composeTestRule.runOnIdle { useSecondCamera.value = true }
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    val later = DevicePosition(46.54, 6.65)
+    updates.value = LocationUpdate.Position(later)
+    composeTestRule.waitUntil(5_000) {
+      (viewModel.locationState.value as? MediaMapLocationState.Located)?.position == later
+    }
+    composeTestRule
+        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
+        .assertIsDisplayed()
 
     val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     search.performTextInput("La")
@@ -221,54 +235,95 @@ class MapScreenTest {
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
 
-  @Test
-  fun missingLocationPermissionKeepsMapVisibleAndRecenterRequestsIt() {
-    var permissionReported = false
-    val viewModel = createViewModel(permissionStatus = { permissionReported })
-    composeTestRule.setContent { MapScreenPreview(viewModel = viewModel) }
+  // ActivityResultRegistry that answers deterministically and counts requests
+  private val denied =
+      mapOf(
+          Manifest.permission.ACCESS_FINE_LOCATION to false,
+          Manifest.permission.ACCESS_COARSE_LOCATION to false,
+      )
 
-    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapPermissionNeeded))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
-        .performClick()
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapPermissionNeeded))
-        .assertIsDisplayed()
+  /** Answers every permission request with [result] and counts the requests. */
+  private class FakePermissionRegistryOwner(private val result: Map<String, Boolean>) :
+      ActivityResultRegistryOwner {
+    val requestCount = AtomicInteger(0)
 
-    permissionReported = true
-    viewModel.refreshPermission()
-    composeTestRule.waitUntil(5_000) {
-      viewModel.locationState.value == MediaMapLocationState.Searching
+    override val activityResultRegistry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            requestCount.incrementAndGet()
+            @Suppress("UNCHECKED_CAST") dispatchResult(requestCode, result as O)
+          }
+        }
+  }
+
+  private fun showMap(viewModel: MediaMapViewModel, registry: ActivityResultRegistryOwner) {
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
+        AmberAppTheme { MapScreen(viewModel = viewModel) }
+      }
     }
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapSearching))
-        .assertIsDisplayed()
+  }
+
+  private fun text(id: Int) = composeTestRule.activity.getString(id)
+
+  private val TIME_OUT = 5_000L
+
+  @Test
+  fun withoutPermissionTheCardAsksToAllowLocation_andTheMapStaysVisible() {
+    showMap(createViewModel(permissionStatus = { false }), FakePermissionRegistryOwner(denied))
+
+    composeTestRule.onNodeWithText(text(R.string.patientMapPermissionNeeded)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
   }
 
   @Test
-  fun unavailableLocationKeepsMapVisibleAndRecenterDoesNotChangeStatus() {
-    // A failed GPS stream should leave the map usable and show the unavailable status.
-    val updates =
+  fun withoutPermissionTheRequestIsLaunchedOnceOnEntry_and_TappingRecenterWithoutPermissionAsksAgain() {
+    val registry = FakePermissionRegistryOwner(denied)
+    showMap(createViewModel(permissionStatus = { false }), registry)
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, registry.requestCount.get())
+
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    assertEquals(2, registry.requestCount.get())
+  }
+
+  @Test
+  fun grantingThePermissionLaterReplacesThePermissionCard() {
+    val granted = AtomicBoolean(false)
+    val viewModel = createViewModel(permissionStatus = { granted.get() })
+    showMap(viewModel, FakePermissionRegistryOwner(denied))
+
+    granted.set(true)
+    composeTestRule.runOnIdle { viewModel.refreshPermission() }
+    composeTestRule.waitUntil(TIME_OUT) {
+      viewModel.locationState.value == MediaMapLocationState.Searching
+    }
+
+    composeTestRule.onNodeWithText(text(R.string.patientMapSearching)).assertIsDisplayed()
+  }
+
+  @Test
+  fun gpsFailureShowsThePositionUnavailableCard() {
+    val failing =
         flow<LocationUpdate> {
           emit(LocationUpdate.Searching)
-          throw IllegalStateException()
+          throw IllegalStateException("no Google Play services")
         }
-    val viewModel = createViewModel(updates = updates)
-    composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
-
-    composeTestRule.waitUntil(5_000) {
+    val viewModel = createViewModel(failing, permissionStatus = { true })
+    showMap(viewModel, FakePermissionRegistryOwner(denied))
+    composeTestRule.waitUntil(TIME_OUT) {
       viewModel.locationState.value == MediaMapLocationState.Unavailable
     }
+
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationUnavailable))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
-        .performClick()
+    composeTestRule.onNodeWithText(text(R.string.patientMapLocationUnavailable)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
     assertEquals(MediaMapLocationState.Unavailable, viewModel.locationState.value)
   }
 }

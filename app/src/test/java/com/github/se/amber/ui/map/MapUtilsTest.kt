@@ -43,6 +43,26 @@ class MapUtilsTest {
   private val context: Context = ApplicationProvider.getApplicationContext()
 
   @Test
+  fun cameraCentersOnLastKnown_ThenFreshFix_ThenStopsFollowing() {
+    assertEquals(AutoCenterStep(null, false), autoCenterStep(null, false))
+
+    val lastKnown = DevicePosition(46.52, 6.63, isLastKnown = true)
+    // Sends a last-known position and checks that the camera moves there
+    val lastKnownStep = autoCenterStep(lastKnown, false)
+    assertEquals(AutoCenterStep(lastKnown, false), lastKnownStep)
+
+    // Sends a fresh position and checks that the camera moves there
+    val fresh = DevicePosition(46.53, 6.64)
+    val freshStep = autoCenterStep(fresh, lastKnownStep.centeredOnFresh)
+    assertEquals(AutoCenterStep(fresh, true), freshStep)
+
+    // Sends another position and checks that the camera stays at the first fresh position
+    // The map does not move away when you drag it to see other locations
+    val later = DevicePosition(46.54, 6.65)
+    assertEquals(AutoCenterStep(null, true), autoCenterStep(later, freshStep.centeredOnFresh))
+  }
+
+  @Test
   fun searchField_displaysHintAndPassesUserActionsToCallbacks() {
     val query = mutableStateOf("")
     var searches = 0
@@ -254,6 +274,7 @@ class MapUtilsTest {
             recenterText.getUnclippedBoundsInRoot().right
     )
 
+    // Check status card while location is searching and turned off
     val statesAndMessages =
         listOf(
             MediaMapLocationState.Searching to R.string.patientMapSearching,

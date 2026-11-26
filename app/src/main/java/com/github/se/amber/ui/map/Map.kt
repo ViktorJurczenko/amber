@@ -16,15 +16,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
@@ -35,8 +40,6 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_BIG
-import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -120,16 +123,16 @@ fun MapScreen(
   // automatic camera moves stop so location updates do not override the user's map gestures
   LaunchedEffect(userPosition) { // Runs when the reported position changes
     // If there is a position and the user has not centered on a fresh one yet
-    if (userPosition != null && !centeredOnFreshPosition) {
+    val step = autoCenterStep(userPosition, centeredOnFreshPosition)
+    step.moveTo?.let { position ->
       cameraPositionState.position =
           CameraPosition.fromLatLngZoom(
-              LatLng(userPosition.lat, userPosition.lng),
+              LatLng(position.lat, position.lng),
               INITIAL_ZOOM,
           )
-
-      // Marks the job done only when the position is fresh
-      if (!userPosition.isLastKnown) centeredOnFreshPosition = true
     }
+    // Marks the job done only when the position is fresh
+    centeredOnFreshPosition = step.centeredOnFresh
   }
 
   // A chosen suggestion takes priority over the initial GPS centering
@@ -142,6 +145,7 @@ fun MapScreen(
   }
 
   Scaffold(
+      modifier = modifier,
       topBar = {
         TopAppBar(
             title = { DisplayPatientTitle(title = stringResource(R.string.screenTitlePatientMap)) }
@@ -156,7 +160,11 @@ fun MapScreen(
         )
       },
   ) { paddingValues ->
-    Box(modifier.fillMaxSize().padding(paddingValues)) {
+    Box(Modifier.fillMaxSize().padding(paddingValues)) {
+      // Extract card height to adapt the position card size
+      val density = LocalDensity.current
+      var cardHeight by remember { mutableStateOf<Dp>(0.dp) }
+
       GoogleMap(
           modifier = Modifier.fillMaxSize().testTag(MapScreenTestTags.GOOGLE_MAP),
           cameraPositionState = cameraPositionState,
@@ -164,11 +172,7 @@ fun MapScreen(
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           uiSettings = MapUiSettings(zoomControlsEnabled = true),
           // Reserve space for the position card so Google's zoom controls stay accessible.
-          contentPadding =
-              PaddingValues(
-                  end = PATIENT_PADDING_MINI,
-                  bottom = PATIENT_PADDING_ENORMOUS + PATIENT_PADDING_BIG + PATIENT_PADDING_SMALL,
-              ),
+          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight),
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
@@ -191,7 +195,11 @@ fun MapScreen(
           },
       )
       MapPositionCard(
-          modifier = Modifier.align(Alignment.BottomCenter).padding(PATIENT_PADDING_SMALL),
+          modifier =
+              Modifier.align(Alignment.BottomCenter)
+                  // Measured height includes the card's outer padding
+                  .onSizeChanged { cardHeight = with(density) { it.height.toDp() } }
+                  .padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
           onRecenter = {
             focusManager.clearFocus()

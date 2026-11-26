@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -37,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
+import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
@@ -50,6 +52,29 @@ import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.TEXT_FIELD_BIG
 import com.github.se.amber.ui.theme.WEIGHT_ONE
+
+/**
+ * Decision produced for one location update.
+ *
+ * @property moveTo Position to center the camera on, or null when it should stay where it is.
+ * @property centeredOnFresh Whether the first fresh position has already centered the camera.
+ */
+internal data class AutoCenterStep(val moveTo: DevicePosition?, val centeredOnFresh: Boolean)
+
+/**
+ * Decides whether a location update should automatically move the map camera.
+ *
+ * Last-known positions may center the camera while GPS searches. The first fresh position centers
+ * it once more and sets [AutoCenterStep.centeredOnFresh]. Later updates leave the camera alone so
+ * map gestures are not overridden. A null [position] never requests a camera move.
+ *
+ * @param position Latest device position, if available.
+ * @param centeredOnFresh Whether a fresh position has already centered the camera.
+ * @return The requested camera move and the flag to retain for the next update.
+ */
+internal fun autoCenterStep(position: DevicePosition?, centeredOnFresh: Boolean): AutoCenterStep =
+    if (position == null || centeredOnFresh) AutoCenterStep(null, centeredOnFresh)
+    else AutoCenterStep(position, centeredOnFresh = !position.isLastKnown)
 
 /** Stable identifiers for the search controls and position card in UI tests. */
 object MapTestTags {
@@ -205,7 +230,7 @@ internal fun MapPositionCard(
         MediaMapLocationState.Searching -> R.string.patientMapSearching
         MediaMapLocationState.Unavailable -> R.string.patientMapLocationUnavailable
         is MediaMapLocationState.Located ->
-            // TODO the user location will be displayed later (backend is missing for now)
+            // TODO the user location will be displayed later instead of a hard coded string
             if (locationState.position.isLastKnown) R.string.patientMapLastKnown
             else R.string.patientMapLocationFound
       }
