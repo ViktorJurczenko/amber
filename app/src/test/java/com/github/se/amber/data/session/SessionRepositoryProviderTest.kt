@@ -53,11 +53,13 @@ class SessionRepositoryProviderTest {
   @Test
   fun signingOutCancelsTheReminderTimerOfThisPhone() = runBlocking {
     val auth: AuthRepository = mockk { coEvery { signOut() } returns Result.success(Unit) }
-    // fakes: the app-wide media and auth repositories are left for their own tests to build
+    // fakes: the app-wide media, auth and photo repositories are left for their own tests to
+    // build. Building the photo one would build the auth one, which its test needs unbuilt.
     val repository =
         SessionRepositoryProvider.deviceRepository(
             mediaRepository = mockk(relaxed = true),
             authRepository = auth,
+            photoRepository = mockk(relaxed = true),
         )
     // FirebaseApp is set up once per test run, so its context can be the app of an earlier test:
     // the code uses that context, and so does this test
