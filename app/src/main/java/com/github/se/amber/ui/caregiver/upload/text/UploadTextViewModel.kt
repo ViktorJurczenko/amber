@@ -4,6 +4,7 @@
 package com.github.se.amber.ui.caregiver.upload.text
 
 import androidx.annotation.StringRes
+import com.github.se.amber.R
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.circle.CareCircleRepository
@@ -19,6 +20,7 @@ import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaRepository
 import com.github.se.amber.model.media.MediaRepositoryProvider
 import com.github.se.amber.model.media.MemoryDate
+import com.github.se.amber.model.validation.InputValidation
 import com.github.se.amber.ui.caregiver.upload.media.CommonMediaUIState
 import com.github.se.amber.ui.caregiver.upload.media.MediaUIState
 import com.github.se.amber.ui.caregiver.upload.media.MediaViewModel
@@ -27,15 +29,27 @@ import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.update
+
+/**
+ * Error messages specific to the caregiver Upload Text ViewModel; the ones shared with the other
+ * upload screens are in [com.github.se.amber.ui.caregiver.upload.media.MediaViewModelErrorMessage].
+ *
+ * @property messageRes the message shown to the user, as a string resource.
+ */
+enum class UploadTextViewModelErrorMessage(@param:StringRes val messageRes: Int) {
+  TITLE_EMPTY(R.string.uploadTextTitleEmpty),
+  TEXT_EMPTY(R.string.uploadTextDescriptionEmpty),
+}
 
 /**
  * UI state of the text upload screen.
  *
- * @property title the story title typed by the caregiver. It is [MediaItem.Text.title]. This screen
- *   does not save it yet.
+ * @property title the story title typed by the caregiver. It is [MediaItem.Text.title].
  * @property text the story body typed in the description box. This is [MediaItem.Text.text].
  * @property common the date, place and people shared with the other upload screens. A text story
- *   keeps [CommonMediaUIState.description] empty.
+ *   does not use a shared caption: [MediaItem.description] stays null, and
+ *   [CommonMediaUIState.description] is unused.
  */
 data class UploadTextUIState(
     val title: String = "",
@@ -53,8 +67,7 @@ data class UploadTextUIState(
  * Holds the text upload screen state.
  *
  * The date, place, people and upload are [MediaViewModel]. This class only adds the title and the
- * story body. A body that only has a `//Todo:` comment is not implemented yet. Leaving the screen
- * stays in the composable: this class does not navigate.
+ * story body. Leaving the screen stays in the composable: this class does not navigate.
  *
  * @param mediaRepo The repository used to create and upload media items.
  * @param authRepo The repository used to access the currently authenticated user.
@@ -85,33 +98,60 @@ open class UploadTextViewModel(
         cleanupScope = cleanupScope,
     ) {
 
-  /** Stores [title] as the story title. */
+  /**
+   * A text story does not use a shared caption: [MediaItem.description] stays null and
+   * [CommonMediaUIState.description] is unused. Its body lives in [UploadTextUIState.text], so the
+   * shared description check must not block upload.
+   */
+  override val requiresCommonDescription: Boolean
+    get() = false
+
+  /** Stores [title] as the story title, cut at [InputValidation.SHORT_TEXT]'s maximum length. */
   fun setTitle(title: String) {
-    // Todo: save the title in the UI state
+    val cleaned = InputValidation.SHORT_TEXT.clean(title)
+    _uiState.update { it.copy(title = cleaned) }
   }
 
   /**
-   * The description saved on a text story.
-   *
-   * A text story has no shared description: [MediaItem.description] stays empty. The words typed in
-   * the description box are [UploadTextUIState.text].
+   * Stores [text] as the story body from the description box, cut at [InputValidation.TEXT]'s
+   * maximum length.
    */
-  fun mediaDescription(): String = ""
-
-  /** Stores [text] as the story body from the description box. */
   fun setText(text: String) {
-    // Todo: save the story body in MediaItem.Text.text
+    val cleaned = InputValidation.TEXT.clean(text)
+    _uiState.update { it.copy(text = cleaned) }
   }
 
+  /**
+   * Checks that the story has a title and a body.
+   *
+   * @param state The current text upload UI state.
+   * @return The error to show if the title or the body is missing, as a string resource, or null if
+   *   both are there.
+   */
   @StringRes
-  override fun checkContent(state: UploadTextUIState): Int? {
-    // Todo: check that [state] has a title and a body
-    return null
-  }
+  override fun checkContent(state: UploadTextUIState): Int? =
+      when {
+        !InputValidation.SHORT_TEXT.isValid(state.title) ->
+            UploadTextViewModelErrorMessage.TITLE_EMPTY.messageRes
+        !InputValidation.TEXT.isValid(state.text) ->
+            UploadTextViewModelErrorMessage.TEXT_EMPTY.messageRes
+        else -> null
+      }
 
   /** A text story has no file. [state] is not read. */
   override fun fileOf(state: UploadTextUIState): File? = null
 
+  /**
+   * Builds the text story from the title and body typed on the screen.
+   *
+   * @param id The new media ID, from [MediaRepository.newMediaId].
+   * @param state The screen state to upload.
+   * @param authorId The uid of the signed-in user.
+   * @param circle The care circle the media is added to.
+   * @param date The date of the media.
+   * @param shownIds The people shown, already restricted to those still in the circle.
+   * @return The text media item to save and upload.
+   */
   override fun createItem(
       id: String,
       state: UploadTextUIState,
@@ -119,8 +159,15 @@ open class UploadTextViewModel(
       circle: CareCircle,
       date: MemoryDate,
       shownIds: List<String>,
-  ): MediaItem {
-    // Todo: build the text story from the title and the body
-    return MediaItem.Text(id = id, authorId = authorId, date = date, shownIds = shownIds)
-  }
+  ): MediaItem =
+      MediaItem.Text(
+          id = id,
+          authorId = authorId,
+          createdAt = System.currentTimeMillis(),
+          date = date,
+          location = state.common.location.pickedPlace,
+          shownIds = shownIds,
+          title = state.title.trim(),
+          text = state.text.trim(),
+      )
 }

@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.navigation
 
+import android.os.Bundle
 import androidx.navigation.NavHostController
 
 /**
@@ -75,4 +76,23 @@ open class NavigationActions(private val navController: NavHostController) {
    * @param tab The bottom navigation tab selected by the user
    */
   open fun navigateToTab(tab: Tab) = navigateTo(tab.destination)
+
+  /**
+   * Navigate to the screen showing the medias related to a given person.
+   *
+   * @param personId The id of the person whose medias are displayed
+   * @param shownPersonId The id of the person whose medias are already on screen, if any: clicking
+   *   that same person would only stack a duplicate screen, so nothing happens
+   */
+  open fun navigateToSeeMediasSpecificPerson(personId: String, shownPersonId: String? = null) {
+    navController.navigate(PatientScreen.SeeMediasSpecificPerson.routeFor(personId))
+  }
+
+  /**
+   * Reads the id of the person whose medias are displayed from the navigation [arguments].
+   *
+   * @param arguments The arguments of the back stack entry
+   * @return The person id, or an empty string when it is missing
+   */
+  fun personIdFrom(arguments: Bundle?): String = arguments?.getString(NavArgs.PERSON_ID).orEmpty()
 }

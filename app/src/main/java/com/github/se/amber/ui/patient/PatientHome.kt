@@ -3,6 +3,7 @@
 // Modified by Alaabrine, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -36,12 +37,14 @@ import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.calendar.Calendar
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
+import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
+import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 
 /** No-op [ProfileRepository] used by Compose previews (and preview-driven tests). */
 private object PreviewPatientHomeProfileRepository : ProfileRepository {
@@ -108,7 +111,7 @@ fun PatientHomeScreen(
                 Modifier.fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = PATIENT_PADDING_MEDIUM),
+                    .padding(PATIENT_PADDING_SMALL),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           val firstName = uiState.patientProfile.person.firstName
@@ -118,6 +121,10 @@ fun PatientHomeScreen(
               textAlign = TextAlign.Center,
               color = MaterialTheme.colorScheme.onBackground,
               style = MaterialTheme.typography.headlineMedium,
+          )
+          Calendar(
+              modifier = Modifier.padding(top = PATIENT_PADDING_ENORMOUS),
+              isPatient = true,
           )
         }
       },

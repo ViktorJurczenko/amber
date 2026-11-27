@@ -25,9 +25,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.credentials.CredentialManager
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.github.se.amber.data.appointment.reminder.checkRemindersNow
 import com.github.se.amber.data.connectivity.ConnectivityMonitorProvider
@@ -45,9 +47,11 @@ import com.github.se.amber.ui.caregiver.upload.UploadScreen
 import com.github.se.amber.ui.caregiver.upload.audios.UploadAudioScreen
 import com.github.se.amber.ui.caregiver.upload.pictures.UploadPictureScreen
 import com.github.se.amber.ui.caregiver.upload.text.UploadTextScreen
+import com.github.se.amber.ui.map.MapScreen
 import com.github.se.amber.ui.media.LocalMediaRetrySignal
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.CaregiverScreen
+import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.NavigationActions
 import com.github.se.amber.ui.navigation.OnboardingScreen
@@ -63,6 +67,7 @@ import com.github.se.amber.ui.patient.PatientHomeScreen
 import com.github.se.amber.ui.patient.parameters.PatientParameterScreen
 import com.github.se.amber.ui.patient.seeMedias.SeeMediasScreen
 import com.github.se.amber.ui.patient.seeMedias.audios.SeeAudiosScreen
+import com.github.se.amber.ui.patient.seeMedias.medias.specificPerson.SeeMediasSpecificPersonScreen
 import com.github.se.amber.ui.patient.seeMedias.pictures.SeePicturesScreen
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -281,16 +286,33 @@ fun AmberApp(
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
         )
       }
+      composable(route = PatientScreen.Map.route) {
+        MapScreen(onTabSelected = { tab -> navigationActions.navigateToTab(tab) })
+      }
       composable(route = PatientScreen.SeePictures.route) {
         SeePicturesScreen(
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
         )
       }
       composable(route = PatientScreen.SeeAudios.route) {
         SeeAudiosScreen(
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
+        )
+      }
+      composable(
+          route = PatientScreen.SeeMediasSpecificPerson.route,
+          arguments = listOf(navArgument(NavArgs.PERSON_ID) { type = NavType.StringType }),
+      ) { backStackEntry ->
+        val personId = navigationActions.personIdFrom(backStackEntry.arguments)
+        SeeMediasSpecificPersonScreen(
+            personId = personId,
+            onBackClick = { navigationActions.goBack() },
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = navigationActions::navigateToSeeMediasSpecificPerson,
         )
       }
       composable(route = PatientScreen.Parameters.route) {

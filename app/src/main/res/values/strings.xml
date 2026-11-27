@@ -35,6 +35,7 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
+    <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
@@ -103,6 +104,7 @@
     <string name="createProfileQuestion">What should we call you?</string>
     <string name="createProfileName">Name</string>
     <string name="createProfileSurname">Surname</string>
+    <string name="createProfileNickname">Nickname - optional</string>
     <string name="createProfileSelectRole">Please select your role</string>
     <string name="createProfilePatient">Patient</string>
     <string name="createProfileCaregiver">Caregiver</string>
@@ -409,6 +411,17 @@
     <string name="seeAudiosErrorLoadCircle">Failed to load the care circle.</string>
     <string name="seeAudiosErrorLoadMedia">Failed to load the media.</string>
 
+    <!-- SeeMediasSpecificPerson -->
+    <string name="seeMediasSpecificPersonTitle">See Medias with %1$s</string>
+    <string name="seeMediasSpecificPersonEmpty">There are no medias with %1$s yet.</string>
+    <string name="seeMediasSpecificPersonUnknownName">this person</string>
+    <string name="seeMediasSpecificPersonRetry">Retry</string>
+    <string name="seeMediasSpecificPersonErrorNoProfile">No profile found.</string>
+    <string name="seeMediasSpecificPersonErrorLoadProfile">Failed to load the profile.</string>
+    <string name="seeMediasSpecificPersonErrorNoCircle">You\'re not in a care circle yet.</string>
+    <string name="seeMediasSpecificPersonErrorLoadCircle">Failed to load the care circle.</string>
+    <string name="seeMediasSpecificPersonErrorLoadMedia">Failed to load the media.</string>
+
     <!-- MediaCard: the details under a picture or an audio (ui/media/MediaCard.kt) -->
     <string name="mediaCardShowInfos">show infos</string>
     <string name="mediaCardHideInfos">hide infos</string>
@@ -470,6 +483,17 @@
     <string name="addAppointmentNotePlaceholder">Enter a note for yourself or the patient</string>
     <string name="addAppointmentAddButton">Add event</string>
     <string name="addAppointmentErrorTitleEmpty">The title cannot be empty</string>
+    <string name="addAppointmentErrorNotSignedIn">Sign in to add an event</string>
+    <string name="addAppointmentErrorInvalidCircle">The care circle is invalid</string>
+    <string name="addAppointmentErrorInvalidId">The event identifier is invalid</string>
+    <string name="addAppointmentErrorMissingStart">The event needs a start date</string>
+    <string name="addAppointmentErrorInvalidDuration">We couldn\'t add the event: its duration must be between 1 minute and 24 hours.</string>
+    <string name="addAppointmentErrorInvalidReminders">We couldn\'t add the event: its reminders aren\'t valid.</string>
+    <string name="addAppointmentErrorNoPatient">The patient hasn\'t joined the care circle yet.</string>
+    <string name="addAppointmentErrorNotFound">This event no longer exists</string>
+    <string name="addAppointmentErrorPermissionDenied">You do not have permission to add an event</string>
+    <string name="addAppointmentErrorNoCircle">No care circle found.</string>
+    <string name="addAppointmentErrorAdd">Could not add the event</string>
 
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Previous month</string>

@@ -2,6 +2,7 @@
 
 package com.github.se.amber.ui.map
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
+import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
@@ -37,6 +39,30 @@ import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import com.github.se.amber.ui.theme.WEIGHT_ONE
 
+/**
+ * Decision produced for one location update.
+ *
+ * @property moveTo Position to center the camera on, or null when it should stay where it is.
+ * @property centeredOnFresh Whether the first fresh position has already centered the camera.
+ */
+internal data class AutoCenterStep(val moveTo: DevicePosition?, val centeredOnFresh: Boolean)
+
+/**
+ * Decides whether a location update should automatically move the map camera.
+ *
+ * Last-known positions may center the camera while GPS searches. The first fresh position centers
+ * it once more and sets [AutoCenterStep.centeredOnFresh]. Later updates leave the camera alone so
+ * map gestures are not overridden. A null [position] never requests a camera move.
+ *
+ * @param position Latest device position, if available.
+ * @param centeredOnFresh Whether a fresh position has already centered the camera.
+ * @return The requested camera move and the flag to retain for the next update.
+ */
+internal fun autoCenterStep(position: DevicePosition?, centeredOnFresh: Boolean): AutoCenterStep =
+    if (position == null || centeredOnFresh) AutoCenterStep(null, centeredOnFresh)
+    else AutoCenterStep(position, centeredOnFresh = !position.isLastKnown)
+
+/** Stable identifiers for the search controls and position card in UI tests. */
 object MapTestTags {
   const val SEARCH = "map_search"
   const val POSITION_CARD = "map_position_card"
@@ -53,7 +79,11 @@ internal fun MapSearchField(
   DisplayPatientTextField(
       value = query,
       onValueChange = onQueryChange,
-      modifier = modifier,
+      modifier =
+          modifier.background(
+              color = MaterialTheme.colorScheme.surface,
+              shape = RoundedCornerShape(ROUND_CORNER),
+          ),
       placeholder = stringResource(R.string.patientMapSearchHint),
       leadingIcon = Icons.Outlined.Search,
       maxChar = MAX_CHAR_PLACE_SEARCH,
@@ -64,7 +94,16 @@ internal fun MapSearchField(
   )
 }
 
-/** Position card that reflects the live GPS state. */
+/**
+ * Position card that reflects the live GPS state.
+ *
+ * [locationState] selects the translated status text. The parent handles [onRecenter], including
+ * permission requests and camera movement, so this component only renders state and user input.
+ *
+ * @param modifier Positions the card at the bottom of the map.
+ * @param locationState Current permission, GPS, or position state supplied by the ViewModel.
+ * @param onRecenter Called when the user taps the recenter button.
+ */
 @Composable
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
@@ -78,6 +117,7 @@ internal fun MapPositionCard(
         MediaMapLocationState.Searching -> R.string.patientMapSearching
         MediaMapLocationState.Unavailable -> R.string.patientMapLocationUnavailable
         is MediaMapLocationState.Located ->
+            // TODO the user location will be displayed later instead of a hard coded string
             if (locationState.position.isLastKnown) R.string.patientMapLastKnown
             else R.string.patientMapLocationFound
       }
@@ -126,12 +166,14 @@ internal fun MapPositionCard(
   }
 }
 
+/** Preview of the search field with its default empty query. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapSearchFieldPreview() {
   AmberAppTheme { MapSearchField() }
 }
 
+/** Preview of the position card while the device is searching for a location. */
 @Preview(showBackground = true)
 @Composable
 internal fun MapPositionCardPreview() {

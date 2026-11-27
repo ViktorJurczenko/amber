@@ -1,9 +1,9 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
-// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.navigation
 
@@ -192,6 +192,16 @@ sealed class PatientScreen(
           title = R.string.screenTitlePatientSeeAudios,
       )
 
+  data object SeeMediasSpecificPerson :
+      PatientScreen(
+          route = "patient_see_medias_specific_person/{${NavArgs.PERSON_ID}}",
+          title = R.string.screenTitlePatientSeeMediasSpecificPerson,
+      ) {
+
+    /** Builds the concrete route for the given person. */
+    fun routeFor(personId: String) = "patient_see_medias_specific_person/$personId"
+  }
+
   data object Parameters :
       PatientScreen(
           route = "patient_parameters",
@@ -225,4 +235,9 @@ object NavGraphs {
   const val PATIENT = "patient_graph"
   const val AUTH = "auth_graph"
   const val ONBOARDING = "onboarding_graph"
+}
+
+/** Names of the arguments passed in navigation routes. */
+object NavArgs {
+  const val PERSON_ID = "personId"
 }

@@ -1,6 +1,8 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modify by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.model.media
 
@@ -36,7 +38,9 @@ sealed interface MediaItem {
   val authorId: String // uid of the uploader (caregiver or patient)
   val storagePath: String // full Storage path of the file; never the bytes themselves
   val createdAt: Long // when it was added (on the phone, before its send), epoch milliseconds
-  val description: String
+  // Only a Text can have none (null): a picture or a voice memo always has one, maybe empty. Check
+  // for "no description" with isNullOrEmpty(), since texts saved before can still hold ""
+  val description: String?
   val date: MemoryDate? // when it happened; null = unknown
   val location: GeoLocation? // where it happened; null = unknown
   // who is credited: member uids or CareCircle.people keys (personIds); no duplicates. Saved as a
@@ -51,7 +55,7 @@ sealed interface MediaItem {
       override val authorId: String = "",
       override val storagePath: String = "",
       override val createdAt: Long = 0L,
-      override val description: String = "",
+      override val description: String? = null,
       override val date: MemoryDate? = null,
       override val location: GeoLocation? = null,
       override val shownIds: List<String> = emptyList(),

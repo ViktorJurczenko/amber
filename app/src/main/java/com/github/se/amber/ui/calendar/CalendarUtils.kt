@@ -2,8 +2,47 @@
 
 package com.github.se.amber.ui.calendar
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
+import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
+import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.DayOfWeek
 import java.time.YearMonth
+
+/**
+ * Text style of the month and year at the top of the calendar.
+ *
+ * Patient screens need larger text than caregiver ones.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ * @return the typography style to apply to the month and year.
+ */
+@Composable
+internal fun calendarTitleTextStyle(isPatient: Boolean = true): TextStyle =
+    if (isPatient) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge
+
+/**
+ * Text style of the names of the days of the week and of the day numbers of the calendar.
+ *
+ * Patient screens need larger text than caregiver ones.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ * @return the typography style to apply to the weekday names and to the day numbers.
+ */
+@Composable
+internal fun calendarBodyTextStyle(isPatient: Boolean = true): TextStyle =
+    if (isPatient) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium
+
+/**
+ * Size of the month arrows of the calendar.
+ *
+ * @param isPatient Boolean indicating if the user viewing the calendar is a Patient.
+ * @return the patient icon size for a patient, the caregiver icon size otherwise.
+ */
+internal fun calendarIconSize(isPatient: Boolean = true): Dp =
+    if (isPatient) PATIENT_ICON_SIZE else CAREGIVER_ICON_SIZE
 
 /**
  * Lays out the days of [month] as the cells of a calendar grid, week after week.
