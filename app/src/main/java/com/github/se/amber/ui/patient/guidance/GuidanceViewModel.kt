@@ -141,6 +141,8 @@ sealed interface GuidancePhase {
    * @param isOffRoute whether they are away from the route line.
    * @param isLocationOff whether the location was turned off; guidance goes on once it is back on.
    * @param isFindingNewRoute whether a new route is being asked for, after they went off the route.
+   * @param position where the patient last was, so the map can follow them; null until a position
+   *   precise enough comes.
    */
   data class Guiding(
       val destination: GuidanceDestination,
@@ -152,6 +154,7 @@ sealed interface GuidancePhase {
       val isOffRoute: Boolean = false,
       val isLocationOff: Boolean = false,
       val isFindingNewRoute: Boolean = false,
+      val position: RoutePoint? = null,
   ) : GuidancePhase
 
   /** The patient is at [destination]. */
@@ -190,7 +193,8 @@ data class GuidanceUIState(
  * The patient chooses a destination, the route is found from their position, and once they start,
  * each new position moves the guidance on: the next step, a new route when they keep walking the
  * wrong way, and arrival. The GPS only runs while finding the first position and while guiding, and
- * stops on arrival, on a problem, and when the patient stops.
+ * stops on arrival, on a problem, and when the patient stops. Locking the phone doesn't stop it, so
+ * the guidance is still there when the patient unlocks it.
  *
  * @param routeRepository finds the walking routes.
  * @param locationUpdatesRepository gives the patient's position, and whether they allowed it.
@@ -305,16 +309,17 @@ class GuidanceViewModel(
     newRoutes = 0
     phase = GuidancePhase.Guiding(confirming.destination, confirming.route)
     guidanceJob = viewModelScope.launch {
-      locationUpdatesRepository
-          .observeLocation()
-          .catch { e ->
-            Log.e(TAG, "Error following the position", e)
-            val problem =
-                if (e is SecurityException) GuidanceProblem.NO_PERMISSION
-                else GuidanceProblem.NO_POSITION
-            phase = GuidancePhase.Problem(problem, confirming.destination)
-          }
-          .collect(::onLocationUpdate)
+      try {
+        locationUpdatesRepository.observeLocation().collect(::onLocationUpdate)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: SecurityException) {
+        Log.e(TAG, "No permission to follow the position", e)
+        phase = GuidancePhase.Problem(GuidanceProblem.NO_PERMISSION, confirming.destination)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error following the position", e)
+        phase = GuidancePhase.Problem(GuidanceProblem.NO_POSITION, confirming.destination)
+      }
     }
   }
 
@@ -326,11 +331,12 @@ class GuidanceViewModel(
 
   /**
    * Tries the destination of the current problem again, for example once the location is turned on.
-   * Without one, goes back to choosing.
+   * A problem without a destination goes back to choosing. Does nothing without a problem, so a
+   * late answer to the permission dialog can't stop a guidance going on.
    */
   fun retry() {
-    val destination = (phase as? GuidancePhase.Problem)?.destination ?: return stop()
-    chooseDestination(destination)
+    val problem = phase as? GuidancePhase.Problem ?: return
+    problem.destination?.let(::chooseDestination) ?: stop()
   }
 
   /** The patient's position, or null after showing why it can't be found. */
@@ -382,6 +388,7 @@ class GuidanceViewModel(
             metersToNextManeuver = progress.metersToStepEnd,
             isOffRoute = progress.isOffRoute,
             isLocationOff = false,
+            position = point,
         )
     phase = moved
     if (
@@ -405,9 +412,13 @@ class GuidanceViewModel(
       val result = routeRepository.walkingRoute(from, guiding.destination.point)
       val current = phase as? GuidancePhase.Guiding ?: return@launch
       result.onFailure { Log.e(TAG, "Error finding a new route", it) }
+      // Positions off the old route, received while waiting, say nothing about the new one
+      result.onSuccess { offRoutePositions = 0 }
       phase =
           result.fold(
-              onSuccess = { GuidancePhase.Guiding(current.destination, it) },
+              onSuccess = {
+                GuidancePhase.Guiding(current.destination, it, position = current.position)
+              },
               onFailure = { current.copy(isFindingNewRoute = false) },
           )
     }
@@ -458,7 +469,11 @@ class GuidanceViewModel(
         listOfNotNull(appointment?.toDestination()) + saved + memories
       }
 
-  /** Today's next appointment that isn't over and has a place, kept up to date. */
+  /**
+   * Today's next appointment that isn't over and has a place. It follows the appointments as they
+   * change. The day and the time are read when the screen opens and on each change, not on a timer,
+   * so one that ends while the screen stays open is listed until the next change.
+   */
   private fun nextAppointment(circleId: String): Flow<Appointment?> {
     val today = Instant.ofEpochMilli(nowMillis()).atZone(zone).toLocalDate()
     val window = dayWindow(today, GUIDANCE_APPOINTMENT_DAYS, zone)

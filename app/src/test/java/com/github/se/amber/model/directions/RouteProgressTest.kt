@@ -5,6 +5,7 @@ package com.github.se.amber.model.directions
 import com.github.se.amber.model.directions.TestRoutes.AT_END
 import com.github.se.amber.model.directions.TestRoutes.CORNER
 import com.github.se.amber.model.directions.TestRoutes.END
+import com.github.se.amber.model.directions.TestRoutes.FLAT_MAP_TOLERANCE_METERS
 import com.github.se.amber.model.directions.TestRoutes.LEG_METERS
 import com.github.se.amber.model.directions.TestRoutes.L_ROUTE
 import com.github.se.amber.model.directions.TestRoutes.OFF_FIRST_LEG
@@ -19,15 +20,12 @@ import org.junit.Test
 
 class RouteProgressTest {
 
-  // Distances computed on a flat map and on the sphere differ by far less than this
-  private val toleranceMeters = 1.0
-
   @Test
   fun onTheFirstLeg_theFirstStepShowsWithTheDistanceToTheCorner() {
     val progress = L_ROUTE.progressAt(ON_FIRST_LEG, currentStep = 0)
 
     assertEquals(0, progress.stepIndex)
-    assertEquals(LEG_METERS / 2, progress.metersToStepEnd.toDouble(), toleranceMeters)
+    assertEquals(LEG_METERS / 2, progress.metersToStepEnd.toDouble(), FLAT_MAP_TOLERANCE_METERS)
     assertFalse(progress.hasArrived)
     assertFalse(progress.isOffRoute)
   }
@@ -73,18 +71,26 @@ class RouteProgressTest {
     val progress = L_ROUTE.copy(steps = emptyList()).progressAt(ON_SECOND_LEG, currentStep = 0)
 
     assertEquals(0, progress.stepIndex)
-    assertEquals(LEG_METERS / 2, progress.metersToStepEnd.toDouble(), toleranceMeters)
+    assertEquals(LEG_METERS / 2, progress.metersToStepEnd.toDouble(), FLAT_MAP_TOLERANCE_METERS)
   }
 
   @Test
   fun distanceToPath_isToTheNearestSegment_orItsEnd() {
-    assertEquals(0.0, distanceToPathMeters(ON_FIRST_LEG, L_ROUTE.points), toleranceMeters)
+    assertEquals(0.0, distanceToPathMeters(ON_FIRST_LEG, L_ROUTE.points), FLAT_MAP_TOLERANCE_METERS)
     // Past the end of the line: the distance is to its end point
     val pastEnd = END.moved(east = LEG_METERS)
-    assertEquals(LEG_METERS, distanceToPathMeters(pastEnd, L_ROUTE.points), toleranceMeters)
-    assertEquals(LEG_METERS, distanceToPathMeters(START, listOf(CORNER)), toleranceMeters)
+    assertEquals(
+        LEG_METERS,
+        distanceToPathMeters(pastEnd, L_ROUTE.points),
+        FLAT_MAP_TOLERANCE_METERS,
+    )
+    assertEquals(LEG_METERS, distanceToPathMeters(START, listOf(CORNER)), FLAT_MAP_TOLERANCE_METERS)
     assertEquals(Double.POSITIVE_INFINITY, distanceToPathMeters(START, emptyList()), 0.0)
     // A segment of no length is its point
-    assertEquals(LEG_METERS, distanceToSegmentMeters(START, CORNER, CORNER), toleranceMeters)
+    assertEquals(
+        LEG_METERS,
+        distanceToSegmentMeters(START, CORNER, CORNER),
+        FLAT_MAP_TOLERANCE_METERS,
+    )
   }
 }

@@ -14,6 +14,7 @@ import com.github.se.amber.data.location.LocationUpdate
 import com.github.se.amber.data.location.PlaceSearchRepository
 import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.calendar.DEFAULT_DURATION_MINUTES
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.directions.Maneuver
 import com.github.se.amber.model.directions.Route
@@ -21,6 +22,8 @@ import com.github.se.amber.model.directions.RoutePoint
 import com.github.se.amber.model.directions.TestRoutes.AT_END
 import com.github.se.amber.model.directions.TestRoutes.CORNER
 import com.github.se.amber.model.directions.TestRoutes.END
+import com.github.se.amber.model.directions.TestRoutes.FLAT_MAP_TOLERANCE_METERS
+import com.github.se.amber.model.directions.TestRoutes.JITTER_METERS
 import com.github.se.amber.model.directions.TestRoutes.LEG_METERS
 import com.github.se.amber.model.directions.TestRoutes.L_ROUTE
 import com.github.se.amber.model.directions.TestRoutes.OFF_FIRST_LEG
@@ -40,8 +43,10 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,8 +89,10 @@ class GuidanceViewModelTest {
           person = Person(),
           circleIds = listOf("circle1"),
       )
-  private val today = LocalDate.of(2026, 11, 27)
-  private val now = today.atStartOfDay(ZoneOffset.UTC).plusHours(10).toInstant().toEpochMilli()
+  // Any day works: noon leaves room for appointments before and after
+  private val today = LocalDate.now(ZoneOffset.UTC)
+  private val now = today.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC).toEpochMilli()
+  private val hour = 1.hours.inWholeMilliseconds
 
   private val routes = FakeRouteRepository()
   private val location = FakeLocationUpdatesRepository(permission = true)
@@ -157,13 +164,12 @@ class GuidanceViewModelTest {
   @Test
   fun destinations_areTodaysNextAppointment_thenSavedPlaces_thenOtherNamedMemoryPlaces() {
     runBlocking {
-      val hour = 1.hours.inWholeMilliseconds
       appointments.addAppointment(
           circle,
           Appointment(
               id = "passed",
               title = "Passed",
-              startAt = now - 2 * hour,
+              startAt = now - (DEFAULT_DURATION_MINUTES * 2).minutes.inWholeMilliseconds,
               location = at(START),
           ),
       )
@@ -318,7 +324,11 @@ class GuidanceViewModelTest {
     moveTo(ON_FIRST_LEG)
     assertEquals(0, viewModel.guiding.stepIndex)
     assertEquals(Maneuver.RIGHT, viewModel.guiding.nextManeuver)
-    assertEquals(LEG_METERS / 2, viewModel.guiding.metersToNextManeuver.toDouble(), 1.0)
+    assertEquals(
+        LEG_METERS / 2,
+        viewModel.guiding.metersToNextManeuver.toDouble(),
+        FLAT_MAP_TOLERANCE_METERS,
+    )
 
     moveTo(ON_SECOND_LEG)
     assertEquals(1, viewModel.guiding.stepIndex)
@@ -347,7 +357,9 @@ class GuidanceViewModelTest {
     routes.requests.clear()
     // Different points each time, as a StateFlow drops a repeated one
     val offPoints =
-        (1..OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE).map { OFF_FIRST_LEG.moved(north = it.toDouble()) }
+        (1..OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE).map {
+          OFF_FIRST_LEG.moved(north = it * JITTER_METERS)
+        }
 
     offPoints.dropLast(1).forEach { moveTo(it) }
     assertTrue(viewModel.guiding.isOffRoute)
@@ -355,7 +367,7 @@ class GuidanceViewModelTest {
 
     // Back on the route starts the count again
     moveTo(ON_FIRST_LEG)
-    offPoints.dropLast(1).forEach { moveTo(it.moved(east = -1.0)) }
+    offPoints.dropLast(1).forEach { moveTo(it.moved(east = -JITTER_METERS)) }
     assertTrue(routes.requests.isEmpty())
 
     moveTo(offPoints.last())
@@ -371,7 +383,7 @@ class GuidanceViewModelTest {
     routes.requests.clear()
 
     repeat((MAX_NEW_ROUTES + 1) * OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE) {
-      moveTo(OFF_FIRST_LEG.moved(north = it.toDouble()))
+      moveTo(OFF_FIRST_LEG.moved(north = it * JITTER_METERS))
     }
 
     assertEquals(MAX_NEW_ROUTES, routes.requests.size)
@@ -383,7 +395,7 @@ class GuidanceViewModelTest {
     val viewModel = guidingViewModel()
     routes.answer = { Result.failure(RouteError.Network) }
     repeat(OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE) {
-      moveTo(OFF_FIRST_LEG.moved(north = it.toDouble()))
+      moveTo(OFF_FIRST_LEG.moved(north = it * JITTER_METERS))
     }
     assertEquals(L_ROUTE, viewModel.guiding.route)
     assertFalse(viewModel.guiding.isFindingNewRoute)
@@ -392,7 +404,7 @@ class GuidanceViewModelTest {
     val pending = CompletableDeferred<Result<Route>>()
     routes.answer = { pending.await() }
     repeat(OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE) {
-      moveTo(OFF_FIRST_LEG.moved(east = -it.toDouble()))
+      moveTo(OFF_FIRST_LEG.moved(east = -it * JITTER_METERS))
     }
     assertTrue(viewModel.guiding.isFindingNewRoute)
     moveTo(AT_END)
@@ -402,7 +414,7 @@ class GuidanceViewModelTest {
     val stopped = guidingViewModel()
     routes.answer = { CompletableDeferred<Result<Route>>().await() }
     repeat(OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE) {
-      moveTo(OFF_FIRST_LEG.moved(north = -it.toDouble()))
+      moveTo(OFF_FIRST_LEG.moved(north = -it * JITTER_METERS))
     }
     assertTrue(stopped.guiding.isFindingNewRoute)
     stopped.stop()
@@ -466,5 +478,94 @@ class GuidanceViewModelTest {
 
     assertEquals(listOf("Lausanne"), viewModel.uiState.value.searchResults.map { it.name })
     assertFalse(viewModel.uiState.value.isSearching)
+  }
+
+  @Test
+  fun aNewRoute_startsTheOffRouteCountAgain() {
+    guidingViewModel()
+    val pending = CompletableDeferred<Result<Route>>()
+    routes.answer = { pending.await() }
+    routes.requests.clear()
+    val offPoints =
+        (1..2 * OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE).map {
+          OFF_FIRST_LEG.moved(north = it * JITTER_METERS)
+        }
+    val (first, whileWaiting) = offPoints.chunked(OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE)
+    first.forEach { moveTo(it) }
+    // Off the old route while the new one loads: these don't count for the new one
+    whileWaiting.dropLast(1).forEach { moveTo(it) }
+    pending.complete(Result.success(L_ROUTE))
+
+    moveTo(whileWaiting.last())
+
+    assertEquals(1, routes.requests.size)
+  }
+
+  @Test
+  fun guiding_givesThePositionForTheMap_andKeepsItOnANewRoute_whileRetryLeavesItAlone() {
+    val viewModel = guidingViewModel()
+    assertEquals("the GPS gives the start at once", START, viewModel.guiding.position)
+
+    moveTo(ON_FIRST_LEG)
+    assertEquals(ON_FIRST_LEG, viewModel.guiding.position)
+
+    // A late answer to the permission dialog must not stop the guidance
+    viewModel.retry()
+    assertEquals(ON_FIRST_LEG, viewModel.guiding.position)
+
+    val offPoints =
+        (1..OFF_ROUTE_POSITIONS_BEFORE_NEW_ROUTE).map {
+          OFF_FIRST_LEG.moved(north = it * JITTER_METERS)
+        }
+    offPoints.forEach { moveTo(it) }
+    assertEquals(offPoints.last(), viewModel.guiding.position)
+  }
+
+  @Test
+  fun theGpsFailingWhileGuiding_showsWhy_andStopsIt() {
+    val failures =
+        mapOf(
+            SecurityException("permission taken back") to GuidanceProblem.NO_PERMISSION,
+            IllegalStateException("no Play services") to GuidanceProblem.NO_POSITION,
+        )
+    failures.forEach { (error, problem) ->
+      val viewModel = guidingViewModel()
+      location.failure.value = error
+      assertEquals(GuidancePhase.Problem(problem, endPlace), viewModel.phase)
+      assertFalse(location.isRunning)
+      location.failure.value = null
+    }
+  }
+
+  @Test
+  fun whileWaitingForTheFirstPosition_locationTurnedOffShowsIt_andStopEndsTheWait() {
+    location.updates.value = LocationUpdate.Searching
+    val viewModel = createViewModel()
+
+    viewModel.chooseDestination(endPlace)
+    location.updates.value = LocationUpdate.LocationOff
+    assertEquals(GuidancePhase.Problem(GuidanceProblem.LOCATION_OFF, endPlace), viewModel.phase)
+
+    location.updates.value = LocationUpdate.Searching
+    viewModel.retry()
+    assertTrue(location.isRunning)
+    viewModel.stop()
+    assertEquals(GuidancePhase.Choosing, viewModel.phase)
+    assertFalse(location.isRunning)
+    assertTrue(routes.requests.isEmpty())
+  }
+
+  @Test
+  fun withoutAProfile_noPlacesAreListed_butSearchStillWorks() {
+    coEvery { profiles.getCurrentProfile() } returns
+        Result.failure(IllegalStateException("offline"))
+    search = PlaceSearchRepository { Result.success(listOf(at(END, "Lausanne"))) }
+    val viewModel = createViewModel()
+
+    viewModel.setSearchQuery("Lausanne")
+    viewModel.search()
+
+    assertTrue(viewModel.uiState.value.destinations.isEmpty())
+    assertEquals(listOf("Lausanne"), viewModel.uiState.value.searchResults.map { it.name })
   }
 }

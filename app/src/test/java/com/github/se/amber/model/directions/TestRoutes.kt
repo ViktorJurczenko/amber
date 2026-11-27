@@ -14,6 +14,18 @@ import kotlin.math.cos
  */
 object TestRoutes {
 
+  /**
+   * How far distances measured on a flat map can be from the same ones on the sphere, in meters,
+   * over the length of this route.
+   */
+  const val FLAT_MAP_TOLERANCE_METERS = 1.0
+
+  /**
+   * A step small enough to keep a position where it is, used to make positions that differ, since a
+   * StateFlow drops one equal to the last.
+   */
+  const val JITTER_METERS = 1.0
+
   /** The length of each of the two legs, well above the guidance's own distances. */
   const val LEG_METERS = OFF_ROUTE_METERS * 5
 
