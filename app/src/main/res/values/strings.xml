@@ -498,4 +498,5 @@
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Previous month</string>
     <string name="calendarNextMonth">Next month</string>
+    <string name="calendarErrorLoadAppointments">Could not load the appointments</string>
 </resources>

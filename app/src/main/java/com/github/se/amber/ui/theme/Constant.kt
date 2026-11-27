@@ -3,8 +3,8 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Yuhan YANG, with assistance from Cursor
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
-// Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.theme
 
@@ -174,3 +174,6 @@ const val CALENDAR_WIDTH_FRACTION = 1f
 
 /** A day cell of the calendar is a square. */
 const val CALENDAR_CELL_ASPECT_RATIO = 1f
+
+/** Thickness of the circle drawn around a day of the calendar that has an appointment. */
+val CALENDAR_CIRCLE_THICKNESS = 2.dp

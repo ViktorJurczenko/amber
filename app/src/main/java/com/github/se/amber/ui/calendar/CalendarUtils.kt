@@ -6,10 +6,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
+import com.github.se.amber.model.appointment.Appointment
+import com.github.se.amber.model.appointment.occurrencesIn
+import com.github.se.amber.model.calendar.dayWindow
+import com.github.se.amber.model.calendar.localDateOf
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import java.time.DayOfWeek
 import java.time.YearMonth
+import java.time.ZoneId
 
 /**
  * Text style of the month and year at the top of the calendar.
@@ -74,4 +79,27 @@ internal fun calendarCells(
   val afterLastDay: List<Int?> = List(trailingBlanks) { null }
 
   return beforeFirstDay + days + afterLastDay
+}
+
+/**
+ * The days of [month] on which at least one of the [appointments] starts. Only the start counts: an
+ * appointment ending after midnight does not mark the next day.
+ *
+ * @param appointments the appointments to look at. Those starting in another month are ignored.
+ * @param month the month to look at.
+ * @param zone the time zone the days are counted in. Defaults to the phone's.
+ * @return the days of the month (1 to 31) that have an appointment.
+ */
+internal fun appointmentDays(
+    appointments: List<Appointment> = emptyList(),
+    month: YearMonth = YearMonth.now(),
+    zone: ZoneId = ZoneId.systemDefault(),
+): Set<Int> {
+  val window = dayWindow(month.atDay(1), month.lengthOfMonth(), zone)
+  return appointments
+      .flatMap { it.occurrencesIn(window, zone) }
+      .map { localDateOf(it.startAt, zone) }
+      .filter { YearMonth.from(it) == month }
+      .map { it.dayOfMonth }
+      .toSet()
 }
