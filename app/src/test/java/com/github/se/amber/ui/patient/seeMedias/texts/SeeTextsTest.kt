@@ -103,6 +103,34 @@ class SeeTextsScreenTest {
             }
       }
 
+  /** Owner that can build both [SeeTextsViewModel] and [MediaCardViewModel] for default args. */
+  private val defaultParamsOwner =
+      object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+        override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory =
+            object : ViewModelProvider.Factory {
+              @Suppress("UNCHECKED_CAST")
+              override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                  when {
+                    modelClass.isAssignableFrom(SeeTextsViewModel::class.java) ->
+                        SeeTextsViewModel(
+                            mediaRepository,
+                            circleRepository,
+                            profileRepository,
+                        )
+                            as T
+                    modelClass.isAssignableFrom(MediaCardViewModel::class.java) ->
+                        MediaCardViewModel(
+                            profileRepository,
+                            circleRepository,
+                            activeCircleRepository,
+                        )
+                            as T
+                    else -> error("Unexpected ViewModel: ${modelClass.name}")
+                  }
+            }
+      }
+
   @Before
   fun setUp() {
     coEvery { profileRepository.getCurrentProfile() } returns Result.success(profile)
@@ -263,5 +291,20 @@ class SeeTextsScreenTest {
     composeTestRule
         .onNodeWithTag(SeeTextsTestTags.NO_TEXTS)
         .assertTextEquals(string(R.string.seeTextsEmpty))
+  }
+
+  @Test
+  fun screen_withDefaultParameters_showsEmptyState() {
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalViewModelStoreOwner provides defaultParamsOwner) {
+        AmberAppTheme(dynamicColor = false) { SeeTextsScreen() }
+      }
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.NO_TEXTS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
+        .performClick()
   }
 }
