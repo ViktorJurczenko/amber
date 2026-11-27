@@ -496,4 +496,7 @@
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Mois précédent</string>
     <string name="calendarNextMonth">Mois suivant</string>
+
+    <!-- BoardOfPeople -->
+    <string name="boardOfPeopleTitle">Toutes les personnes dans le cercle de soins</string>
 </resources>
