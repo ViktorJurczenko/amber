@@ -73,6 +73,9 @@ val PATIENT_BUTTON_HEIGHT_BIG = 120.dp
 const val PATIENT_BUTTON_WIDTH = 0.7f
 const val PATIENT_BUTTON_WIDTH_BIG = 1f
 
+/** Collapsed line count for a text story body before "Show more" appears. */
+const val SEE_TEXTS_COLLAPSED_MAX_LINES = 4
+
 // ------- BOX -------
 val ROUND_CORNER = 12.dp
 val DIVIDER_THICKNESS = 1.dp
