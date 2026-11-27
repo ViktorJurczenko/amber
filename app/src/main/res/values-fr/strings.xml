@@ -27,7 +27,6 @@
     <string name="screenTitleCaregiverCreateInvitationCode">Créer un code d\'invitation</string>
     <string name="screenTitleDeleteAccount">Supprimer son compte</string>
     <string name="screenTitleCaregiverChangeCareCircle">Changer de cercle de soins</string>
-    <string name="screenTitleCaregiverAddAppointment">Ajouter un rendez-vous</string>
     <string name="screenTitlePatientHome">Accueil</string>
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>

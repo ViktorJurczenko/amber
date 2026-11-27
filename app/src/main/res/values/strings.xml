@@ -31,7 +31,6 @@
     <string name="screenTitleCaregiverCreateInvitationCode">Create an invitation code</string>
     <string name="screenTitleDeleteAccount">Delete account</string>
     <string name="screenTitleCaregiverChangeCareCircle">Switch Care Circle</string>
-    <string name="screenTitleCaregiverAddAppointment">Add appointment</string>
     <string name="screenTitlePatientHome">Home</string>
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>

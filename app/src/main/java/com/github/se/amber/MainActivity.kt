@@ -39,7 +39,6 @@ import com.github.se.amber.ui.authentication.accountDeletion.DeleteAccountScreen
 import com.github.se.amber.ui.authentication.roleLoading.RoleLoadingScreen
 import com.github.se.amber.ui.authentication.signIn.EmailSignInScreen
 import com.github.se.amber.ui.authentication.signOut.SignOutScreen
-import com.github.se.amber.ui.calendar.AddAppointmentScreen
 import com.github.se.amber.ui.caregiver.CaregiverHomeScreen
 import com.github.se.amber.ui.caregiver.parameters.CaregiverParameterScreen
 import com.github.se.amber.ui.caregiver.parameters.changeCareCircle.ChangeCareCircleScreen
@@ -196,17 +195,6 @@ fun AmberApp(
       composable(route = CaregiverScreen.Home.route) {
         CaregiverHomeScreen(
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
-            onDayClick = { date -> navigationActions.navigateToAddAppointment(date) },
-        )
-      }
-      composable(
-          route = CaregiverScreen.AddAppointment.route,
-          arguments = listOf(navArgument(NavArgs.APPOINTMENT_DATE) { type = NavType.StringType }),
-      ) { backStackEntry ->
-        AddAppointmentScreen(
-            date = navigationActions.appointmentDateFrom(backStackEntry.arguments),
-            goBack = { navigationActions.goBack() },
-            onAddEvent = { navigationActions.goBack() },
         )
       }
       composable(route = CaregiverScreen.Upload.route) {

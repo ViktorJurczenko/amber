@@ -1,15 +1,14 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
-// Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.navigation
 
 import androidx.annotation.StringRes
 import com.github.se.amber.R
-import java.time.LocalDate
 
 /**
  * Base interface for all navigation destinations (Screen). Ensures consistent structure across all
@@ -99,16 +98,6 @@ sealed class CaregiverScreen(
           title = R.string.screenTitleCaregiverHome,
           isTopLevelDestination = true,
       )
-
-  data object AddAppointment :
-      CaregiverScreen(
-          route = "caregiver_add_appointment/{${NavArgs.APPOINTMENT_DATE}}",
-          title = R.string.screenTitleCaregiverAddAppointment,
-      ) {
-
-    /** Builds the concrete route for an appointment on [date]. */
-    fun routeFor(date: LocalDate) = "caregiver_add_appointment/$date"
-  }
 
   data object Upload :
       CaregiverScreen(
@@ -251,5 +240,4 @@ object NavGraphs {
 /** Names of the arguments passed in navigation routes. */
 object NavArgs {
   const val PERSON_ID = "personId"
-  const val APPOINTMENT_DATE = "appointmentDate"
 }
