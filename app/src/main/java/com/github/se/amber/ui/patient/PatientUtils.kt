@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -217,6 +219,7 @@ fun DisplayPatientButton(
  * @param description content description of the button
  * @param enabled say if the button is clickable or not
  * @param showSpinner replaces the icon with a loading spinner when true
+ * @param shape shape of the button; round by default, a rounded square for a map control
  * @param onClick callback invoked when the button is selected
  * @param testTag test tag of the button
  * @param spinnerTestTag test tag of the spinner. No tag is set when empty.
@@ -228,6 +231,7 @@ fun DisplayPatientCircularIconButton(
     description: String = "",
     enabled: Boolean = true,
     showSpinner: Boolean = false,
+    shape: Shape = CircleShape,
     onClick: () -> Unit = {},
     testTag: String = PatientUtilsTestTags.ICON_BUTTON,
     spinnerTestTag: String = "",
@@ -241,7 +245,7 @@ fun DisplayPatientCircularIconButton(
               .size(PATIENT_BUTTON_HEIGHT_SMALL)
               .semantics { contentDescription = description }
               .testTag(testTag),
-      shape = CircleShape,
+      shape = shape,
       colors =
           IconButtonDefaults.filledIconButtonColors(
               containerColor = MaterialTheme.colorScheme.tertiary,
