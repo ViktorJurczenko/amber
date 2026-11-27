@@ -2,6 +2,7 @@
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.upload.audios
 
@@ -28,11 +29,11 @@ import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -180,17 +181,16 @@ fun UploadAudioScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(Modifier, TopNavigationAction.CANCEL, cancel)
-                DisplayCaregiverTitle(
-                    Modifier.testTag(UploadAudioScreenTestTags.TITLE),
-                    stringResource(R.string.uploadAudioTitle),
-                )
-              }
-            }
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          TopNavigationMenu(Modifier, TopNavigationAction.CANCEL, cancel)
+          DisplayCaregiverTitle(
+              Modifier.testTag(UploadAudioScreenTestTags.TITLE),
+              stringResource(R.string.uploadAudioTitle),
+          )
+        }
       },
       content = { paddingValues ->
         Column(

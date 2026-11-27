@@ -1,9 +1,13 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber
 
+import android.app.Activity
 import android.app.Application
+import android.content.pm.ActivityInfo
+import android.os.Bundle
 import androidx.work.Configuration
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -31,12 +35,40 @@ import kotlinx.coroutines.launch
  *   instead.
  *
  * The only thing done at startup is finishing an interrupted account deletion, if there is one.
+ * Every activity is also forced to portrait so the UI never follows a landscape device rotation.
  */
 class AmberApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
   override fun onCreate() {
     super.onCreate()
+    lockAllActivitiesToPortrait()
     finishInterruptedDeletion()
+  }
+
+  /**
+   * Forces portrait for every activity created in this process, including any future ones. The
+   * manifest already declares portrait on known activities; this covers the whole app at runtime.
+   */
+  private fun lockAllActivitiesToPortrait() {
+    registerActivityLifecycleCallbacks(
+        object : ActivityLifecycleCallbacks {
+          override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+          }
+
+          override fun onActivityStarted(activity: Activity) = Unit
+
+          override fun onActivityResumed(activity: Activity) = Unit
+
+          override fun onActivityPaused(activity: Activity) = Unit
+
+          override fun onActivityStopped(activity: Activity) = Unit
+
+          override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+
+          override fun onActivityDestroyed(activity: Activity) = Unit
+        },
+    )
   }
 
   /**

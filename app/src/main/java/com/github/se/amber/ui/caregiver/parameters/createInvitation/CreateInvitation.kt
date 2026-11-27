@@ -28,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -112,23 +111,20 @@ fun CreateInvitationScreen(
   }
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(
-                  modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
-              ) {
-                TopNavigationMenu(
-                    modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = checkout,
-                )
-                DisplayCaregiverTitle(
-                    Modifier.testTag(CreateInvitationTestTags.TITLE),
-                    stringResource(R.string.createInvitationTitle),
-                )
-              }
-            }
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          TopNavigationMenu(
+              modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
+              action = TopNavigationAction.CANCEL,
+              onBackClick = checkout,
+          )
+          DisplayCaregiverTitle(
+              Modifier.testTag(CreateInvitationTestTags.TITLE),
+              stringResource(R.string.createInvitationTitle),
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(

@@ -1,7 +1,9 @@
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +21,7 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 
 class SecondActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
+    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     super.onCreate(savedInstanceState)
     setContent {
       AmberAppTheme {

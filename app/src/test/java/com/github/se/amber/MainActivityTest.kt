@@ -1,9 +1,13 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber
 
 import android.app.AlarmManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.data.appointment.reminder.AppointmentReminderReceiver
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
@@ -66,6 +70,36 @@ class MainActivityTest {
       assertEquals(
           AppointmentReminderReceiver.ACTION_TIMER,
           shadowOf(alarm.operation).savedIntent.action,
+      )
+    }
+  }
+
+  @Test
+  fun mainAndSecondActivitiesAreLockedToPortraitInManifestAndAtRuntime() {
+    val packageManager = context.packageManager
+    val mainInfo =
+        packageManager.getActivityInfo(
+            ComponentName(context, MainActivity::class.java),
+            PackageManager.GET_META_DATA,
+        )
+    val secondInfo =
+        packageManager.getActivityInfo(
+            ComponentName(context, SecondActivity::class.java),
+            PackageManager.GET_META_DATA,
+        )
+    assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, mainInfo.screenOrientation)
+    assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, secondInfo.screenOrientation)
+
+    Robolectric.buildActivity(MainActivity::class.java).setup().use { controller ->
+      assertEquals(
+          ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+          controller.get().requestedOrientation,
+      )
+    }
+    Robolectric.buildActivity(SecondActivity::class.java).setup().use { controller ->
+      assertEquals(
+          ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+          controller.get().requestedOrientation,
       )
     }
   }

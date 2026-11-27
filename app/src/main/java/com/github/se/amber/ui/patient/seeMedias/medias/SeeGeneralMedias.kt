@@ -1,4 +1,5 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias.medias
 
@@ -20,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -128,21 +128,20 @@ fun <T : MediaItem> SeeGeneralMedias(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column {
-                TopNavigationMenu(
-                    modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = onBackClick,
-                )
-                DisplayPatientTitle(
-                    title = stringResource(config.titleRes, *titleArgs.toTypedArray()),
-                    testTag = config.titleTag,
-                )
-              }
-            }
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          TopNavigationMenu(
+              modifier = Modifier.testTag(TopNavigationMenuTestTags.TOP_NAVIGATION_MENU),
+              action = TopNavigationAction.CANCEL,
+              onBackClick = onBackClick,
+          )
+          DisplayPatientTitle(
+              title = stringResource(config.titleRes, *titleArgs.toTypedArray()),
+              testTag = config.titleTag,
+          )
+        }
       },
       bottomBar = {
         BottomNavigationMenu(

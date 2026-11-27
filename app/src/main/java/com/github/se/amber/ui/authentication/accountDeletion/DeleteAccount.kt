@@ -1,5 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.authentication.accountDeletion
 
@@ -18,7 +19,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,29 +93,28 @@ fun DeleteAccountScreen(
   }
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                if (!uiState.isDeleting) {
-                  TopNavigationMenu(
-                      action = TopNavigationAction.CANCEL,
-                      onBackClick = onBack,
-                  )
-                }
-                if (isPatient) {
-                  DisplayPatientTitle(
-                      title = stringResource(R.string.deleteAccountTitle),
-                      testTag = DeleteAccountTestTags.TITLE,
-                  )
-                } else {
-                  DisplayCaregiverTitle(
-                      modifier = Modifier.testTag(DeleteAccountTestTags.TITLE),
-                      title = stringResource(R.string.deleteAccountTitle),
-                  )
-                }
-              }
-            }
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          if (!uiState.isDeleting) {
+            TopNavigationMenu(
+                action = TopNavigationAction.CANCEL,
+                onBackClick = onBack,
+            )
+          }
+          if (isPatient) {
+            DisplayPatientTitle(
+                title = stringResource(R.string.deleteAccountTitle),
+                testTag = DeleteAccountTestTags.TITLE,
+            )
+          } else {
+            DisplayCaregiverTitle(
+                modifier = Modifier.testTag(DeleteAccountTestTags.TITLE),
+                title = stringResource(R.string.deleteAccountTitle),
+            )
+          }
+        }
       },
       content = { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
