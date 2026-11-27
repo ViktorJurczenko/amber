@@ -1,9 +1,11 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor (Agent).
 
 package com.github.se.amber.data.account
 
 import coil3.SingletonImageLoader
+import com.github.se.amber.data.appointment.reminder.LocalReminders
 import com.github.se.amber.data.media.image.MediaImageMemory
 import com.github.se.amber.data.media.picture.PersonPhotoRepository
 import com.github.se.amber.data.media.picture.PersonPhotoRepositoryProvider
@@ -50,6 +52,7 @@ class AccountDeletionRepositoryProvider(
               imageMemory = MediaImageMemory(SingletonImageLoader.get(context)),
               cacheDir = context.cacheDir,
               photoRepository = photoRepository,
+              reminders = LocalReminders.android(context),
           )
       return FirebaseAccountDeletionRepository(
           DeviceLocalAccountData(

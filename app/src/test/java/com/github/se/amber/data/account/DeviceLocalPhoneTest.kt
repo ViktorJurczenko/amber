@@ -1,6 +1,7 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor Agent.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
@@ -46,6 +47,7 @@ class DeviceLocalPhoneTest {
   private lateinit var routeLeftover: File
   private lateinit var phone: DeviceLocalPhone
   private val calls = mutableListOf<String>()
+  private var clearReminders: suspend () -> Unit = { calls += "clearReminders" }
 
   @Before
   fun setUp() {
@@ -82,13 +84,19 @@ class DeviceLocalPhoneTest {
             MediaImageMemory(imageLoader),
             cacheDir,
             photoRepository,
-            Dispatchers.Unconfined,
+            reminders = mockk { coEvery { clearAll() } coAnswers { clearReminders() } },
+            ioDispatcher = Dispatchers.Unconfined,
         )
   }
 
   @Test
-  fun clearRunsMediaThenPhotosThenMemoryThenTemporaryFiles() = runBlocking {
+  fun clearRunsMediaThenPhotosThenMemoryThenTemporaryFilesThenReminders() = runBlocking {
     var filesStillThere = false
+    var filesGoneBeforeReminders = false
+    clearReminders = {
+      filesGoneBeforeReminders = !picked.exists()
+      calls += "clearReminders"
+    }
     every { memoryCache.clear() } answers
         {
           filesStillThere =
@@ -102,7 +110,8 @@ class DeviceLocalPhoneTest {
 
     assertTrue(filesStillThere)
     assertTemporaryFilesDeleted()
-    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
+    assertTrue(filesGoneBeforeReminders)
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory", "clearReminders"), calls)
   }
 
   @Test
@@ -135,7 +144,8 @@ class DeviceLocalPhoneTest {
     assertTrue(fileFailure, fileFailure.contains("picked_0.jpg"))
     assertTemporaryFilesDeleted()
     assertTrue(stuck.exists())
-    assertEquals(listOf("clearPhotos"), calls)
+    // the reminders are still cleared after the earlier failures
+    assertEquals(listOf("clearPhotos", "clearReminders"), calls)
   }
 
   @Test
@@ -175,6 +185,18 @@ class DeviceLocalPhoneTest {
     assertEquals("stopped", error?.message)
     assertTrue(error?.suppressed?.isEmpty() == true)
     assertTrue(picked.exists())
+  }
+
+  @Test
+  fun aFailedReminderStepIsThrownAfterTheOtherSteps() {
+    val reminderFailure = IllegalStateException("Timer left")
+    clearReminders = { throw reminderFailure }
+
+    val error = assertThrows(IllegalStateException::class.java) { runBlocking { phone.clear() } }
+
+    assertEquals(reminderFailure, error)
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
+    assertFalse(picked.exists())
   }
 
   @Test

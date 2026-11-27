@@ -1,9 +1,11 @@
 // Written by Alaabrine, with assistance from Cursor (Agent).
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.session
 
 import coil3.SingletonImageLoader
 import com.github.se.amber.data.account.DeviceLocalPhone
+import com.github.se.amber.data.appointment.reminder.LocalReminders
 import com.github.se.amber.data.media.image.MediaImageMemory
 import com.github.se.amber.data.media.picture.PersonPhotoRepository
 import com.github.se.amber.data.media.picture.PersonPhotoRepositoryProvider
@@ -49,6 +51,7 @@ class SessionRepositoryProvider(
                   imageMemory = MediaImageMemory(SingletonImageLoader.get(context)),
                   cacheDir = context.cacheDir,
                   photoRepository = photoRepository,
+                  reminders = LocalReminders.android(context),
               ),
           authRepository = authRepository,
       )

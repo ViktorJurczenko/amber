@@ -1,9 +1,11 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor Agent.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
+import com.github.se.amber.data.appointment.reminder.LocalReminders
 import com.github.se.amber.data.directions.LAST_ROUTE_FILE_NAME
 import com.github.se.amber.data.directions.LAST_ROUTE_TEMPORARY_SUFFIX
 import com.github.se.amber.data.media.image.MediaImageMemory
@@ -17,14 +19,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Clears the media, the profile photos, and the last walking route this device keeps for the
- * signed-in user. Account deletion and sign-out share it, so the steps are not copied into each
- * flow.
+ * Clears the media, the profile photos, the last walking route and the appointment reminders this
+ * device keeps for the signed-in user. Account deletion and sign-out share it, so the steps are not
+ * copied into each flow.
  *
  * @param mediaRepository Holds the media kept on the phone and their pending sends.
  * @param imageMemory Holds the decoded pictures; clearLocalMedia doesn't clear these.
  * @param cacheDir The application cache, where the upload screens leave their temporary files.
  * @param photoRepository Holds the profile photos kept on the phone, including a pending one.
+ * @param reminders Holds the appointment reminders of this phone. Without clearing them, the next
+ *   user of the phone would get the old user's reminders.
  * @param ioDispatcher The dispatcher used for file operations.
  */
 class DeviceLocalPhone(
@@ -32,13 +36,15 @@ class DeviceLocalPhone(
     private val imageMemory: MediaImageMemory,
     private val cacheDir: File,
     private val photoRepository: PersonPhotoRepository,
+    private val reminders: LocalReminders,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
   /**
    * Cancels the send jobs and clears the outbox and media cache, then the profile photos kept on
-   * the phone, then the decoded pictures, then the temporary upload files. Every step is still
-   * attempted when an earlier one fails. A cancellation stops at once and is rethrown.
+   * the phone, then the decoded pictures, then the temporary upload files, then the appointment
+   * reminders. Every step is still attempted when an earlier one fails. A cancellation stops at
+   * once and is rethrown.
    *
    * @throws Exception if something couldn't be cleared: it may still be on the device. The first
    *   failure is thrown, and any later ones are added to it. Clearing can run again.
@@ -49,6 +55,7 @@ class DeviceLocalPhone(
         { photoRepository.clearLocalPhotos() },
         { imageMemory.clearAll() },
         { deleteTemporaryFiles() },
+        { reminders.clearAll() },
     )
   }
 

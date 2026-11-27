@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor (Agent).
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.session
 
@@ -61,7 +62,8 @@ class DeviceSessionRepositoryTest {
                 MediaImageMemory(imageLoader),
                 cacheDir,
                 photoRepository,
-                Dispatchers.Unconfined,
+                reminders = mockk(relaxed = true),
+                ioDispatcher = Dispatchers.Unconfined,
             ),
             authRepository,
         )

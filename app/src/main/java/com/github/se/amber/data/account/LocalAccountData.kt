@@ -1,5 +1,6 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Alaabrine, with assistance from Cursor.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
@@ -33,7 +34,8 @@ fun interface LocalAccountData {
  * otherwise make every launch fail and relaunch in a loop, and instead the next launch the user
  * makes tries again.
  *
- * @param phone Clears local media, decoded pictures and temporary upload files.
+ * @param phone Clears local media, decoded pictures, temporary upload files and this phone's
+ *   appointment reminders.
  * @param authRepository Ends the session.
  * @param firestore Keeps the documents the user read in its local cache.
  * @param marker Removed once everything is cleared, before the app restarts.

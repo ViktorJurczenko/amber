@@ -1,4 +1,5 @@
 // Written by Alaabrine, with assistance from Cursor.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.session
 
@@ -15,7 +16,8 @@ import kotlin.coroutines.cancellation.CancellationException
 fun interface SessionRepository {
 
   /**
-   * Clears local media, decoded pictures and temporary upload files, then signs out.
+   * Clears local media, decoded pictures, temporary upload files and this phone's appointment
+   * reminders, then signs out.
    *
    * [DeviceLocalPhone] runs every clearing step even when an earlier one fails. If any of them
    * fails, the session stays open and this returns that failure. A failure from
@@ -31,7 +33,8 @@ fun interface SessionRepository {
 /**
  * Clears the phone through [DeviceLocalPhone], then ends the session.
  *
- * @param phone Clears local media, decoded pictures and temporary upload files.
+ * @param phone Clears local media, decoded pictures, temporary upload files and this phone's
+ *   appointment reminders.
  * @param authRepository Ends the session once the phone is clear.
  */
 class DeviceSessionRepository(
