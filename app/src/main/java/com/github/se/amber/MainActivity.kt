@@ -5,6 +5,7 @@
 // Modified by Alaabrine, with assistance from Cursor.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber
 
@@ -30,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.github.se.amber.data.appointment.reminder.checkRemindersNow
 import com.github.se.amber.data.connectivity.ConnectivityMonitorProvider
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.resources.C
@@ -91,6 +93,15 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  /**
+   * Runs the reminder check each time the app comes to the front. A change made on another phone,
+   * or a sign-in, is then seen without waiting for the next check, up to 6 hours later.
+   */
+  override fun onStart() {
+    super.onStart()
+    checkRemindersNow(this)
   }
 }
 

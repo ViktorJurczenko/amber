@@ -12,6 +12,16 @@
     <!-- AndroidAppointmentReminderNotifier. The app doesn't ask for it yet: on Android 13 and
          later, the reminders show once the user allows notifications in the system settings -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- AlarmManagerReminderTimer: an exact timer for the next appointment reminder. Android 9 to 11
+         need no permission. Android 12 uses SCHEDULE_EXACT_ALARM, allowed by default. Android 13
+         and later use USE_EXACT_ALARM, granted at install: a calendar sending event reminders is
+         one of the uses Google Play allows -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <!-- AppointmentReminderReceiver: a restart clears the timer, so it is set again -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".AmberApplication"
@@ -56,6 +66,16 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
+
+        <!-- Runs the reminder check when the timer goes off, after a restart and after an update -->
+        <receiver
+            android:name=".data.appointment.reminder.AppointmentReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Make Apache HTTP available to older Google Maps renderers when the device provides it -->
         <uses-library

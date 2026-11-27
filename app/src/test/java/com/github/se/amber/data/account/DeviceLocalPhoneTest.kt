@@ -1,5 +1,7 @@
 // Written by Alaabrine, with assistance from Cursor.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor Agent.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
 
@@ -8,6 +10,7 @@ import coil3.memory.MemoryCache
 import com.github.se.amber.data.directions.LAST_ROUTE_FILE_NAME
 import com.github.se.amber.data.directions.LAST_ROUTE_TEMPORARY_SUFFIX
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.PersonPhotoRepository
 import com.github.se.amber.model.media.MediaRepository
 import io.mockk.coEvery
 import io.mockk.every
@@ -30,8 +33,10 @@ class DeviceLocalPhoneTest {
   @get:Rule val tempFolder = TemporaryFolder()
 
   private val mediaRepository: MediaRepository = mockk(relaxUnitFun = true)
+  private val photoRepository: PersonPhotoRepository = mockk(relaxUnitFun = true)
   private val memoryCache: MemoryCache = mockk(relaxUnitFun = true)
   private lateinit var cacheDir: File
+  private lateinit var capturedDir: File
   private lateinit var picked: File
   private lateinit var captured: File
   private lateinit var otherFile: File
@@ -42,17 +47,20 @@ class DeviceLocalPhoneTest {
   private lateinit var routeLeftover: File
   private lateinit var phone: DeviceLocalPhone
   private val calls = mutableListOf<String>()
+  private var clearReminders: suspend () -> Unit = { calls += "clearReminders" }
 
   @Before
   fun setUp() {
     coEvery { mediaRepository.clearLocalMedia() } answers { calls += "clearMedia" }
+    coEvery { photoRepository.clearLocalPhotos() } answers { calls += "clearPhotos" }
     every { memoryCache.clear() } answers { calls += "clearMemory" }
     val imageLoader =
         mockk<ImageLoader> { every { memoryCache } returns this@DeviceLocalPhoneTest.memoryCache }
     cacheDir = tempFolder.newFolder("cache")
     picked = File(cacheDir, "picked_123.jpg").apply { writeText("photo") }
+    capturedDir = File(cacheDir, "captured_pictures")
     captured =
-        File(cacheDir, "captured_pictures/captured_123.jpg").apply {
+        File(capturedDir, "captured_123.jpg").apply {
           parentFile!!.mkdirs()
           writeText("photo")
         }
@@ -75,13 +83,20 @@ class DeviceLocalPhoneTest {
             mediaRepository,
             MediaImageMemory(imageLoader),
             cacheDir,
-            Dispatchers.Unconfined,
+            photoRepository,
+            reminders = mockk { coEvery { clearAll() } coAnswers { clearReminders() } },
+            ioDispatcher = Dispatchers.Unconfined,
         )
   }
 
   @Test
-  fun clearRunsMediaThenMemoryThenTemporaryFiles() = runBlocking {
+  fun clearRunsMediaThenPhotosThenMemoryThenTemporaryFilesThenReminders() = runBlocking {
     var filesStillThere = false
+    var filesGoneBeforeReminders = false
+    clearReminders = {
+      filesGoneBeforeReminders = !picked.exists()
+      calls += "clearReminders"
+    }
     every { memoryCache.clear() } answers
         {
           filesStillThere =
@@ -94,23 +109,22 @@ class DeviceLocalPhoneTest {
     phone.clear()
 
     assertTrue(filesStillThere)
-    assertFalse(picked.exists())
-    assertFalse(captured.parentFile!!.exists())
-    assertFalse(recorded.exists())
-    assertFalse(pickedMemo.exists())
-    assertFalse(lastRoute.exists())
-    assertFalse(routeLeftover.exists())
-    assertTrue(otherFile.exists())
-    // only the copies of picked pictures go, not any file with their prefix
-    assertTrue(pickedNotAPicture.exists())
-    assertEquals(listOf("clearMedia", "clearMemory"), calls)
+    assertTemporaryFilesDeleted()
+    assertTrue(filesGoneBeforeReminders)
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory", "clearReminders"), calls)
   }
 
   @Test
   fun clearRunsEveryStepAndNamesAFileThatStays() {
     val mediaFailure = IOException("Media left")
+    val photoFailure = IOException("Photos left")
     val memoryFailure = IllegalStateException("Memory left")
     coEvery { mediaRepository.clearLocalMedia() } throws mediaFailure
+    coEvery { photoRepository.clearLocalPhotos() } answers
+        {
+          calls += "clearPhotos"
+          throw photoFailure
+        }
     every { memoryCache.clear() } throws memoryFailure
     // a folder with a file in it can't be deleted, so the temporary-file step fails too
     val stuck = File(cacheDir, "picked_0.jpg").apply { mkdir() }
@@ -121,17 +135,17 @@ class DeviceLocalPhoneTest {
     assertEquals(mediaFailure.message, error.message)
     val suppressed =
         generateSequence<Throwable>(error) { it.cause }.flatMap { it.suppressed.asList() }
-    assertEquals(memoryFailure.message, suppressed.first().message)
+    assertEquals(
+        listOf(photoFailure.message, memoryFailure.message),
+        suppressed.take(2).map { it.message }.toList(),
+    )
     val fileFailure = suppressed.last().message.orEmpty()
     assertTrue(fileFailure, fileFailure.startsWith("Could not delete 1 temporary file(s), e.g. "))
     assertTrue(fileFailure, fileFailure.contains("picked_0.jpg"))
-    assertFalse(picked.exists())
-    assertFalse(captured.exists())
-    assertFalse(recorded.exists())
-    assertFalse(pickedMemo.exists())
+    assertTemporaryFilesDeleted()
     assertTrue(stuck.exists())
-    assertTrue(otherFile.exists())
-    assertEquals(emptyList<String>(), calls)
+    // the reminders are still cleared after the earlier failures
+    assertEquals(listOf("clearPhotos", "clearReminders"), calls)
   }
 
   @Test
@@ -171,5 +185,44 @@ class DeviceLocalPhoneTest {
     assertEquals("stopped", error?.message)
     assertTrue(error?.suppressed?.isEmpty() == true)
     assertTrue(picked.exists())
+  }
+
+  @Test
+  fun aFailedReminderStepIsThrownAfterTheOtherSteps() {
+    val reminderFailure = IllegalStateException("Timer left")
+    clearReminders = { throw reminderFailure }
+
+    val error = assertThrows(IllegalStateException::class.java) { runBlocking { phone.clear() } }
+
+    assertEquals(reminderFailure, error)
+    assertEquals(listOf("clearMedia", "clearPhotos", "clearMemory"), calls)
+    assertFalse(picked.exists())
+  }
+
+  @Test
+  fun aCancelledPhotoClearStopsAtOnce() {
+    coEvery { photoRepository.clearLocalPhotos() } throws CancellationException("stopped")
+
+    val error = runCatching { runBlocking { phone.clear() } }.exceptionOrNull()
+
+    assertTrue(error is CancellationException)
+    assertEquals("stopped", error?.message)
+    assertEquals(listOf("clearMedia"), calls)
+    assertTrue(picked.exists())
+    assertTrue(captured.exists())
+    assertTrue(recorded.exists())
+    assertTrue(pickedMemo.exists())
+  }
+
+  /** The copies of picked pictures go. A file that only shares their prefix stays. */
+  private fun assertTemporaryFilesDeleted() {
+    assertFalse(picked.exists())
+    assertFalse(capturedDir.exists())
+    assertFalse(recorded.exists())
+    assertFalse(pickedMemo.exists())
+    assertFalse(lastRoute.exists())
+    assertFalse(routeLeftover.exists())
+    assertTrue(otherFile.exists())
+    assertTrue(pickedNotAPicture.exists())
   }
 }

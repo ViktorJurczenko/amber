@@ -4,6 +4,8 @@ package com.github.se.amber.data.appointment
 
 import com.github.se.amber.data.Synced
 import com.github.se.amber.model.appointment.Appointment
+import com.google.android.gms.tasks.TaskCompletionSource
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
@@ -14,6 +16,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
 import io.mockk.CapturingSlot
 import io.mockk.every
 import io.mockk.mockk
@@ -21,6 +24,7 @@ import io.mockk.slot
 import io.mockk.verify
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,9 +33,11 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -152,20 +158,102 @@ class FirebaseAppointmentRepositoryReadTest {
     assertEquals(AppointmentError.PermissionDenied(), denied.await())
   }
 
+  @Test
+  fun getAppointmentsGivesTheServersAnswerSortedByStart() = runTest {
+    val query = windowQuery()
+    every { query.get(Source.SERVER) } returns
+        Tasks.forResult(queryResult(document(physio), unreadableDocument(), document(checkUp)))
+
+    val read = repository.getAppointments(circleId, day, days = 1).getOrThrow()
+
+    assertEquals(AppointmentsRead(listOf(checkUp, physio), isFromCache = false), read)
+    verify(exactly = 0) { query.get(Source.CACHE) }
+  }
+
+  @Test
+  fun aServerTooSlowGivesTheCacheAfterFiveSeconds() = runTest {
+    val query = windowQuery()
+    // Never completes, like a server that doesn't answer
+    every { query.get(Source.SERVER) } returns TaskCompletionSource<QuerySnapshot>().task
+    every { query.get(Source.CACHE) } returns Tasks.forResult(queryResult(document(overnight)))
+
+    val read = repository.getAppointments(circleId, day, days = 1)
+
+    assertEquals(AppointmentsRead(listOf(overnight), isFromCache = true), read.getOrThrow())
+    // Written out: the repository waits 5 seconds for the server, then reads the cache
+    assertEquals(5_000L, currentTime)
+  }
+
+  @Test
+  fun offlineGivesTheCache() = runTest {
+    val query = windowQuery()
+    every { query.get(Source.SERVER) } returns
+        Tasks.forException(
+            FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+        )
+    every { query.get(Source.CACHE) } returns Tasks.forResult(queryResult(document(physio)))
+
+    assertEquals(
+        AppointmentsRead(listOf(physio), isFromCache = true),
+        repository.getAppointments(circleId, day, days = 1).getOrThrow(),
+    )
+  }
+
+  @Test
+  fun aStoppedReadIsPassedOnAndNotReportedAsAFailure() = runTest {
+    val query = windowQuery()
+    every { query.get(Source.SERVER) } returns Tasks.forCanceled()
+
+    val stopped = runCatching { repository.getAppointments(circleId, day, days = 1) }
+
+    assertTrue(stopped.exceptionOrNull() is CancellationException)
+  }
+
+  @Test
+  fun getAppointmentsChecksItsInputAndReportsARefusalWithoutReadingTheCache() = runTest {
+    assertEquals(
+        AppointmentError.InvalidCircleId(),
+        repository.getAppointments("a/b", day, days = 1).exceptionOrNull(),
+    )
+    verify(exactly = 0) { firestore.collection(any()) }
+
+    val query = windowQuery()
+    every { query.get(Source.SERVER) } returns
+        Tasks.forException(
+            FirebaseFirestoreException("denied", FirebaseFirestoreException.Code.PERMISSION_DENIED)
+        )
+
+    val read = repository.getAppointments(circleId, day, days = 1)
+
+    assertEquals(AppointmentError.PermissionDenied(), read.exceptionOrNull())
+    assertNull(read.getOrNull())
+    verify(exactly = 0) { query.get(Source.CACHE) }
+  }
+
   /**
    * Stubs the query of the day: `lastEndAt > dayStart` and `startAt < dayEnd`. Only that query is
-   * stubbed, so both ends of the window must be sent to the server. Only the call with INCLUDE is
-   * stubbed, so the sync flag must be asked for.
+   * stubbed, so both ends of the window must be sent to the server.
+   *
+   * @return the query of the day.
+   */
+  private fun windowQuery(): Query {
+    val notOver = mockk<Query>()
+    val ofTheDay = mockk<Query>()
+    every { appointments.whereGreaterThan("lastEndAt", dayStart) } returns notOver
+    every { notOver.whereLessThan("startAt", dayEnd) } returns ofTheDay
+    return ofTheDay
+  }
+
+  /**
+   * Stubs the query of the day, and its listener. Only the call with INCLUDE is stubbed, so the
+   * sync flag must be asked for.
    *
    * @return the slot that receives the snapshot listener.
    */
   private fun stubWindowQuery(): CapturingSlot<EventListener<QuerySnapshot>> {
     val listener = slot<EventListener<QuerySnapshot>>()
-    val notOver = mockk<Query>()
-    val ofTheDay = mockk<Query>()
-    every { appointments.whereGreaterThan("lastEndAt", dayStart) } returns notOver
-    every { notOver.whereLessThan("startAt", dayEnd) } returns ofTheDay
-    every { ofTheDay.addSnapshotListener(MetadataChanges.INCLUDE, capture(listener)) } returns
+    val query = windowQuery()
+    every { query.addSnapshotListener(MetadataChanges.INCLUDE, capture(listener)) } returns
         mockk<ListenerRegistration>(relaxed = true)
     return listener
   }
