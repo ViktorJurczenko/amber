@@ -208,7 +208,8 @@ fun DisplayPatientButton(
 }
 
 /**
- * Displays a circular patient button holding an icon, or a loading spinner.
+ * Displays a patient button holding an icon, or a loading spinner. It is round unless [shape] says
+ * otherwise, such as the rounded square of a map control.
  *
  * [DisplayPatientButton] always includes a text label and a width fraction, so an icon-only control
  * uses its own container color, content color, and height. The content description is set on the
