@@ -32,6 +32,7 @@ import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.model.validation.InputValidation
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import com.github.se.amber.ui.utils.UiText
 import com.github.se.amber.ui.utils.errorText
 import java.io.File
@@ -111,9 +112,6 @@ class PersonNotTaggedException(val error: MediaViewModelErrorMessage) : Exceptio
  */
 fun unknownMemberLabel(number: Int): UiText =
     UiText.Resource(R.string.unknownMember, listOf(number))
-
-/** The fewest characters a place search needs before it is sent. */
-const val MIN_PLACE_QUERY_LENGTH = 3
 
 /**
  * Represents where the media was made: the place the user searches for, and the place picked.

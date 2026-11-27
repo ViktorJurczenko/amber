@@ -17,6 +17,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -111,6 +113,12 @@ class MapScreenTest {
     )
   }
 
+  private fun waitForSuggestion() {
+    composeTestRule.waitUntil(TIME_OUT) {
+      composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).fetchSemanticsNodes().isNotEmpty()
+    }
+  }
+
   @Test
   fun mapDisplaysControlsAndRoutesSearchAndTabActions() {
     // Render the screen with local repositories and replaceable model/camera state
@@ -145,9 +153,7 @@ class MapScreenTest {
     // Act and assert: selecting a search suggestion updates the query and closes the popup.
     val search = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     search.performTextInput("Laus")
-    composeTestRule.waitUntil(TIME_OUT) {
-      viewModel.placeSearchState.value.suggestions.isNotEmpty()
-    }
+    waitForSuggestion()
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
     search.assertTextEquals("Lausanne")
@@ -166,20 +172,16 @@ class MapScreenTest {
   @Test
   fun mapPreviewDisplaysMapAndPatientNavigation() {
     // Arrange: start with the default preview, then supply a model with an existing query.
-    val suppliedModel = createViewModel().apply { updateSearchQuery("La") }
-    val useSuppliedModel = mutableStateOf(false)
-    composeTestRule.setContent {
-      if (useSuppliedModel.value) MapScreenPreview(viewModel = suppliedModel)
-      else MapScreenPreview()
-    }
+    val viewModel = createViewModel().apply { updateSearchQuery("La") }
+    composeTestRule.setContent { MapScreenPreview(viewModel = viewModel) }
 
     // Assert: the default preview renders the map and selects the patient map tab.
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Map))
         .assertIsSelected()
+
     // Act and assert: the preview reflects the supplied model's query after replacement.
-    composeTestRule.runOnIdle { useSuppliedModel.value = true }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertTextEquals("La")
   }
 
@@ -253,7 +255,7 @@ class MapScreenTest {
 
     // Search with a suggestion: the IME action selects it and dismisses the popup.
     search.performTextInput("usanne")
-    composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.suggestions.isNotEmpty() }
+    waitForSuggestion()
     search.performImeAction()
     composeTestRule.waitUntil(5_000) { viewModel.placeSearchState.value.selectedPlace == place }
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
@@ -298,46 +300,38 @@ class MapScreenTest {
   private val TIME_OUT = 5_000L
 
   @Test
-  fun withoutPermissionTheCardAsksToAllowLocation_andTheMapStaysVisible() {
-    // Arrange: deny location access without displaying a real system permission dialog.
-    showMap(createViewModel(permissionStatus = { false }), FakePermissionRegistryOwner(denied))
-
-    // Assert: permission guidance is visible alongside the map.
-    composeTestRule.onNodeWithText(text(R.string.patientMapPermissionNeeded)).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
-  }
-
-  @Test
-  fun withoutPermissionTheRequestIsLaunchedOnceOnEntry_and_TappingRecenterWithoutPermissionAsksAgain() {
-    // Arrange: record permission requests while consistently denying access.
-    val registry = FakePermissionRegistryOwner(denied)
-    showMap(createViewModel(permissionStatus = { false }), registry)
-    composeTestRule.waitForIdle()
-
-    // Assert: entering the screen requests permission exactly once.
-    assertEquals(1, registry.requestCount.get())
-
-    // Act and assert: recenter explicitly requests permission again.
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
-    assertEquals(2, registry.requestCount.get())
-  }
-
-  @Test
-  fun grantingThePermissionLaterReplacesThePermissionCard() {
-    // Arrange: start with denied permission and a provider that is still searching.
+  fun permissionFlow_asksOnEntryAndOnRecenter_thenGrantReplacesThePermissionCard() {
+    // Arrange: deny location access without showing a real system permission dialog.
     val granted = AtomicBoolean(false)
     val viewModel = createViewModel(permissionStatus = { granted.get() })
-    showMap(viewModel, FakePermissionRegistryOwner(denied))
+    val registry = FakePermissionRegistryOwner(denied)
+    showMap(viewModel, registry)
+    composeTestRule.waitForIdle()
 
-    // Act: simulate granting permission externally, then refresh the model's permission state.
+    // Without permission: the guidance and the map are visible, and entering the screen requests
+    // permission exactly once
+    composeTestRule.onNodeWithText(text(R.string.patientMapPermissionNeeded)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
+    assertEquals(1, registry.requestCount.get())
+
+    // Recenter asks for permission again.
+    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, registry.requestCount.get())
+
+    // Act: simulate granting permission externally, then refresh the ViewModel's permission state.
     granted.set(true)
     composeTestRule.runOnIdle { viewModel.refreshPermission() }
     composeTestRule.waitUntil(TIME_OUT) {
-      viewModel.locationState.value == MediaMapLocationState.Searching
+      composeTestRule
+          .onAllNodesWithText(text(R.string.patientMapSearching))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
 
-    // Assert: the searching card replaces the permission guidance.
+    // The searching status replaces the permission guidance.
     composeTestRule.onNodeWithText(text(R.string.patientMapSearching)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.patientMapPermissionNeeded)).assertDoesNotExist()
   }
 
   @Test

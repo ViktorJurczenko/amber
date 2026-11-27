@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by MeiliV, with assistance from OpenAI Codex.
 
 package com.github.se.amber.ui.map
 
@@ -26,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.ui.Alignment
@@ -43,8 +43,8 @@ import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.DIVIDER_THICKNESS
-import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
 import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
@@ -140,20 +140,26 @@ internal fun MapSearchField(
 
           // Loading and error messages take priority over suggestions from an earlier search
           when {
-            state.query.trim().length < MAP_MIN_PLACE_QUERY_LENGTH ->
+            state.query.trim().length < MIN_PLACE_QUERY_LENGTH ->
                 MapSearchHint(
                     pluralStringResource(
                         R.plurals.locationQueryTooShort,
-                        MAP_MIN_PLACE_QUERY_LENGTH,
-                        MAP_MIN_PLACE_QUERY_LENGTH,
+                        MIN_PLACE_QUERY_LENGTH,
+                        MIN_PLACE_QUERY_LENGTH,
                     )
                 )
             state.isSearching -> MapSearchHint(stringResource(R.string.locationSearching))
             state.searchFailed -> {
               MapSearchHint(stringResource(R.string.patientMapSearchFailed))
-              TextButton(onClick = onRetrySearch) {
-                Text(stringResource(R.string.locationTryAgain))
-              }
+              DisplayPatientButton(
+                  modifier =
+                      Modifier.align(Alignment.CenterHorizontally).padding(PATIENT_PADDING_SMALL),
+                  onClick = onRetrySearch,
+                  text = stringResource(R.string.locationTryAgain),
+                  textStyle = MaterialTheme.typography.bodyMedium,
+                  buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
+                  fillWidth = false,
+              )
             }
             state.hasSearched && state.suggestions.isEmpty() ->
                 MapSearchHint(stringResource(R.string.patientMapNoPlaceFound))

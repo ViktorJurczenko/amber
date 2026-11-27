@@ -98,9 +98,11 @@ val TEXT_FIELD_SMALL = 56.dp
 val TEXT_FIELD_DEFAULT = 70.dp
 val TEXT_FIELD_BIG = 200.dp
 
-// ------- MAX -------
-
+// ------- MIN -------
+const val MIN_PLACE_QUERY_LENGTH = 3 // The fewest characters a place search needs before it is sent
 const val MIN_LINE_DEFAULT = 1
+
+// ------- MAX -------
 const val MAX_LINE_DEFAULT = 2
 const val MAX_LINE_DESCRIPTION = 5
 
@@ -108,9 +110,7 @@ const val MAX_CHAR_DEFAULT = 20
 // The limits themselves are in InputValidation, which the ViewModels enforce
 const val MAX_CHAR_DESCRIPTION = InputValidation.DESCRIPTION_MAX_LENGTH
 const val MAX_CHAR_PLACE_SEARCH = InputValidation.PLACE_QUERY_MAX_LENGTH
-const val MAP_MIN_PLACE_QUERY_LENGTH = 3
 const val MAX_CHAR_NAME = InputValidation.NAME_MAX_LENGTH
-
 const val MAX_VISIBLE_ITEM = 5 // Number of items visible at once in the Date Pickers
 
 // ------- DATE PICKER CONSTANTS -------

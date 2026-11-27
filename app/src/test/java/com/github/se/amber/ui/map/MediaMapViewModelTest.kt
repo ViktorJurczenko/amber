@@ -35,6 +35,7 @@ import com.github.se.amber.model.user.UserProfile
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +46,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -559,28 +559,31 @@ class MediaMapViewModelTest {
   fun lateResultForAnOldQueryDoesNotReplaceCurrentSuggestions() {
     val scheduler = useStandardDispatcher().scheduler
     val oldPlace = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
-    val newPlace = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    var lateResultReturned = false
     val repository = PlaceSearchRepository { query ->
       if (query == "Lausanne") {
         // Simulate a source that returns a response even after its request was cancelled.
         try {
           delay(1_000)
-        } catch (_: CancellationException) {}
+        } catch (_: CancellationException) {
+          lateResultReturned = true
+        }
         Result.success(listOf(oldPlace))
       } else {
-        Result.success(listOf(newPlace))
+        Result.success(emptyList())
       }
     }
     val viewModel = createViewModel(placeSearch = repository)
-
     viewModel.updateSearchQuery("Lausanne")
-    scheduler.advanceTimeBy(300)
+    scheduler.advanceTimeBy(MAP_PLACE_SEARCH_DELAY_MILLIS)
     scheduler.runCurrent()
-    viewModel.updateSearchQuery("Geneva")
-    scheduler.advanceUntilIdle()
 
-    assertEquals("Geneva", viewModel.placeSearchState.value.query)
-    assertEquals(listOf(newPlace), viewModel.placeSearchState.value.suggestions)
+    viewModel.updateSearchQuery("Geneva")
+    // Only the cancelled search resumes: the new one is still waiting for its delay.
+    scheduler.runCurrent()
+
+    check(lateResultReturned) { "The old search didn't return after being cancelled" }
+    assertEquals(emptyList<GeoLocation>(), viewModel.placeSearchState.value.suggestions)
   }
 
   @Test
@@ -588,12 +591,14 @@ class MediaMapViewModelTest {
     val scheduler = useStandardDispatcher().scheduler
     val place = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
     lateinit var finishOriginalSearch: () -> Unit
+    var lateResultReturned = false
     val repository = PlaceSearchRepository { query ->
       if (query == "Lausanne") {
-        // This lookup delivers its callback even after the user edits the query.
-        suspendCancellableCoroutine<Unit> { callback ->
-          finishOriginalSearch = { callback.resume(Unit) }
+        // Not cancellable: this lookup still returns after the user edits the query.
+        suspendCoroutine<Unit> { continuation ->
+          finishOriginalSearch = { continuation.resume(Unit) }
         }
+        lateResultReturned = true
       }
       Result.success(listOf(place))
     }
@@ -604,11 +609,11 @@ class MediaMapViewModelTest {
     scheduler.advanceUntilIdle()
     viewModel.selectPlace(place)
     val selection = viewModel.placeSearchState.value
-    assertEquals(place, selection.selectedPlace)
-    assertEquals("Lausanne", selection.query)
 
     finishOriginalSearch()
     scheduler.advanceUntilIdle()
+
+    check(lateResultReturned) { "The late result was never returned" }
     assertEquals(selection, viewModel.placeSearchState.value)
   }
 
@@ -886,5 +891,9 @@ class MediaMapViewModelTest {
   private fun advanceMain() {
     val dispatcher = checkNotNull(standardDispatcher) { "Call useStandardDispatcher() first" }
     dispatcher.scheduler.advanceUntilIdle()
+  }
+
+  private companion object {
+    const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
   }
 }

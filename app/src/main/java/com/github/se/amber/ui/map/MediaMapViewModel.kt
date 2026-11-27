@@ -30,7 +30,7 @@ import com.github.se.amber.model.location.isPreciseWithin
 import com.github.se.amber.model.location.nearby
 import com.github.se.amber.model.location.pointOrNull
 import com.github.se.amber.model.validation.InputValidation
-import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -158,6 +158,7 @@ sealed interface MapRecenterAction {
  * @param isSearching Whether a place lookup is in progress.
  * @param searchFailed Whether the latest lookup failed and can be retried.
  * @param hasSearched Whether a lookup completed, allowing an empty result to be shown.
+ * @param cameraTarget Selected place the camera still has to move to; null once handled.
  */
 data class MapPlaceSearchState(
     val query: String = "",
@@ -166,6 +167,7 @@ data class MapPlaceSearchState(
     val isSearching: Boolean = false,
     val searchFailed: Boolean = false,
     val hasSearched: Boolean = false,
+    val cameraTarget: GeoLocation? = null,
 )
 
 /**
@@ -342,7 +344,7 @@ class MediaMapViewModel(
       return
     }
     placeSearchJob?.cancel()
-    val shouldSearch = cleaned.trim().length >= MAP_MIN_PLACE_QUERY_LENGTH
+    val shouldSearch = cleaned.trim().length >= MIN_PLACE_QUERY_LENGTH
     _placeSearchState.value = MapPlaceSearchState(query = cleaned, isSearching = shouldSearch)
     if (shouldSearch) searchPlaces(cleaned)
   }
@@ -363,7 +365,11 @@ class MediaMapViewModel(
   fun selectPlace(place: GeoLocation) {
     if (place !in _placeSearchState.value.suggestions || place.pointOrNull() == null) return
     _placeSearchState.value =
-        MapPlaceSearchState(query = place.placeName.orEmpty(), selectedPlace = place)
+        MapPlaceSearchState(
+            query = place.placeName.orEmpty(),
+            selectedPlace = place,
+            cameraTarget = place,
+        )
   }
 
   /**
@@ -393,6 +399,11 @@ class MediaMapViewModel(
               },
           )
     }
+  }
+
+  /** Marks the camera move to the selected place as handled, so it isn't replayed. */
+  fun onCameraTargetHandled() {
+    _placeSearchState.value = _placeSearchState.value.copy(cameraTarget = null)
   }
 
   /** Clears the non-blocking error message. */

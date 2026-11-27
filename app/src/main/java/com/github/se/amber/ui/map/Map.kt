@@ -138,11 +138,15 @@ fun MapScreen(
 
   // A chosen suggestion takes priority over the initial GPS centering
   // Marking the initial centering complete keeps later GPS updates from moving the selected place
-  LaunchedEffect(placeSearchState.selectedPlace) {
-    placeSearchState.selectedPlace?.pointOrNull()?.let { (lat, lng) ->
-      centeredOnFreshPosition = true
+  LaunchedEffect(placeSearchState.cameraTarget) {
+    val (lat, lng) = placeSearchState.cameraTarget?.pointOrNull() ?: return@LaunchedEffect
+    centeredOnFreshPosition = true
+    // Launched outside this effect: clearing the target restarts the effect,
+    // which would otherwise cancel the animation.
+    cameraScope.launch {
       cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), SEARCH_ZOOM))
     }
+    viewModel.onCameraTargetHandled()
   }
 
   Scaffold(

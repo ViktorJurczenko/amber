@@ -30,6 +30,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.model.location.GeoLocation
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

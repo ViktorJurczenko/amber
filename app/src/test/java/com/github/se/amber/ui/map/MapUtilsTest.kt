@@ -24,7 +24,7 @@ import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.MAP_MIN_PLACE_QUERY_LENGTH
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -166,8 +166,8 @@ class MapUtilsTest {
     val shortHint =
         context.resources.getQuantityString(
             R.plurals.locationQueryTooShort,
-            MAP_MIN_PLACE_QUERY_LENGTH,
-            MAP_MIN_PLACE_QUERY_LENGTH,
+            MIN_PLACE_QUERY_LENGTH,
+            MIN_PLACE_QUERY_LENGTH,
         )
     composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
 
