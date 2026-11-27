@@ -4,9 +4,12 @@ package com.github.se.amber.data.appointment
 
 import com.github.se.amber.data.Synced
 import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
+import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.authentication.AuthRepository
+import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.authentication.AuthUser
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.user.UserProfile
@@ -14,6 +17,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.mockk.verify
 import java.time.LocalDate
 import java.time.ZoneId
@@ -232,6 +237,20 @@ class UserAppointmentsObserverTest {
     assertEquals(1, AppointmentWindow().days)
   }
 
+  @Test
+  fun byDefaultThePatientRepositoriesComeFromTheProviders() = runTest {
+    save(FIRST_CIRCLE, "first", LocalDate.of(2026, 11, 12))
+    val ids = withDefaultProviders { loadedIds(isPatient = true, UserAppointmentsObserver()) }
+    assertEquals(listOf("first"), ids)
+  }
+
+  @Test
+  fun byDefaultTheActiveCircleComesFromItsProvider() = runTest {
+    save(SECOND_CIRCLE, "second", LocalDate.of(2026, 11, 12))
+    val ids = withDefaultProviders { loadedIds(isPatient = false, UserAppointmentsObserver()) }
+    assertEquals(listOf("second"), ids)
+  }
+
   // ---------- helpers ----------
 
   private fun observer(
@@ -276,11 +295,43 @@ class UserAppointmentsObserverTest {
   }
 
   /** The ids in November, once the list has loaded. */
-  private suspend fun loadedIds(isPatient: Boolean): List<String> =
-      observer()
+  private suspend fun loadedIds(
+      isPatient: Boolean,
+      observer: UserAppointmentsObserver = observer(),
+  ): List<String> =
+      observer
           .observeUserAppointments(isPatient, flowOf(november))
           .first { it.ids().isNotEmpty() }
           .ids()
+
+  /**
+   * Runs [block] while the default providers give the fakes of this test, so that an observer built
+   * without arguments never opens Firebase.
+   */
+  private suspend fun <T> withDefaultProviders(block: suspend () -> T): T {
+    mockkObject(
+        AuthRepositoryProvider,
+        AppointmentRepositoryProvider.Companion,
+        ProfileRepositoryProvider.Companion,
+        ActiveCircleRepositoryProvider.Companion,
+    )
+    every { AuthRepositoryProvider.repository } returns authRepo
+    every { AppointmentRepositoryProvider.default } returns
+        AppointmentRepositoryProvider { appointments }
+    every { ProfileRepositoryProvider.default } returns ProfileRepositoryProvider { profileRepo }
+    every { ActiveCircleRepositoryProvider.default } returns
+        ActiveCircleRepositoryProvider { activeCircleRepo }
+    return try {
+      block()
+    } finally {
+      unmockkObject(
+          AuthRepositoryProvider,
+          AppointmentRepositoryProvider.Companion,
+          ProfileRepositoryProvider.Companion,
+          ActiveCircleRepositoryProvider.Companion,
+      )
+    }
+  }
 
   private fun Result<List<Appointment>>.ids(): List<String> = getOrThrow().map { it.id }
 
