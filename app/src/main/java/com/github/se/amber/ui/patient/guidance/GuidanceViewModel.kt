@@ -40,11 +40,14 @@ import com.github.se.amber.model.location.MediaMarker
 import com.github.se.amber.model.location.Place
 import com.github.se.amber.model.location.isSamePlace
 import com.github.se.amber.model.location.pointOrNull
+import com.github.se.amber.ui.caregiver.upload.media.MIN_PLACE_QUERY_LENGTH
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -174,8 +177,8 @@ sealed interface GuidancePhase {
  * @param destinations the places to choose from: today's next appointment with a place, then the
  *   saved places, then the memory places, each by name.
  * @param searchQuery the address typed in the search field.
- * @param searchResults the places found for the last search.
- * @param isSearching whether a search is running.
+ * @param searchResults the places found for the typed address.
+ * @param isSearching whether a search is waiting for the patient to stop typing, or running.
  * @param searchErrorRes why the last search failed, as a string resource, or null.
  */
 data class GuidanceUIState(
@@ -239,44 +242,62 @@ class GuidanceViewModel(
   private var newRouteJob: Job? = null
   private var offRoutePositions = 0
   private var newRoutes = 0
-  // Only the last search may clear isSearching
-  private var lastSearch = 0
+  // Waits for the patient to stop typing, then searches
+  private var searchJob: Job? = null
 
   init {
     loadDestinations()
   }
 
-  /** Stores [query] as the address to search for. */
+  /**
+   * Stores [query] as the address to search for, and searches it once the patient stops typing, as
+   * the media upload does: the search goes over the network, so not on every key. Too short a query
+   * clears the results.
+   */
   fun setSearchQuery(query: String) {
-    _uiState.update { it.copy(searchQuery = query, searchErrorRes = null) }
+    searchJob?.cancel()
+    val willSearch = query.isLongEnoughToSearch()
+    _uiState.update {
+      it.copy(
+          searchQuery = query,
+          searchResults = emptyList(),
+          isSearching = willSearch,
+          searchErrorRes = null,
+      )
+    }
+    if (willSearch) {
+      searchJob = viewModelScope.launch {
+        delay(SEARCH_DEBOUNCE)
+        searchPlaces(query)
+      }
+    }
   }
 
-  /** Searches for the typed address. A blank one clears the results. */
+  /** Searches the typed address now, e.g. to try again after a failed search. */
   fun search() {
     val query = _uiState.value.searchQuery
-    val search = ++lastSearch
-    if (query.isBlank()) {
-      _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
-      return
-    }
+    if (!query.isLongEnoughToSearch()) return
+    searchJob?.cancel()
     _uiState.update { it.copy(isSearching = true, searchErrorRes = null) }
-    viewModelScope.launch {
-      val result = placeSearchRepository.search(query)
-      if (search != lastSearch) return@launch // a newer search replaces it
-      result
-          .onSuccess { places ->
-            val found = places.mapIndexedNotNull { index, place ->
-              place.toSearchResult(index, query)
-            }
-            _uiState.update { it.copy(searchResults = found, isSearching = false) }
+    searchJob = viewModelScope.launch { searchPlaces(query) }
+  }
+
+  /** Shows the places found for [query]. A newer search cancels this one before it shows. */
+  private suspend fun searchPlaces(query: String) {
+    placeSearchRepository
+        .search(query)
+        .onSuccess { places ->
+          val found = places.mapIndexedNotNull { index, place ->
+            place.toSearchResult(index, query)
           }
-          .onFailure { e ->
-            Log.e(TAG, "Error searching for a place", e)
-            _uiState.update {
-              it.copy(isSearching = false, searchErrorRes = R.string.guidanceSearchError)
-            }
+          _uiState.update { it.copy(searchResults = found, isSearching = false) }
+        }
+        .onFailure { e ->
+          Log.e(TAG, "Error searching for a place", e)
+          _uiState.update {
+            it.copy(isSearching = false, searchErrorRes = R.string.guidanceSearchError)
           }
-    }
+        }
   }
 
   /** Finds the route to [destination] from the patient's position, to confirm before starting. */
@@ -298,7 +319,10 @@ class GuidanceViewModel(
       routeRepository
           .walkingRoute(from, destination.point)
           .onSuccess { phase = GuidancePhase.Confirming(destination, it) }
-          .onFailure { phase = GuidancePhase.Problem(problemFor(it), destination) }
+          .onFailure {
+            Log.e(TAG, "Error finding the route", it)
+            phase = GuidancePhase.Problem(problemFor(it), destination)
+          }
     }
   }
 
@@ -501,6 +525,9 @@ class GuidanceViewModel(
 
   private companion object {
     const val TAG = "GuidanceViewModel"
+
+    /** How long the patient must stop typing before their search is sent. */
+    val SEARCH_DEBOUNCE = 300.milliseconds
   }
 }
 
@@ -516,6 +543,9 @@ private fun problemFor(error: Throwable): GuidanceProblem =
 /** Whether this position is fresh and precise enough to move the guidance on. */
 private fun DevicePosition.isUsableForGuidance(): Boolean =
     !isLastKnown && (accuracyMeters == null || accuracyMeters <= GUIDANCE_MAX_ACCURACY_METERS)
+
+/** Whether this query is long enough to search, as in the media upload. */
+private fun String.isLongEnoughToSearch() = trim().length >= MIN_PLACE_QUERY_LENGTH
 
 private fun DevicePosition.toRoutePoint() = RoutePoint(lat, lng)
 

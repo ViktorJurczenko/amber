@@ -39,6 +39,7 @@ import com.github.se.amber.model.location.SAME_PLACE_RADIUS_METERS
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
+import com.github.se.amber.ui.caregiver.upload.media.MIN_PLACE_QUERY_LENGTH
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -108,9 +109,11 @@ class GuidanceViewModelTest {
   // Precise enough to move the guidance on
   private val accuracy = (GUIDANCE_MAX_ACCURACY_METERS / 2).toFloat()
 
+  private val dispatcher = UnconfinedTestDispatcher()
+
   @Before
   fun setUp() {
-    Dispatchers.setMain(UnconfinedTestDispatcher())
+    Dispatchers.setMain(dispatcher)
     coEvery { profiles.getCurrentProfile() } returns Result.success(patient)
     every { activeCircle.activeCircleId(any(), any()) } returns flowOf("circle1")
     every { savedPlaces.observePlaces(any()) } returns flowOf(emptyList())
@@ -434,17 +437,29 @@ class GuidanceViewModelTest {
     assertEquals(1, viewModel.guiding.stepIndex)
   }
 
+  /** Types [query] in the search field, then waits until the patient would have stopped typing. */
+  private fun GuidanceViewModel.type(query: String) {
+    setSearchQuery(query)
+    dispatcher.scheduler.advanceUntilIdle()
+  }
+
   @Test
-  fun search_keepsPlacesWithAPoint_showsFailures_andABlankQueryClears() {
+  fun typing_searchesOnceThePatientStops_keepsPlacesWithAPoint_andShowsFailures() {
+    var searches = 0
     search = PlaceSearchRepository {
+      searches++
       Result.success(
           listOf(at(END, "Lausanne, Switzerland"), GeoLocation(placeName = "Nowhere"), at(START))
       )
     }
     val viewModel = createViewModel()
 
-    viewModel.setSearchQuery("Lausanne")
-    viewModel.search()
+    viewModel.setSearchQuery("Laus")
+    viewModel.setSearchQuery("Lausan")
+    assertTrue(viewModel.uiState.value.isSearching)
+    assertEquals(0, searches)
+    viewModel.type("Lausanne")
+    assertEquals(1, searches)
     assertEquals(
         listOf("Lausanne, Switzerland", "Lausanne"),
         viewModel.uiState.value.searchResults.map { it.name },
@@ -452,14 +467,32 @@ class GuidanceViewModelTest {
     assertFalse(viewModel.uiState.value.isSearching)
 
     search = PlaceSearchRepository { Result.failure(IllegalStateException("offline")) }
-    viewModel.search()
+    viewModel.type("Renens")
     assertEquals(R.string.guidanceSearchError, viewModel.uiState.value.searchErrorRes)
     assertFalse(viewModel.uiState.value.isSearching)
 
-    viewModel.setSearchQuery(" ")
-    assertNull(viewModel.uiState.value.searchErrorRes)
+    search = PlaceSearchRepository { Result.success(listOf(at(END, "Renens"))) }
     viewModel.search()
+    assertNull(viewModel.uiState.value.searchErrorRes)
+    assertEquals(listOf("Renens"), viewModel.uiState.value.searchResults.map { it.name })
+  }
+
+  @Test
+  fun aQueryTooShort_isNotSearched_andClearsTheResults() {
+    var searches = 0
+    search = PlaceSearchRepository {
+      searches++
+      Result.success(listOf(at(END, "Lausanne")))
+    }
+    val viewModel = createViewModel()
+    viewModel.type("Lausanne")
+
+    viewModel.type(" " + "L".repeat(MIN_PLACE_QUERY_LENGTH - 1) + " ")
+    viewModel.search()
+
+    assertEquals(1, searches)
     assertTrue(viewModel.uiState.value.searchResults.isEmpty())
+    assertFalse(viewModel.uiState.value.isSearching)
   }
 
   @Test
@@ -467,13 +500,11 @@ class GuidanceViewModelTest {
     val older = CompletableDeferred<Result<List<GeoLocation>>>()
     search = PlaceSearchRepository { older.await() }
     val viewModel = createViewModel()
-    viewModel.setSearchQuery("Lau")
-    viewModel.search()
+    viewModel.type("Lau")
     assertTrue(viewModel.uiState.value.isSearching)
 
     search = PlaceSearchRepository { Result.success(listOf(at(END, "Lausanne"))) }
-    viewModel.setSearchQuery("Lausanne")
-    viewModel.search()
+    viewModel.type("Lausanne")
     older.complete(Result.success(listOf(at(START, "Laupen"))))
 
     assertEquals(listOf("Lausanne"), viewModel.uiState.value.searchResults.map { it.name })
@@ -562,8 +593,7 @@ class GuidanceViewModelTest {
     search = PlaceSearchRepository { Result.success(listOf(at(END, "Lausanne"))) }
     val viewModel = createViewModel()
 
-    viewModel.setSearchQuery("Lausanne")
-    viewModel.search()
+    viewModel.type("Lausanne")
 
     assertTrue(viewModel.uiState.value.destinations.isEmpty())
     assertEquals(listOf("Lausanne"), viewModel.uiState.value.searchResults.map { it.name })
