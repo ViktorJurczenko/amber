@@ -41,7 +41,6 @@ import com.github.se.amber.model.location.Place
 import com.github.se.amber.model.location.isSamePlace
 import com.github.se.amber.model.location.pointOrNull
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -461,7 +460,7 @@ class GuidanceViewModel(
 
   /** Today's next appointment that isn't over and has a place, kept up to date. */
   private fun nextAppointment(circleId: String): Flow<Appointment?> {
-    val today = LocalDate.ofInstant(Instant.ofEpochMilli(nowMillis()), zone)
+    val today = Instant.ofEpochMilli(nowMillis()).atZone(zone).toLocalDate()
     val window = dayWindow(today, GUIDANCE_APPOINTMENT_DAYS, zone)
     return appointmentRepository
         .observeAppointments(circleId, today, GUIDANCE_APPOINTMENT_DAYS)
