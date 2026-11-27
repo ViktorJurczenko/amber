@@ -465,6 +465,13 @@ class GuidanceViewModelTest {
         viewModel.uiState.value.searchResults.map { it.name },
     )
     assertFalse(viewModel.uiState.value.isSearching)
+    assertFalse(viewModel.uiState.value.noSearchResults)
+
+    search = PlaceSearchRepository { Result.success(listOf(GeoLocation(placeName = "Nowhere"))) }
+    viewModel.type("Nowhere")
+    assertTrue(viewModel.uiState.value.noSearchResults)
+    viewModel.setSearchQuery("Nowhere at all")
+    assertFalse(viewModel.uiState.value.noSearchResults)
 
     search = PlaceSearchRepository { Result.failure(IllegalStateException("offline")) }
     viewModel.type("Renens")

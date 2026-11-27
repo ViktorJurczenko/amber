@@ -180,6 +180,7 @@ sealed interface GuidancePhase {
  * @param searchResults the places found for the typed address.
  * @param isSearching whether a search is waiting for the patient to stop typing, or running.
  * @param searchErrorRes why the last search failed, as a string resource, or null.
+ * @param noSearchResults whether the search for the typed address found no place.
  */
 data class GuidanceUIState(
     val phase: GuidancePhase = GuidancePhase.Choosing,
@@ -188,6 +189,7 @@ data class GuidanceUIState(
     val searchResults: List<GuidanceDestination> = emptyList(),
     val isSearching: Boolean = false,
     @param:StringRes val searchErrorRes: Int? = null,
+    val noSearchResults: Boolean = false,
 )
 
 /**
@@ -263,6 +265,7 @@ class GuidanceViewModel(
           searchResults = emptyList(),
           isSearching = willSearch,
           searchErrorRes = null,
+          noSearchResults = false,
       )
     }
     if (willSearch) {
@@ -290,7 +293,9 @@ class GuidanceViewModel(
           val found = places.mapIndexedNotNull { index, place ->
             place.toSearchResult(index, query)
           }
-          _uiState.update { it.copy(searchResults = found, isSearching = false) }
+          _uiState.update {
+            it.copy(searchResults = found, isSearching = false, noSearchResults = found.isEmpty())
+          }
         }
         .onFailure { e ->
           Log.e(TAG, "Error searching for a place", e)
