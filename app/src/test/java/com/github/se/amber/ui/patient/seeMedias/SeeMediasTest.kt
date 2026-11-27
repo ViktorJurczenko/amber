@@ -1,5 +1,6 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient.seeMedias
 
@@ -52,6 +53,11 @@ class SeeMediasScreenTest {
         .assertIsDisplayed()
 
     composeTestRule
+        .onNodeWithTag(SeeMediasTestTags.TEXTS_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
+
+    composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.BOTTOM_NAVIGATION_MENU)
         .assertIsDisplayed()
   }
@@ -60,12 +66,14 @@ class SeeMediasScreenTest {
   fun clickingButtons_triggersTheMatchingCallbackOnly() {
     var pictureClicks = 0
     var audioClicks = 0
+    var textClicks = 0
 
     composeTestRule.setContent {
       SeeMediasScreen(
           viewModel = viewModel,
           onSeePictureClick = { pictureClicks++ },
           onSeeAudioClick = { audioClicks++ },
+          onSeeTextClick = { textClicks++ },
       )
     }
 
@@ -73,10 +81,13 @@ class SeeMediasScreenTest {
         .onNodeWithTag(SeeMediasTestTags.PICTURES_BUTTON)
         .performScrollTo()
         .performClick()
-    assertEquals(listOf(1, 0), listOf(pictureClicks, audioClicks))
+    assertEquals(listOf(1, 0, 0), listOf(pictureClicks, audioClicks, textClicks))
 
     composeTestRule.onNodeWithTag(SeeMediasTestTags.AUDIOS_BUTTON).performScrollTo().performClick()
-    assertEquals(listOf(1, 1), listOf(pictureClicks, audioClicks))
+    assertEquals(listOf(1, 1, 0), listOf(pictureClicks, audioClicks, textClicks))
+
+    composeTestRule.onNodeWithTag(SeeMediasTestTags.TEXTS_BUTTON).performScrollTo().performClick()
+    assertEquals(listOf(1, 1, 1), listOf(pictureClicks, audioClicks, textClicks))
   }
 
   @Test
@@ -107,6 +118,7 @@ class SeeMediasScreenTest {
         .performScrollTo()
         .performClick()
     composeTestRule.onNodeWithTag(SeeMediasTestTags.AUDIOS_BUTTON).performScrollTo().performClick()
+    composeTestRule.onNodeWithTag(SeeMediasTestTags.TEXTS_BUTTON).performScrollTo().performClick()
 
     composeTestRule.onNodeWithTag(SeeMediasTestTags.TITLE).assertIsDisplayed()
   }
@@ -118,7 +130,7 @@ class SeeMediasScreenTest {
 
     composeTestRule.onNodeWithTag(SeeMediasTestTags.TITLE).assertTextEquals("Voir les médias")
     composeTestRule.onNodeWithText("Voir les photos").assertExists()
-    composeTestRule.onNodeWithText("Voir les textes").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Voir les textes").assertExists()
     composeTestRule.onNodeWithText("Voir les audios").assertExists()
   }
 }

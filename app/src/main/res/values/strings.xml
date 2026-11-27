@@ -35,6 +35,7 @@
     <string name="screenTitlePatientSeeMedias">See Medias</string>
     <string name="screenTitlePatientSeePictures">See Pictures</string>
     <string name="screenTitlePatientSeeAudios">See Audios</string>
+    <string name="screenTitlePatientSeeTexts">See Texts</string>
     <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
@@ -390,6 +391,8 @@
     <string name="seeMediasPicturesIcon">Picture</string>
     <string name="seeMediasAudios">See Audios</string>
     <string name="seeMediasAudiosIcon">Audio</string>
+    <string name="seeMediasTexts">See Texts</string>
+    <string name="seeMediasTextsIcon">Text</string>
 
     <!-- SeePictures -->
     <string name="seePicturesTitle">See Pictures</string>

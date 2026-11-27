@@ -4,6 +4,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.navigation
 
@@ -190,6 +191,12 @@ sealed class PatientScreen(
       PatientScreen(
           route = "patient_see_audios",
           title = R.string.screenTitlePatientSeeAudios,
+      )
+
+  data object SeeTexts :
+      PatientScreen(
+          route = "patient_see_texts",
+          title = R.string.screenTitlePatientSeeTexts,
       )
 
   data object SeeMediasSpecificPerson :

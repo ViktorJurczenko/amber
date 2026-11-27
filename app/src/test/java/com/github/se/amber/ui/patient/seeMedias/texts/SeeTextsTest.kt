@@ -6,6 +6,9 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -306,5 +309,46 @@ class SeeTextsScreenTest {
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.tabTag(PatientTab.Home))
         .performClick()
+  }
+
+  @Test
+  fun preview_displays_the_empty_message() {
+    composeTestRule.setContent { SeeTextsScreenPreview() }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(SeeTextsTestTags.NO_TEXTS)
+        .assertIsDisplayed()
+        .assertTextEquals(string(R.string.seeTextsEmpty))
+  }
+
+  @Test
+  fun loading_error_and_content_previews_show_their_states() {
+    var preview by mutableIntStateOf(0)
+    composeTestRule.setContent {
+      when (preview) {
+        0 -> SeeTextsLoadingPreview()
+        1 -> SeeTextsErrorPreview()
+        else -> SeeTextsContentPreview()
+      }
+    }
+
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.LOADING).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.textCard("sample1")).assertDoesNotExist()
+
+    composeTestRule.runOnIdle { preview = 1 }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(SeeTextsTestTags.ERROR)
+        .assertTextEquals(string(R.string.seeTextsErrorLoadProfile))
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.LOADING).assertDoesNotExist()
+
+    composeTestRule.runOnIdle { preview = 2 }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.storyTitle("sample1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.storyTitle("sample2")).assertExists()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.textCard("sample1")).assertExists()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.textCard("sample2")).assertExists()
+    composeTestRule.onNodeWithTag(SeeTextsTestTags.ERROR).assertDoesNotExist()
   }
 }

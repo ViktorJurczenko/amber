@@ -6,6 +6,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber
 
@@ -69,6 +70,7 @@ import com.github.se.amber.ui.patient.seeMedias.SeeMediasScreen
 import com.github.se.amber.ui.patient.seeMedias.audios.SeeAudiosScreen
 import com.github.se.amber.ui.patient.seeMedias.medias.specificPerson.SeeMediasSpecificPersonScreen
 import com.github.se.amber.ui.patient.seeMedias.pictures.SeePicturesScreen
+import com.github.se.amber.ui.patient.seeMedias.texts.SeeTextsScreen
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -283,6 +285,7 @@ fun AmberApp(
         SeeMediasScreen(
             onSeePictureClick = { navigationActions.navigateTo(PatientScreen.SeePictures) },
             onSeeAudioClick = { navigationActions.navigateTo(PatientScreen.SeeAudios) },
+            onSeeTextClick = { navigationActions.navigateTo(PatientScreen.SeeTexts) },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
         )
       }
@@ -298,6 +301,13 @@ fun AmberApp(
       }
       composable(route = PatientScreen.SeeAudios.route) {
         SeeAudiosScreen(
+            onBackClick = { navigationActions.goBack() },
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
+        )
+      }
+      composable(route = PatientScreen.SeeTexts.route) {
+        SeeTextsScreen(
             onBackClick = { navigationActions.goBack() },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
             onPersonClick = { id -> navigationActions.navigateToSeeMediasSpecificPerson(id) },
