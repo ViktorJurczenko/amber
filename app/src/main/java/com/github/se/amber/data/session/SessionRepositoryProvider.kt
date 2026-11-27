@@ -1,4 +1,4 @@
-// Written by Alaabrine, with assistance from Cursor.
+// Written by Alaabrine, with assistance from Cursor (Agent).
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.session
@@ -7,6 +7,8 @@ import coil3.SingletonImageLoader
 import com.github.se.amber.data.account.DeviceLocalPhone
 import com.github.se.amber.data.appointment.reminder.LocalReminders
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.PersonPhotoRepository
+import com.github.se.amber.data.media.picture.PersonPhotoRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.media.MediaRepository
@@ -33,12 +35,13 @@ class SessionRepositoryProvider(
 
     /**
      * Builds the repository that clears this phone and then signs out. Its tests pass their own
-     * [mediaRepository] and [authRepository], so they don't build the app-wide ones that other
-     * tests check.
+     * [mediaRepository], [authRepository], and [photoRepository], so they don't build the app-wide
+     * ones that other tests check.
      */
     internal fun deviceRepository(
         mediaRepository: MediaRepository = MediaRepositoryProvider.repository,
         authRepository: AuthRepository = AuthRepositoryProvider.repository,
+        photoRepository: PersonPhotoRepository = PersonPhotoRepositoryProvider.default.repository,
     ): SessionRepository {
       val context = Firebase.app.applicationContext
       return DeviceSessionRepository(
@@ -47,6 +50,7 @@ class SessionRepositoryProvider(
                   mediaRepository = mediaRepository,
                   imageMemory = MediaImageMemory(SingletonImageLoader.get(context)),
                   cacheDir = context.cacheDir,
+                  photoRepository = photoRepository,
                   reminders = LocalReminders.android(context),
               ),
           authRepository = authRepository,

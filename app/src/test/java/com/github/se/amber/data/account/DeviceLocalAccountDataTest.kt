@@ -1,5 +1,5 @@
 // Written by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
-// Modified by Alaabrine, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor (Agent).
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.data.account
@@ -7,6 +7,7 @@ package com.github.se.amber.data.account
 import coil3.ImageLoader
 import coil3.memory.MemoryCache
 import com.github.se.amber.data.media.image.MediaImageMemory
+import com.github.se.amber.data.media.picture.FakePersonPhotoRepository
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.media.MediaRepository
 import com.google.android.gms.tasks.Tasks
@@ -33,6 +34,7 @@ class DeviceLocalAccountDataTest {
   @get:Rule val tempFolder = TemporaryFolder()
 
   private val mediaRepository: MediaRepository = mockk(relaxUnitFun = true)
+  private val photoRepository = FakePersonPhotoRepository()
   private val authRepository: AuthRepository = mockk()
   private val memoryCache: MemoryCache = mockk(relaxUnitFun = true)
   private lateinit var cacheDir: File
@@ -111,6 +113,7 @@ class DeviceLocalAccountDataTest {
             mediaRepository,
             imageMemory,
             cacheDir,
+            photoRepository,
             reminders = mockk(relaxed = true),
             ioDispatcher = Dispatchers.Unconfined,
         )
@@ -135,6 +138,7 @@ class DeviceLocalAccountDataTest {
     assertFalse(pickedMemo.exists())
     assertTrue(otherFile.exists())
     assertEquals(everyStep, calls)
+    assertEquals(listOf("clearLocalPhotos"), photoRepository.calls)
   }
 
   @Test

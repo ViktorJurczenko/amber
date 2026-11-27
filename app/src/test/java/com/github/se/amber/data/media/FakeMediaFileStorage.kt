@@ -10,10 +10,14 @@ import java.io.File
  * A [MediaFileStorage] without network, for the repository tests. Records each call that succeeds
  * in [calls], as "download {circleId}:{storagePath}", "upload {bucket}:{storagePath}" or "delete
  * {circleId}:{storagePath}"; pass a list shared with other fakes to check the order of everything
- * that happened. A download writes "content of {storagePath}"; an upload runs [onUpload] first (to
- * fail, or to hang), and a deletion throws [deleteError] instead, when it is set.
+ * that happened. A download writes "content of {storagePath}", or throws [downloadError] when it is
+ * set. An upload runs [onUpload] first (to fail, or to hang), and a deletion throws [deleteError]
+ * instead, when it is set.
  */
 class FakeMediaFileStorage(val calls: MutableList<String> = mutableListOf()) : MediaFileStorage {
+
+  /** Thrown by every [download] while set, after the call is recorded. */
+  var downloadError: Exception? = null
 
   /** Thrown by every [delete] while set. */
   var deleteError: Exception? = null
@@ -32,6 +36,7 @@ class FakeMediaFileStorage(val calls: MutableList<String> = mutableListOf()) : M
 
   override suspend fun download(circle: CareCircle, storagePath: String, destination: File) {
     calls += "download ${circle.id}:$storagePath"
+    downloadError?.let { throw it }
     destination.writeText("content of $storagePath")
   }
 

@@ -1,4 +1,5 @@
 // Written by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Alaabrine, with assistance from Cursor Agent.
 
 package com.github.se.amber.data.media.image
 
@@ -10,6 +11,7 @@ import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
+import com.github.se.amber.data.media.causedByConnection
 import com.github.se.amber.model.circle.hasStorageBucket
 import com.github.se.amber.model.media.MediaPicture
 import com.github.se.amber.model.media.MediaRepository
@@ -17,9 +19,6 @@ import com.github.se.amber.model.media.isMediaOf
 import com.google.firebase.storage.StorageException
 import java.io.FileNotFoundException
 import java.io.IOException
-import java.net.SocketException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -171,21 +170,3 @@ private enum class MediaPictureFailure(val reason: String, val logAsError: Boole
   /** Anything else: see the logged error. */
   OTHER("see the cause", logAsError = false),
 }
-
-/** Whether this error, or one of its causes, is a [connection error][isConnectionError]. */
-private fun Throwable.causedByConnection(): Boolean =
-    generateSequence(this) { it.cause }.any { it.isConnectionError() }
-
-/** Whether this error itself, without its causes, comes from the connection. */
-private fun Throwable.isConnectionError(): Boolean =
-    when (this) {
-      // Firebase Storage gave up retrying a request that got no HTTP answer at all. A request that
-      // got one (404, 503…) has another code, even after Firebase's retries.
-      is StorageException -> isRecoverableException
-      // The platform's network errors. Firebase gives them as the cause of its StorageException,
-      // also when the connection is cut while the file is being read, with another code.
-      is UnknownHostException,
-      is SocketException,
-      is SocketTimeoutException -> true
-      else -> false
-    }

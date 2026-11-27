@@ -25,6 +25,14 @@ const val NEARBY_EXIT_MARGIN_METERS = 30.0
  */
 const val NEARBY_MAX_ACCURACY_METERS = 200.0
 
+/**
+ * How far apart two points can be and still count as the same place, in meters: about a building,
+ * more than two searches for the same place usually differ by. A media joins a memories pin this
+ * close to it, and a route kept on the phone still serves a destination this close (see
+ * [isSamePlace]).
+ */
+const val SAME_PLACE_RADIUS_METERS = 25.0
+
 /** Mean radius of the Earth, in meters, as used by the haversine formula. */
 private const val EARTH_RADIUS_METERS = 6_371_000.0
 
@@ -65,3 +73,7 @@ fun List<MediaMarker>.nearby(
     }
     .sortedBy { (_, distance) -> distance }
     .map { (pin, _) -> pin }
+
+/** Whether the two points are within [SAME_PLACE_RADIUS_METERS], so count as the same place. */
+fun isSamePlace(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): Boolean =
+    distanceMeters(fromLat, fromLng, toLat, toLng) <= SAME_PLACE_RADIUS_METERS

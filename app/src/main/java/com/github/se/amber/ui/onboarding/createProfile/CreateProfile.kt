@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Alaabrine, with assistance from Cursor.
 
 package com.github.se.amber.ui.onboarding.createProfile
 
@@ -56,8 +57,10 @@ import com.github.se.amber.ui.utils.asString
 object CreateProfileTestTags {
   const val NAME_INPUT = "CreateProfile_test_tag_name_input"
   const val SURNAME_INPUT = "CreateProfile_test_tag_surname_input"
+  const val NICKNAME_INPUT = "CreateProfile_test_tag_nickname_input"
   const val NAME_ERROR = "CreateProfile_test_tag_name_error"
   const val SURNAME_ERROR = "CreateProfile_test_tag_surname_error"
+  const val NICKNAME_ERROR = "CreateProfile_test_tag_nickname_error"
   const val CAREGIVER_BUTTON = "CreateProfile_test_tag_caregiver_button"
   const val SUBMIT_ERROR = "CreateProfile_test_tag_submit_error"
 }
@@ -65,13 +68,13 @@ object CreateProfileTestTags {
 /**
  * First onboarding screen after sign-in: the user creates their Amber profile.
  *
- * Amber users are either a Patient or a Caregiver. This screen collects a first and last name, then
- * persists the profile when the user taps one of those role buttons. Validation and the repository
- * write live in [CreateProfileViewModel]; this composable only renders [viewModel] state and
- * forwards user actions. [onProfileCreated] should navigate to the next onboarding step. The top
- * Sign out action ends the session without saving a profile. [onSignedOut] runs after that
- * succeeds. Sign out does nothing while a profile save is in progress, and the role buttons do
- * nothing while sign-out is in progress.
+ * Amber users are either a Patient or a Caregiver. This screen collects a first name, last name and
+ * optional nickname, then persists the profile when the user taps one of those role buttons.
+ * Validation and the repository write live in [CreateProfileViewModel]; this composable only
+ * renders [viewModel] state and forwards user actions. [onProfileCreated] should navigate to the
+ * next onboarding step. The top Sign out action ends the session without saving a profile.
+ * [onSignedOut] runs after that succeeds. Sign out does nothing while a profile save is in
+ * progress, and the role buttons do nothing while sign-out is in progress.
  *
  * @param modifier Modifier applied to the root profile layout.
  * @param onProfileCreated called with the saved [Role] after a successful create.
@@ -160,6 +163,14 @@ fun CreateProfileScreen(
           fieldTag = CreateProfileTestTags.SURNAME_INPUT,
           error = uiState.surnameError?.asString(LocalResources.current),
           errorTag = CreateProfileTestTags.SURNAME_ERROR,
+      )
+      ProfileNameField(
+          value = uiState.nickname,
+          onValueChange = viewModel::onNicknameChange,
+          label = stringResource(R.string.createProfileNickname),
+          fieldTag = CreateProfileTestTags.NICKNAME_INPUT,
+          error = uiState.nicknameError?.asString(LocalResources.current),
+          errorTag = CreateProfileTestTags.NICKNAME_ERROR,
       )
 
       Text(

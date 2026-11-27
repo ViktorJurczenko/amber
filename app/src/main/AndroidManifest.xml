@@ -77,6 +77,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Make Apache HTTP available to older Google Maps renderers when the device provides it -->
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+
         <!-- WorkManager is set up by AmberApplication instead, on first use -->
         <provider
             android:name="androidx.startup.InitializationProvider"

@@ -4,6 +4,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.theme
 
@@ -107,6 +108,7 @@ const val MAX_LINE_DESCRIPTION = 5
 const val MAX_CHAR_DEFAULT = 20
 // The limits themselves are in InputValidation, which the ViewModels enforce
 const val MAX_CHAR_DESCRIPTION = InputValidation.DESCRIPTION_MAX_LENGTH
+const val MAX_CHAR_TEXT = InputValidation.TEXT_MAX_LENGTH
 const val MAX_CHAR_PLACE_SEARCH = InputValidation.PLACE_QUERY_MAX_LENGTH
 const val MAX_CHAR_NAME = InputValidation.NAME_MAX_LENGTH
 

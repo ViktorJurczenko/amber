@@ -1,11 +1,12 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Alaabrine, with assistance from Cursor.
-// Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber
 
@@ -27,10 +28,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.se.amber.ui.authentication.signOut.SignOutTestTags
 import com.github.se.amber.ui.caregiver.parameters.CaregiverParametersTestTags
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags
+import com.github.se.amber.ui.map.MapScreenTestTags
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
 import com.github.se.amber.ui.navigation.CaregiverTab
+import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.OnboardingScreen
 import com.github.se.amber.ui.navigation.PatientScreen
@@ -46,6 +49,7 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val NAVIGATION_TIMEOUT_MS = 5_000L
+private const val PERSON_ID = "person123"
 
 /**
  * Instrumented tests for the navigation wiring of [AmberApp].
@@ -97,6 +101,7 @@ class AmberAppNavigationTest {
     // Patient
     val PATIENT_TAB_HOME = tabTag(PatientTab.Home)
     val PATIENT_TAB_SEE_MEDIAS = tabTag(PatientTab.SeeMedias)
+    val PATIENT_TAB_MAP = tabTag(PatientTab.Map)
     val PATIENT_TAB_PARAMETERS = tabTag(PatientTab.Setting)
     const val PATIENT_PARAMETERS_SIGN_OUT = PatientParameterTestTags.SIGN_OUT_BUTTON
     const val PATIENT_PARAMETERS_DELETE_ACCOUNT = PatientParameterTestTags.DELETE_BUTTON
@@ -142,7 +147,7 @@ class AmberAppNavigationTest {
    * be below [Lifecycle.State.CREATED], and navigating in that same turn makes Navigation destroy
    * the new entry before it is created.
    */
-  private fun goTo(route: String) {
+  private fun goTo(route: String, expectedRoute: String = route) {
     composeRule.waitUntil(timeoutMillis = NAVIGATION_TIMEOUT_MS) {
       navController.currentBackStackEntry
           ?.lifecycle
@@ -153,10 +158,10 @@ class AmberAppNavigationTest {
       Handler(Looper.getMainLooper()).post { navController.navigate(route) }
     }
     composeRule.waitUntil(
-        conditionDescription = "navigated to $route",
+        conditionDescription = "navigated to $expectedRoute",
         timeoutMillis = NAVIGATION_TIMEOUT_MS,
     ) {
-      navController.currentDestination?.route == route
+      navController.currentDestination?.route == expectedRoute
     }
     composeRule.waitForIdle()
   }
@@ -550,6 +555,27 @@ class AmberAppNavigationTest {
   }
 
   @Test
+  fun patientHome_mapTab_opensMapAndHomeTabReturns() {
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+    )
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+    )
+    launch(NavGraphs.PATIENT)
+
+    click(Tags.PATIENT_TAB_MAP)
+    assertRoute(PatientScreen.Map.route)
+    composeRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertExists()
+
+    click(Tags.PATIENT_TAB_HOME)
+    assertRoute(PatientScreen.Home.route)
+  }
+
+  @Test
   fun patientParameters_signOut_navigatesToSignOutScreen() {
     launch(NavGraphs.PATIENT)
     goTo(PatientScreen.Parameters.route)
@@ -644,6 +670,48 @@ class AmberAppNavigationTest {
     click(TopNavigationMenuTestTags.BACK_BUTTON)
 
     assertRoute(PatientScreen.SeeMedias.route)
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_receivesThePersonIdArgument() {
+    launch(NavGraphs.PATIENT)
+
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    assertEquals(
+        PERSON_ID,
+        navController.currentBackStackEntry?.arguments?.getString(NavArgs.PERSON_ID),
+    )
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_back_returnsToSeeMedias() {
+    launch(NavGraphs.PATIENT)
+    goTo(PatientScreen.SeeMedias.route)
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    click(TopNavigationMenuTestTags.BACK_BUTTON)
+
+    assertRoute(PatientScreen.SeeMedias.route)
+  }
+
+  @Test
+  fun seeMediasSpecificPerson_homeTab_navigatesToPatientHome() {
+    launch(NavGraphs.PATIENT)
+    goTo(
+        route = PatientScreen.SeeMediasSpecificPerson.routeFor(PERSON_ID),
+        expectedRoute = PatientScreen.SeeMediasSpecificPerson.route,
+    )
+
+    click(Tags.PATIENT_TAB_HOME)
+
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test
