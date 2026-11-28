@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.onEach
 
 /**
  * A [UserAppointmentsObserver] for tests: [answer] gives what is observed for each window. It never
- * builds a repository.
+ * builds a repository. Its [observeUserAppointments] has the same default values as the observer's:
+ * Kotlin doesn't let an override declare its own.
  *
  * @property answer the values observed for a window.
  */

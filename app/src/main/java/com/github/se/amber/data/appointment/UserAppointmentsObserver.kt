@@ -35,7 +35,9 @@ data class AppointmentWindow(val firstDay: LocalDate = LocalDate.now(), val days
  * by any ViewModel that shows appointments.
  *
  * The repositories are given as functions, so they are only built once the appointments are
- * watched. A failure to build one then reaches the collector, like any other loading error.
+ * watched. A failure to build one then reaches the collector, like any other loading error. The
+ * auth repository is the exception: when it can't be built or read, the user is treated as signed
+ * out and the list is empty, as the screens already report their own sign-in errors.
  *
  * @param appointmentRepo gives the repository used to watch the appointments.
  * @param authRepo gives the repository used to access the currently authenticated user.
@@ -81,7 +83,11 @@ open class UserAppointmentsObserver(
           }
           .catch { emit(Result.failure(it)) }
 
-  /** Watches the appointments of the circle [circleId] during [window]. */
+  /**
+   * Watches the appointments of the circle [circleId] during [window].
+   *
+   * Its parameters have no default: it is only called with the circle and window being watched.
+   */
   private fun observeWindow(
       circleId: String?,
       window: AppointmentWindow,
@@ -104,8 +110,9 @@ open class UserAppointmentsObserver(
   /**
    * The id of the care circle whose appointments are watched, or null when there is none.
    *
-   * The user and the profile are read when the flow is collected. The flow fails when the profile
-   * can't be read: that is a failure, not a missing circle.
+   * The user and the profile are read when the flow is collected. A user that can't be read gives
+   * null, like a signed-out one. The flow fails when the profile can't be read: that is a failure,
+   * not a missing circle.
    */
   private fun circleIds(isPatient: Boolean): Flow<String?> = flow {
     // Without a known user there is nothing to show. It is not reported as a failure: the screens

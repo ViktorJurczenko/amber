@@ -2,7 +2,6 @@
 
 package com.github.se.amber.data.appointment
 
-import com.github.se.amber.data.Synced
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
@@ -75,13 +74,6 @@ class UserAppointmentsObserverTest {
   }
 
   @Test
-  fun aCaregiverSeesTheAppointmentsOfTheActiveCircle() = runTest {
-    save(FIRST_CIRCLE, "first", LocalDate.of(2026, 11, 12))
-    save(SECOND_CIRCLE, "second", LocalDate.of(2026, 11, 12))
-    assertEquals(listOf("second"), loadedIds(isPatient = false))
-  }
-
-  @Test
   fun aPatientDoesNotUseTheActiveCircle() = runTest {
     save(FIRST_CIRCLE, "first", LocalDate.of(2026, 11, 12))
     loadedIds(isPatient = true)
@@ -89,12 +81,12 @@ class UserAppointmentsObserverTest {
   }
 
   @Test
-  fun theListFollowsWhenACaregiverSwitchesCircle() = runTest {
-    save(FIRST_CIRCLE, "first", LocalDate.of(2026, 11, 12))
-    save(SECOND_CIRCLE, "second", LocalDate.of(2026, 11, 12))
+  fun aCaregiverSeesTheActiveCircleAndFollowsASwitch() = runTest {
+    saveInBothCircles()
     val active = MutableStateFlow(SECOND_CIRCLE)
     every { activeCircleRepo.activeCircleId(UID, any()) } returns active
     val results = collectInBackground(observer().observeUserAppointments(false, flowOf(november)))
+    assertEquals(listOf("second"), results.last().ids())
     active.value = FIRST_CIRCLE
     assertEquals(listOf("first"), results.last().ids())
   }
@@ -116,20 +108,14 @@ class UserAppointmentsObserverTest {
   }
 
   @Test
-  fun aNewWindowReplacesTheAppointmentsOfThePreviousOne() = runTest {
+  fun changingTheWindowReplacesAppointmentsWithoutRereadingTheProfile() = runTest {
     save(FIRST_CIRCLE, "november", LocalDate.of(2026, 11, 12))
     save(FIRST_CIRCLE, "december", LocalDate.of(2026, 12, 5))
     val windows = MutableStateFlow(november)
     val results = collectInBackground(observer().observeUserAppointments(true, windows))
+    assertEquals(listOf("november"), results.last().ids())
     windows.value = december
     assertEquals(listOf("december"), results.last().ids())
-  }
-
-  @Test
-  fun severalWindowsReadTheProfileOnce() = runTest {
-    val windows = MutableStateFlow(november)
-    collectInBackground(observer().observeUserAppointments(true, windows))
-    windows.value = december
     coVerify(exactly = 1) { profileRepo.getProfile(UID) }
   }
 
@@ -176,7 +162,10 @@ class UserAppointmentsObserverTest {
     val failure = IllegalStateException("offline")
     coEvery { profileRepo.getProfile(UID) } returns Result.failure(failure)
     val result = observer().observeUserAppointments(true, flowOf(november)).first()
-    assertEquals(failure.message, result.exceptionOrNull()?.message)
+    // Not compared by instance: coroutines may copy an exception to complete its stack trace.
+    val error = result.exceptionOrNull()
+    assertTrue(error is IllegalStateException)
+    assertEquals(failure.message, error?.message)
   }
 
   @Test
@@ -194,14 +183,15 @@ class UserAppointmentsObserverTest {
     val repository = mockk<AppointmentRepository>()
     every { repository.observeAppointments(any(), november.firstDay, any()) } returns
         flow { throw AppointmentError.PermissionDenied() }
-    val decemberList = flowOf(emptyList<Synced<Appointment>>())
-    every { repository.observeAppointments(any(), december.firstDay, any()) } returns decemberList
+    // A real appointment, since an empty list is also what is shown while a window loads.
+    save(FIRST_CIRCLE, "annual-visit", december.firstDay)
+    every { repository.observeAppointments(FIRST_CIRCLE, december.firstDay, december.days) } returns
+        appointments.observeAppointments(FIRST_CIRCLE, december.firstDay, december.days)
     val windows = MutableStateFlow(november)
-    collectInBackground(observer(repository).observeUserAppointments(true, windows))
+    val results = collectInBackground(observer(repository).observeUserAppointments(true, windows))
+    assertTrue(results.last().exceptionOrNull() is AppointmentError.PermissionDenied)
     windows.value = december
-    verify(exactly = 1) {
-      repository.observeAppointments(FIRST_CIRCLE, december.firstDay, december.days)
-    }
+    assertEquals(listOf("annual-visit"), results.last().ids())
   }
 
   @Test
@@ -215,7 +205,10 @@ class UserAppointmentsObserverTest {
             activeCircleRepo = { activeCircleRepo },
         )
     val results = observer.observeUserAppointments(true, flowOf(november)).toList()
-    assertEquals(failure.message, results.last().exceptionOrNull()?.message)
+    // Not compared by instance: coroutines may copy an exception to complete its stack trace.
+    val error = results.last().exceptionOrNull()
+    assertTrue(error is IllegalStateException)
+    assertEquals(failure.message, error?.message)
   }
 
   // ---------- default parameters ----------
