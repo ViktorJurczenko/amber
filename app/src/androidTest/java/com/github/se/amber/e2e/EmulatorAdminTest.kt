@@ -77,7 +77,8 @@ class EmulatorAdminTest {
   fun deleteCircle_alsoDeletesItsStoriesAndAppointments() = runBlocking {
     val circleDocument = Firebase.firestore.collection("careCircles").document(circle.id)
     circleDocument.collection("stories").document("s1").set(mapOf("id" to "s1")).await()
-    circleDocument.collection("appointments").document("a1").set(mapOf("id" to "a1")).await()
+    // the circle has no patient yet, so the rules refuse any appointment from the caregiver
+    EmulatorAdmin.createDocument("careCircles/${circle.id}/appointments/a1", mapOf("id" to "a1"))
 
     EmulatorAdmin.deleteCircle(circle.id)
 

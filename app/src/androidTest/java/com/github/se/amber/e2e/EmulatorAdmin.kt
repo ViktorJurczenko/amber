@@ -22,6 +22,8 @@ import org.json.JSONObject
  *   `provisionCareCircleBucket` (`functions/index.js`) creates a bucket for each new circle and
  *   records it in the circle's `storageBucket` field. The emulators can't create buckets, so that
  *   function skips itself there, and a test records one instead.
+ * - [createDocument] seeds a document that no phone may write in the test's setup. For example, a
+ *   circle without a patient can't have appointments.
  * - The cleanup functions delete what no phone may delete (a circle, another user's account). They
  *   delete only the ids given to them, never all of an emulator's data, so tests sharing the
  *   emulators don't delete each other's data.
@@ -66,6 +68,26 @@ object EmulatorAdmin {
             .put("updateMask", JSONObject().put("fieldPaths", JSONArray(listOf("storageBucket"))))
             // fails rather than creating a circle that doesn't exist
             .put("currentDocument", JSONObject().put("exists", true))
+    commit(listOf(write))
+  }
+
+  /**
+   * Creates a document with these string fields, whatever the rules say. It fails if the document
+   * already exists.
+   *
+   * @param path the document's path, e.g. `careCircles/c1/appointments/a1`
+   * @param fields the document's fields, all strings
+   */
+  fun createDocument(path: String, fields: Map<String, String>) {
+    val values = JSONObject()
+    fields.forEach { (name, value) -> values.put(name, JSONObject().put("stringValue", value)) }
+    val write =
+        JSONObject()
+            .put(
+                "update",
+                JSONObject().put("name", "$DATABASE/documents/$path").put("fields", values),
+            )
+            .put("currentDocument", JSONObject().put("exists", false))
     commit(listOf(write))
   }
 

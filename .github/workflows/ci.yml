@@ -74,6 +74,17 @@ jobs:
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 #v6
 
+      # Robolectric downloads an Android jar from repo1.maven.org the first time a unit test needs
+      # it, and saves it in ~/.m2. When that download fails, every Robolectric test fails, so we
+      # cache the jars. The key changes with the Robolectric version (libs.versions.toml) or the
+      # SDK the tests run on (robolectric.properties), since each needs another jar.
+      - name: Robolectric cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: ${{ runner.os }}-robolectric-${{ hashFiles('gradle/libs.versions.toml', 'app/src/test/resources/robolectric.properties') }}
+          restore-keys: ${{ runner.os }}-robolectric-
+
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
       - name: AVD cache
