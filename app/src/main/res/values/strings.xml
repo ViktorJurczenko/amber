@@ -40,14 +40,30 @@
     <string name="screenTitlePatientParameters">Parameters</string>
 
     <!-- EmailSignIn -->
-    <string name="signInWelcome">Welcome to Amber</string>
-    <string name="signInInstruction">Sign in with Google to access your account or create one.</string>
+    <string name="signInTagline">Your memories, close at hand</string>
+    <string name="signInDescription">Photos, voices, places and appointments, kept close with the people who care for you.</string>
     <string name="signInGoogle">Sign in with Google</string>
     <string name="signInGoogleLoading">Signing in…</string>
-    <string name="signInTermsFooter">By signing in, you agree to our Terms of Service and Privacy Policy</string>
     <string name="signInErrorEmailRequired">Please enter your email address.</string>
     <string name="signInErrorNoGoogleAccount">No Google account found. Please add one to your device.</string>
     <string name="signInErrorFailed">Sign-in failed. Please try again.</string>
+    <string name="signInTermsFooter">By signing in, you agree to our %1$s and %2$s.</string>
+    <string name="signInTermsDeclined">You need to accept the Terms of Service and Privacy Policy to use Amber.</string>
+
+    <!-- Terms -->
+    <string name="termsOfServiceTitle">Terms of Service</string>
+    <string name="privacyPolicyTitle">Privacy Policy</string>
+    <string name="termsClose">Close</string>
+    <string name="termsOfServiceBody">Amber is a student project made at EPFL. It helps people living with memory loss, and the people who care for them, share memories and plan daily life.\n\nYou need a Google account to use Amber. Keep it safe: anyone who can sign in with it can see your care circles.\n\nOnly add photos, voice messages and texts you have the right to share, and that the people in them would be happy to share with the care circle.\n\nAmber helps, but it doesn\'t replace medical care or a person\'s judgement. For example, guidance to a place can be wrong, so it shouldn\'t be relied on alone.\n\nAmber is provided as it is, without any guarantee. As a student project, it can change or stop at any time.\n\nYou can stop using Amber and delete your account at any time from the settings.</string>
+    <string name="privacyPolicyBody">What Amber keeps: your profile (name, nickname and role), your care circles, and what you add to them: photos, voice messages, texts, places and appointments.\n\nWho can see it: only the members of the care circle it belongs to. Amber doesn\'t sell your data or show you ads.\n\nYour location: when you use the map or guidance, your phone\'s location shows where you are and is used to find a walking route. Amber sends it to Google to find the route.\n\nWhere it\'s kept: with Google Firebase, which Amber uses for signing in and for keeping your data.\n\nOn your phone: Amber keeps some data so it still works offline, such as the last route and the care circle you chose.\n\nDeleting your data: deleting your account in the settings permanently deletes your account and the photos, voice messages, texts and appointments you added.</string>
+    <string name="consentTitle">Before you start</string>
+    <string name="consentIntro">By using Amber, you agree that:</string>
+    <string name="consentPointData">Your profile and what you add are kept for your care circle.</string>
+    <string name="consentPointShare">Photos, voice messages and texts you add are shared with the people in the circle.</string>
+    <string name="consentPointLocation">Your location is used when you use the map or guidance.</string>
+    <string name="consentPointDelete">You can delete your account and its data at any time.</string>
+    <string name="consentAccept">Accept and continue</string>
+    <string name="consentDeclineHint">Close this window to decline.</string>
 
     <!-- RoleLoading -->
     <string name="roleLoadingError">Could not load your profile.\nTry again.</string>

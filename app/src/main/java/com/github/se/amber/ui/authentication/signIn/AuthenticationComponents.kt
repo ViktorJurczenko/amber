@@ -1,14 +1,17 @@
 // Written by MeiliV, with assistance from OpenAI Codex
-// Modified by nehachak1, with assistance from Claude Code
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication.signIn
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,42 +19,82 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.github.se.amber.R
 import com.github.se.amber.ui.onboarding.AmberHeader
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_HEIGHT_BIG
+import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_REGULAR
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
 import com.github.se.amber.ui.theme.PADDING_MINI
 import com.github.se.amber.ui.theme.ROUND_CORNER
+import com.github.se.amber.ui.theme.SURFACE_MEDIUM
 import com.github.se.amber.ui.theme.SURFACE_SMALL
 import com.github.se.amber.ui.theme.TEXT_FIELD_SMALL
+import com.github.se.amber.ui.utils.DisplayInformation
+import com.github.se.amber.ui.utils.PopupDialog
 
 /** Test tags of the components shared by the authentication screens. */
 internal object AuthenticationComponentTestTags {
   const val TERMS_FOOTER = "authentication_terms_footer"
+  const val HIGHLIGHTS = "authentication_highlights"
+  const val TERMS_DOCUMENT = "authentication_terms_document"
+  const val TERMS_DOCUMENT_CLOSE = "authentication_terms_document_close"
+  const val TERMS_DOCUMENT_ACTION = "authentication_terms_document_action"
+  const val CONSENT_DIALOG = "authentication_consent_dialog"
+  const val CONSENT_DECLINE = "authentication_consent_decline"
+  const val CONSENT_ACCEPT = "authentication_consent_accept"
+}
+
+/** A document the user agrees to, opened from its link in [TermsFooter]. */
+internal enum class TermsDocument(
+    @param:StringRes val titleRes: Int,
+    @param:StringRes val bodyRes: Int,
+) {
+  TERMS_OF_SERVICE(R.string.termsOfServiceTitle, R.string.termsOfServiceBody),
+  PRIVACY_POLICY(R.string.privacyPolicyTitle, R.string.privacyPolicyBody),
 }
 
 /**
@@ -76,8 +119,14 @@ internal fun AuthenticationLayout(
       color = MaterialTheme.colorScheme.background,
       contentColor = MaterialTheme.colorScheme.onBackground,
   ) {
-    // Use Box, a Column would stack every items sequentially
-    Box(
+    // The header, the footer and the content are measured. When it fits, the same space as the
+    // larger of the header and the footer is kept above and below the content, which centers it on
+    // the whole screen; otherwise it only clears them. Either way it never covers them.
+    val density = LocalDensity.current
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    var footerHeight by remember { mutableStateOf(0.dp) }
+    var contentHeight by remember { mutableStateOf(0.dp) }
+    BoxWithConstraints(
         modifier =
             Modifier.fillMaxSize()
                 .statusBarsPadding() // Avoids drawing underneath Android's top system bar
@@ -85,19 +134,41 @@ internal fun AuthenticationLayout(
                 .padding(horizontal = CAREGIVER_PADDING_BIG),
     ) {
       AmberHeader(
-          modifier = Modifier.align(Alignment.TopCenter).padding(top = CAREGIVER_PADDING_ENORMOUS),
+          modifier =
+              Modifier.align(Alignment.TopCenter)
+                  .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+                  .padding(top = CAREGIVER_PADDING_ENORMOUS),
           horizontalAlignment = Alignment.CenterHorizontally,
       )
-
-      Column(
-          modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.spacedBy(spacing), // Remove abusive use of Spacers
-          content = { content() },
-      )
-
+      val edge = maxOf(headerHeight, footerHeight)
+      val isCentered = contentHeight + edge * 2 <= maxHeight
+      // Centered when it fits, scrolled when it doesn't
+      Box(
+          modifier =
+              Modifier.fillMaxSize()
+                  .padding(
+                      top = if (isCentered) edge else headerHeight,
+                      bottom = if (isCentered) edge else footerHeight,
+                  ),
+          contentAlignment = Alignment.Center,
+      ) {
+        Column(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    // After the scroll, so it's the content's whole height, not what shows
+                    .onSizeChanged { contentHeight = with(density) { it.height.toDp() } }
+                    .padding(vertical = CAREGIVER_PADDING_MEDIUM),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(spacing), // Remove abusive use of Spacers
+            content = { content() },
+        )
+      }
       TermsFooter(
-          modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = PADDING_MINI),
+          modifier =
+              Modifier.align(Alignment.BottomCenter)
+                  .onSizeChanged { footerHeight = with(density) { it.height.toDp() } }
+                  .padding(bottom = PADDING_MINI)
       )
     }
   }
@@ -214,7 +285,8 @@ internal fun AuthenticationText(
 }
 
 /**
- * Displays the terms-of-service and privacy-policy notice shared by authentication screens.
+ * Displays the terms-of-service and privacy-policy notice shared by authentication screens. The
+ * names of the two documents are links: each opens its text in a popup.
  *
  * @param modifier Modifier applied to the footer text.
  */
@@ -222,15 +294,155 @@ internal fun AuthenticationText(
 internal fun TermsFooter(
     modifier: Modifier = Modifier,
 ) {
-  AuthenticationText(
-      text = stringResource(R.string.signInTermsFooter),
+  var shownDocument by rememberSaveable { mutableStateOf<TermsDocument?>(null) }
+  val linkStyle =
+      TextLinkStyles(
+          SpanStyle(
+              color = MaterialTheme.colorScheme.primary,
+              textDecoration = TextDecoration.Underline,
+          )
+      )
+  val names = TermsDocument.entries.associateWith { stringResource(it.titleRes) }
+  // The whole sentence is translated, then each document's name in it becomes its link
+  val sentence =
+      stringResource(
+          R.string.signInTermsFooter,
+          names.getValue(TermsDocument.TERMS_OF_SERVICE),
+          names.getValue(TermsDocument.PRIVACY_POLICY),
+      )
+  val text = buildAnnotatedString {
+    append(sentence)
+    names.forEach { (document, name) ->
+      val start = sentence.indexOf(name)
+      if (start >= 0) {
+        addLink(
+            LinkAnnotation.Clickable(document.name, linkStyle) { shownDocument = document },
+            start,
+            start + name.length,
+        )
+      }
+    }
+  }
+  Text(
+      text = text,
       textAlign = TextAlign.Center,
       modifier = modifier.fillMaxWidth().testTag(AuthenticationComponentTestTags.TERMS_FOOTER),
       style = MaterialTheme.typography.bodySmall,
   )
+  shownDocument?.let { TermsDocumentDialog(document = it, onClose = { shownDocument = null }) }
 }
 
-/** Preview of [AuthenticationLayout] with every shared component, using the Amber theme. */
+/**
+ * Displays the text of a [TermsDocument] in the app's popup, to read and close.
+ *
+ * @param document The document to show.
+ * @param onClose Called by the close button, the bottom button and a tap outside.
+ */
+@Composable
+internal fun TermsDocumentDialog(
+    document: TermsDocument = TermsDocument.TERMS_OF_SERVICE,
+    onClose: () -> Unit = {},
+) {
+  PopupDialog(
+      title = stringResource(document.titleRes),
+      onDismiss = onClose,
+      actionText = stringResource(R.string.termsClose),
+      onAction = onClose,
+      dialogTestTag = AuthenticationComponentTestTags.TERMS_DOCUMENT,
+      dismissTestTag = AuthenticationComponentTestTags.TERMS_DOCUMENT_CLOSE,
+      actionTestTag = AuthenticationComponentTestTags.TERMS_DOCUMENT_ACTION,
+  ) {
+    AuthenticationText(text = stringResource(document.bodyRes))
+  }
+}
+
+/**
+ * Asks to accept the Terms of Service and Privacy Policy before the first sign-in, saying in short
+ * what the user agrees to, with links to both documents.
+ *
+ * @param onAccept Called by the bottom button.
+ * @param onDecline Called by the close button and a tap outside.
+ */
+@Composable
+internal fun ConsentDialog(
+    onAccept: () -> Unit = {},
+    onDecline: () -> Unit = {},
+) {
+  PopupDialog(
+      title = stringResource(R.string.consentTitle),
+      onDismiss = onDecline,
+      actionText = stringResource(R.string.consentAccept),
+      onAction = onAccept,
+      dialogTestTag = AuthenticationComponentTestTags.CONSENT_DIALOG,
+      dismissTestTag = AuthenticationComponentTestTags.CONSENT_DECLINE,
+      actionTestTag = AuthenticationComponentTestTags.CONSENT_ACCEPT,
+  ) {
+    Column(verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_SMALL)) {
+      AuthenticationText(
+          text = stringResource(R.string.consentIntro),
+          style = MaterialTheme.typography.titleSmall,
+      )
+      listOf(
+              R.string.consentPointData,
+              R.string.consentPointShare,
+              R.string.consentPointLocation,
+              R.string.consentPointDelete,
+          )
+          .forEach {
+            DisplayInformation(
+                icon = Icons.Outlined.CheckCircle,
+                contentDescription = "", // the sentence says it all
+                sentences = listOf(stringResource(it)),
+            )
+          }
+      TermsFooter(modifier = Modifier.padding(top = CAREGIVER_PADDING_SMALL))
+      AuthenticationText(
+          text = stringResource(R.string.consentDeclineHint),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.outline,
+      )
+    }
+  }
+}
+
+/**
+ * Displays a row of icons, each in a yellow box like the map's recenter button, to show at a glance
+ * what a screen is about. Decorative: the text next to it says the same.
+ *
+ * @param modifier Modifier applied to the row.
+ * @param icons The icons, from start to end.
+ */
+@Composable
+internal fun AuthenticationHighlights(
+    modifier: Modifier = Modifier,
+    icons: List<ImageVector> = emptyList(),
+) {
+  Row(
+      modifier = modifier.testTag(AuthenticationComponentTestTags.HIGHLIGHTS),
+      horizontalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_MEDIUM),
+  ) {
+    icons.forEach { icon ->
+      Box(
+          modifier =
+              Modifier.size(SURFACE_MEDIUM)
+                  .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(ROUND_CORNER)),
+          contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(CAREGIVER_ICON_SIZE),
+            tint = MaterialTheme.colorScheme.onTertiary,
+        )
+      }
+    }
+  }
+}
+
+/**
+ * Preview of [AuthenticationLayout] with every shared component and the consent popup, using the
+ * Amber theme.
+ */
 @Preview(showBackground = true)
 @Composable
 internal fun AuthenticationComponentsPreview() {
@@ -240,6 +452,10 @@ internal fun AuthenticationComponentsPreview() {
       AuthenticationTextField(placeholder = "email@domain.com")
       AuthenticationButton(text = "Continue")
       AuthenticationButton(text = "Disabled", enabled = false)
+      AuthenticationHighlights(
+          icons = listOf(Icons.Outlined.CheckCircle, Icons.Outlined.CheckCircle)
+      )
     }
+    ConsentDialog()
   }
 }

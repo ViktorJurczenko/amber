@@ -3,6 +3,10 @@
 package com.github.se.amber.ui.authentication
 
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
@@ -15,6 +19,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -29,12 +34,17 @@ import com.github.se.amber.R
 import com.github.se.amber.ui.authentication.signIn.AuthenticationButton
 import com.github.se.amber.ui.authentication.signIn.AuthenticationComponentTestTags
 import com.github.se.amber.ui.authentication.signIn.AuthenticationComponentsPreview
+import com.github.se.amber.ui.authentication.signIn.AuthenticationHighlights
 import com.github.se.amber.ui.authentication.signIn.AuthenticationLayout
 import com.github.se.amber.ui.authentication.signIn.AuthenticationText
 import com.github.se.amber.ui.authentication.signIn.AuthenticationTextField
+import com.github.se.amber.ui.authentication.signIn.ConsentDialog
 import com.github.se.amber.ui.authentication.signIn.TermsFooter
 import com.github.se.amber.ui.onboarding.AmberHeaderTestTags
+import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
+import com.github.se.amber.ui.theme.SURFACE_MEDIUM
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -202,6 +212,28 @@ class AuthenticationComponentsTest {
     composeTestRule.onNodeWithTag(AmberHeaderTestTags.HEADER).assertIsDisplayed()
     composeTestRule.onNodeWithText("Screen heading").assertIsDisplayed()
     composeTestRule.onNodeWithText("Disabled").assertIsNotEnabled()
+  }
+
+  @Test
+  fun closingTheConsentPopup_declines() {
+    var declines = 0
+    composeTestRule.setContent { AmberAppTheme { ConsentDialog(onDecline = { declines++ }) } }
+
+    composeTestRule.onNodeWithTag(AuthenticationComponentTestTags.CONSENT_DECLINE).performClick()
+
+    assertEquals(1, declines)
+  }
+
+  @Test
+  fun highlights_showOneTilePerIcon_spacedEvenly() {
+    val icons = listOf(Icons.Outlined.Photo, Icons.Outlined.Mic, Icons.Outlined.Place)
+    composeTestRule.setContent { AmberAppTheme { AuthenticationHighlights(icons = icons) } }
+
+    composeTestRule
+        .onNodeWithTag(AuthenticationComponentTestTags.HIGHLIGHTS)
+        .assertWidthIsEqualTo(
+            SURFACE_MEDIUM * icons.size + CAREGIVER_PADDING_MEDIUM * (icons.size - 1)
+        )
   }
 
   private companion object {

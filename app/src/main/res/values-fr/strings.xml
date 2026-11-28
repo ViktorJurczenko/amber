@@ -36,14 +36,30 @@
     <string name="screenTitlePatientParameters">Paramètres</string>
 
     <!-- EmailSignIn -->
-    <string name="signInWelcome">Bienvenue sur Amber</string>
-    <string name="signInInstruction">Connectez-vous avec Google pour accéder à votre compte ou en créer un.</string>
+    <string name="signInTagline">Vos souvenirs, à portée de main</string>
+    <string name="signInDescription">Photos, voix, lieux et rendez-vous, gardés près de vous avec les personnes qui prennent soin de vous.</string>
     <string name="signInGoogle">Se connecter avec Google</string>
     <string name="signInGoogleLoading">Connexion…</string>
-    <string name="signInTermsFooter">En vous connectant, vous acceptez nos conditions d\'utilisation et notre politique de confidentialité</string>
     <string name="signInErrorEmailRequired">Veuillez saisir votre adresse e-mail.</string>
     <string name="signInErrorNoGoogleAccount">Aucun compte Google trouvé. Ajoutez-en un à votre appareil.</string>
     <string name="signInErrorFailed">La connexion a échoué. Veuillez réessayer.</string>
+    <string name="signInTermsFooter">En vous connectant, vous acceptez nos %1$s et notre %2$s.</string>
+    <string name="signInTermsDeclined">Vous devez accepter les conditions d\'utilisation et la politique de confidentialité pour utiliser Amber.</string>
+
+    <!-- Terms -->
+    <string name="termsOfServiceTitle">Conditions d\'utilisation</string>
+    <string name="privacyPolicyTitle">Politique de confidentialité</string>
+    <string name="termsClose">Fermer</string>
+    <string name="termsOfServiceBody">Amber est un projet étudiant réalisé à l\'EPFL. Il aide les personnes qui perdent la mémoire, et celles qui prennent soin d\'elles, à partager des souvenirs et à organiser leur quotidien.\n\nIl faut un compte Google pour utiliser Amber. Protégez-le&#160;: toute personne qui peut s\'y connecter peut voir vos cercles de soin.\n\nN\'ajoutez que des photos, des messages vocaux et des textes que vous avez le droit de partager, et que les personnes qui y figurent accepteraient de partager avec le cercle.\n\nAmber aide, mais ne remplace ni les soins médicaux ni le jugement d\'une personne. Par exemple, le guidage vers un lieu peut se tromper&#160;: il ne faut pas s\'y fier seul.\n\nAmber est fourni tel quel, sans garantie. Comme projet étudiant, il peut changer ou s\'arrêter à tout moment.\n\nVous pouvez arrêter d\'utiliser Amber et supprimer votre compte à tout moment dans les paramètres.</string>
+    <string name="privacyPolicyBody">Ce qu\'Amber garde&#160;: votre profil (nom, surnom et rôle), vos cercles de soin, et ce que vous y ajoutez&#160;: photos, messages vocaux, textes, lieux et rendez-vous.\n\nQui peut le voir&#160;: seulement les membres du cercle de soin concerné. Amber ne vend pas vos données et ne vous montre pas de publicités.\n\nVotre position&#160;: quand vous utilisez la carte ou le guidage, la position de votre téléphone montre où vous êtes et sert à trouver un itinéraire à pied. Amber l\'envoie à Google pour trouver l\'itinéraire.\n\nOù elles sont gardées&#160;: chez Google Firebase, qu\'Amber utilise pour la connexion et pour garder vos données.\n\nSur votre téléphone&#160;: Amber garde certaines données pour fonctionner hors ligne, comme le dernier itinéraire et le cercle de soin choisi.\n\nSupprimer vos données&#160;: supprimer votre compte dans les paramètres supprime définitivement votre compte et les photos, messages vocaux, textes et rendez-vous que vous avez ajoutés.</string>
+    <string name="consentTitle">Avant de commencer</string>
+    <string name="consentIntro">En utilisant Amber, vous acceptez que&#160;:</string>
+    <string name="consentPointData">Votre profil et ce que vous ajoutez soient gardés pour votre cercle de soin.</string>
+    <string name="consentPointShare">Les photos, messages vocaux et textes que vous ajoutez soient partagés avec les personnes du cercle.</string>
+    <string name="consentPointLocation">Votre position soit utilisée quand vous utilisez la carte ou le guidage.</string>
+    <string name="consentPointDelete">Vous pouvez supprimer votre compte et ses données à tout moment.</string>
+    <string name="consentAccept">Accepter et continuer</string>
+    <string name="consentDeclineHint">Fermez cette fenêtre pour refuser.</string>
 
     <!-- RoleLoading -->
     <string name="roleLoadingError">Impossible de charger votre profil.\nRéessayez.</string>
