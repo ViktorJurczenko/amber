@@ -14,7 +14,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -30,6 +32,7 @@ import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -847,15 +850,17 @@ class PatientUtilsTest {
   // ---------- DisplayPatientDialog ----------
 
   @Test
-  fun dialog_showsItsTexts_andEachButtonCallsItsOwnCallback() {
+  fun dialog_showsItsTexts_andEachButtonCallsItsOwnCallback_andLeavesOutAnEmptyMessage() {
     var confirms = 0
     var dismisses = 0
+    var message by mutableStateOf("Really")
+    var detail by mutableStateOf("Details")
     composeTestRule.setContent {
       AmberAppTheme {
         DisplayPatientDialog(
             title = "Stop?",
-            message = "Really",
-            detail = "Details",
+            message = message,
+            detail = detail,
             confirmText = "Stop",
             dismissText = "Keep going",
             onConfirm = { confirms++ },
@@ -878,5 +883,14 @@ class PatientUtilsTest {
         .assertTextEquals("Keep going")
         .performClick()
     assertEquals(1 to 1, confirms to dismisses)
+
+    // Like "Stop the guidance?": only the title and the buttons
+    message = ""
+    detail = ""
+    composeTestRule.onNodeWithText("Really").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Details").assertDoesNotExist()
+    // No empty line left in their place
+    composeTestRule.onAllNodes(hasText("")).assertCountEquals(0)
+    composeTestRule.onNodeWithText("Stop?").assertIsDisplayed()
   }
 }

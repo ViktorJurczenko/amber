@@ -63,13 +63,25 @@ class GuidanceUtilsTest {
     }
     composeTestRule.onNodeWithTag(GuidanceTestTags.NO_DESTINATIONS).assertIsDisplayed()
 
-    state = state.copy(destinations = listOf(pharmacy), isSearching = true)
+    // One place of each kind, each saying what kind it is, for screen readers
+    val kinds =
+        mapOf(
+            GuidanceDestinationKind.APPOINTMENT to R.string.guidanceKindAppointment,
+            GuidanceDestinationKind.SAVED_PLACE to R.string.guidanceKindSavedPlace,
+            GuidanceDestinationKind.MEMORY to R.string.guidanceKindMemory,
+            GuidanceDestinationKind.SEARCH to R.string.guidanceKindSearch,
+        )
+    assertEquals("every kind is listed", GuidanceDestinationKind.entries.toSet(), kinds.keys)
+    val places =
+        kinds.keys.map {
+          if (it == pharmacy.kind) pharmacy else pharmacy.copy(id = it.name, kind = it)
+        }
+    state = state.copy(destinations = places, isSearching = true)
     composeTestRule.onNodeWithTag(GuidanceTestTags.SEARCHING).assertIsDisplayed()
-    // Each place says what kind it is, for screen readers
-    composeTestRule
-        .onNodeWithContentDescription(string(R.string.guidanceKindSavedPlace))
-        .assertIsDisplayed()
-    composeTestRule.onNodeWithText(pharmacy.name).performClick()
+    kinds.values.forEach {
+      composeTestRule.onNodeWithContentDescription(string(it)).assertIsDisplayed()
+    }
+    composeTestRule.onNodeWithTag(GuidanceTestTags.destination(pharmacy)).performClick()
 
     state = state.copy(isSearching = false, searchErrorRes = R.string.guidanceSearchError)
     composeTestRule
