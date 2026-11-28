@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,8 +21,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -65,7 +69,7 @@ class MapUtilsTest {
     composeTestRule.setContent {
       AmberAppTheme {
         MapSearchField(
-            query = query.value,
+            state = MapPlaceSearchState(query = query.value),
             onQueryChange = { query.value = it },
             onSearch = { searches++ },
         )
@@ -89,7 +93,9 @@ class MapUtilsTest {
   @Test
   fun searchField_reflectsQueryChangesFromItsParent() {
     val query = mutableStateOf("Lausanne")
-    composeTestRule.setContent { AmberAppTheme { MapSearchField(query = query.value) } }
+    composeTestRule.setContent {
+      AmberAppTheme { MapSearchField(state = MapPlaceSearchState(query = query.value)) }
+    }
 
     val field = composeTestRule.onNodeWithTag(MapTestTags.SEARCH)
     field.assertTextEquals("Lausanne")
@@ -101,6 +107,130 @@ class MapUtilsTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapSearchHint))
         .assertIsDisplayed()
+  }
+
+  @Test
+  fun searchPopup_showsSuggestionsAndSelectionClosesIt() {
+    val lausanne = GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")
+    val geneva = GeoLocation(lat = 46.20, lng = 6.14, placeName = "Geneva")
+    val state = mutableStateOf(MapPlaceSearchState(query = "Lausanne", isSearching = true))
+    var selected: GeoLocation? = null
+    composeTestRule.setContent {
+      AmberAppTheme {
+        MapSearchField(
+            state = state.value,
+            onSuggestionClick = { selected = it },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertIsDisplayed()
+
+    state.value =
+        MapPlaceSearchState(
+            query = "Lausanne",
+            suggestions = listOf(lausanne, geneva),
+            hasSearched = true,
+        )
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertDoesNotExist()
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(2)
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION)[1].performClick()
+    assertEquals(geneva, selected)
+
+    state.value = MapPlaceSearchState(query = geneva.placeName.orEmpty(), selectedPlace = geneva)
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  @Test
+  fun suggestionWithoutPlaceNameCanStillBeSelected() {
+    val place = GeoLocation(lat = 46.52, lng = 6.63)
+    var selected = false
+    composeTestRule.setContent {
+      AmberAppTheme { MapPlaceSuggestion(place = place, onClick = { selected = true }) }
+    }
+
+    composeTestRule.onNodeWithTag(MapTestTags.SUGGESTION).performClick()
+    assertTrue(selected)
+  }
+
+  @Test
+  fun searchPopup_showsGuidanceOnlyUntilSearchCompletes() {
+    val state = mutableStateOf(MapPlaceSearchState(query = "La"))
+    composeTestRule.setContent { AmberAppTheme { MapSearchField(state = state.value) } }
+
+    val shortHint =
+        context.resources.getQuantityString(
+            R.plurals.locationQueryTooShort,
+            MIN_PLACE_QUERY_LENGTH,
+            MIN_PLACE_QUERY_LENGTH,
+        )
+    composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
+
+    // Whitespace is not a search, while padded short text still shows query guidance.
+    state.value = MapPlaceSearchState(query = "   ")
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+
+    state.value = MapPlaceSearchState(query = " La ")
+    composeTestRule.onNodeWithText(shortHint).assertIsDisplayed()
+
+    // A long query with no completed lookup should not claim that no place exists.
+    state.value = MapPlaceSearchState(query = "Geneva")
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertExists()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapNoPlaceFound))
+        .assertDoesNotExist()
+
+    state.value = MapPlaceSearchState(query = "Geneva", hasSearched = true)
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapNoPlaceFound))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(shortHint).assertDoesNotExist()
+
+    state.value = MapPlaceSearchState()
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
+  }
+
+  @Test
+  fun searchPopup_failedSearchCanRetryAndLoadingHidesPriorFailure() {
+    val state = mutableStateOf(MapPlaceSearchState())
+    var retries = 0
+    composeTestRule.setContent {
+      AmberAppTheme { MapSearchField(state = state.value, onRetrySearch = { retries++ }) }
+    }
+
+    // A failed search takes priority over suggestions left from an earlier response.
+    state.value =
+        MapPlaceSearchState(
+            query = "Geneva",
+            suggestions = listOf(GeoLocation(lat = 46.52, lng = 6.63, placeName = "Lausanne")),
+            searchFailed = true,
+        )
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchFailed))
+        .assertIsDisplayed()
+    composeTestRule.onAllNodesWithTag(MapTestTags.SUGGESTION).assertCountEquals(0)
+    composeTestRule.onNodeWithText(context.getString(R.string.locationTryAgain)).performClick()
+    assertEquals(1, retries)
+
+    // During retry, the loading status hides the prior failure and retry action.
+    state.value = MapPlaceSearchState(query = "Geneva", isSearching = true, searchFailed = true)
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationSearching))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.patientMapSearchFailed))
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.locationTryAgain))
+        .assertDoesNotExist()
+
+    state.value = MapPlaceSearchState()
+    composeTestRule.onNodeWithTag(MapTestTags.SEARCH_POPUP).assertDoesNotExist()
   }
 
   @Test
@@ -157,17 +287,17 @@ class MapUtilsTest {
                 R.string.patientMapLastKnown,
         )
     var previousMessage: Int? = null
-    statesAndMessages.forEach { (state, message) ->
+    statesAndMessages.forEachIndexed { index, (state, message) ->
       location.value = state
       composeTestRule.onNodeWithText(context.getString(message)).assertIsDisplayed()
       previousMessage?.let { oldMessage ->
         composeTestRule.onNodeWithText(context.getString(oldMessage)).assertDoesNotExist()
       }
+      // The action stays available even before a fresh position is found.
+      recenterButton.performClick()
+      assertEquals(index + 1, recenters)
       previousMessage = message
     }
-
-    recenterButton.performClick()
-    assertEquals(1, recenters)
   }
 
   @Test

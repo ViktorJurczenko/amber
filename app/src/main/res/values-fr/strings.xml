@@ -461,6 +461,8 @@
     <string name="patientMapLastKnown">Dernière position connue</string>
     <string name="patientMapLocationFound">Position actuelle</string>
     <string name="patientMapRecenter">Recentrer</string>
+    <string name="patientMapSearchFailed">Impossible de rechercher des lieux. Vérifiez votre connexion et réessayez.</string>
+    <string name="patientMapNoPlaceFound">Aucun lieu trouvé. Essayez une autre recherche.</string>
     <string name="mediaMapErrorNoProfile">Aucun profil trouvé.</string>
     <string name="mediaMapErrorLoadProfile">Impossible de charger le profil.</string>
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
@@ -504,4 +506,14 @@
 
     <!-- BoardOfPeople -->
     <string name="boardOfPeopleTitle">Toutes les personnes dans le cercle de soins</string>
+
+    <!-- Lieux enregistrés (aidant) : erreurs -->
+    <string name="savedPlacesErrorNoProfile">Aucun profil trouvé.</string>
+    <string name="savedPlacesErrorLoadProfile">Impossible de charger le profil.</string>
+    <string name="savedPlacesErrorNoCircle">Aucun cercle de soins trouvé.</string>
+    <string name="savedPlacesErrorLoad">Impossible de charger les lieux enregistrés.</string>
+    <string name="savedPlacesErrorSave">Impossible d\'enregistrer le lieu.</string>
+    <string name="savedPlacesErrorDelete">Impossible de supprimer le lieu.</string>
+    <string name="savedPlacesErrorSearch">Impossible de rechercher l\'adresse. Vérifiez votre connexion.</string>
+    <string name="savedPlacesErrorStopped">La liste ne se met plus à jour. Touchez Réessayer avant de modifier un lieu.</string>
 </resources>
