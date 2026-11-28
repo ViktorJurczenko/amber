@@ -32,16 +32,24 @@ import androidx.core.app.ActivityOptionsCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import com.github.se.amber.R
+import com.github.se.amber.data.appointment.AppointmentRepositoryProvider
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
+import com.github.se.amber.data.circle.ActiveCircleRepositoryProvider
 import com.github.se.amber.data.circle.SavedPlacesRepository
+import com.github.se.amber.data.circle.SavedPlacesRepositoryProvider
 import com.github.se.amber.data.directions.FakeRouteRepository
 import com.github.se.amber.data.directions.RouteError
+import com.github.se.amber.data.directions.RouteRepositoryProvider
 import com.github.se.amber.data.location.FakeLocationUpdatesRepository
 import com.github.se.amber.data.location.FakeMediaLocationRepository
 import com.github.se.amber.data.location.LocationUpdate
+import com.github.se.amber.data.location.LocationUpdatesRepositoryProvider
+import com.github.se.amber.data.location.MediaLocationRepositoryProvider
 import com.github.se.amber.data.location.PlaceSearchRepository
+import com.github.se.amber.data.location.PlaceSearchRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
+import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.directions.Route
 import com.github.se.amber.model.directions.RoutePoint
 import com.github.se.amber.model.directions.TestRoutes.AT_END
@@ -65,6 +73,8 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import java.time.ZoneOffset
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
@@ -168,6 +178,45 @@ class GuidanceScreenTest {
   private fun choosePharmacyAndGo() {
     choosePharmacy()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.DIALOG_CONFIRM).performClick()
+  }
+
+  @Test
+  fun theScreenAsTheAppOpensIt_buildsItsViewModelFromTheAppsRepositories() {
+    // MainActivity passes no ViewModel: the default one reads each app-wide provider
+    val providers =
+        arrayOf(
+            RouteRepositoryProvider.Companion,
+            LocationUpdatesRepositoryProvider.Companion,
+            PlaceSearchRepositoryProvider.Companion,
+            SavedPlacesRepositoryProvider.Companion,
+            MediaLocationRepositoryProvider.Companion,
+            AppointmentRepositoryProvider.Companion,
+            ProfileRepositoryProvider.Companion,
+            ActiveCircleRepositoryProvider.Companion,
+        )
+    mockkObject(*providers)
+    every { RouteRepositoryProvider.default } returns RouteRepositoryProvider { routes }
+    every { LocationUpdatesRepositoryProvider.default } returns
+        LocationUpdatesRepositoryProvider { location }
+    every { PlaceSearchRepositoryProvider.default } returns
+        PlaceSearchRepositoryProvider { PlaceSearchRepository { search.search(it) } }
+    every { SavedPlacesRepositoryProvider.default } returns
+        SavedPlacesRepositoryProvider { savedPlaces }
+    every { MediaLocationRepositoryProvider.default } returns
+        MediaLocationRepositoryProvider { pins }
+    every { AppointmentRepositoryProvider.default } returns
+        AppointmentRepositoryProvider { FakeAppointmentRepository(ZoneOffset.UTC) }
+    every { ProfileRepositoryProvider.default } returns ProfileRepositoryProvider { profiles }
+    every { ActiveCircleRepositoryProvider.default } returns
+        ActiveCircleRepositoryProvider { activeCircle }
+    try {
+      composeTestRule.setContent { AmberAppTheme { GuidanceScreen() } }
+
+      composeTestRule.onNodeWithText(pharmacy.name).assertIsDisplayed()
+      composeTestRule.onNodeWithText(checkNotNull(lake.placeName)).assertIsDisplayed()
+    } finally {
+      unmockkObject(*providers)
+    }
   }
 
   @Test
