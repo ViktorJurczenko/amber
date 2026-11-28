@@ -1,6 +1,6 @@
 // Written with the aid of AI
-// Modified by nehachak1, with assistance from Claude Code
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication
 
@@ -12,6 +12,8 @@ import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.github.se.amber.R
+import com.github.se.amber.data.consent.FakeTermsConsentRepository
+import com.github.se.amber.data.consent.TermsConsentRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.authentication.AuthUser
@@ -54,6 +56,7 @@ class EmailSignInViewModelTest {
   private val repository = mockk<AuthRepository>()
   private val context = mockk<Context>()
   private val credentialManager = mockk<CredentialManager>()
+  private val terms = FakeTermsConsentRepository()
   private lateinit var viewModel: EmailSignInViewModel
 
   /** Stubs Credential Manager to return a credential for repository sign-in tests. */
@@ -71,7 +74,7 @@ class EmailSignInViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher())
     every { repository.currentUser } returns null
     every { context.getString(R.string.default_web_client_id) } returns "client-id"
-    viewModel = EmailSignInViewModel(repository)
+    viewModel = EmailSignInViewModel(repository, terms)
   }
 
   @After
@@ -89,7 +92,7 @@ class EmailSignInViewModelTest {
     val user = AuthUser("existing-user")
     every { repository.currentUser } returns user
 
-    assertEquals(user, EmailSignInViewModel(repository).uiState.value.user)
+    assertEquals(user, EmailSignInViewModel(repository, terms).uiState.value.user)
   }
 
   @Test
@@ -98,11 +101,75 @@ class EmailSignInViewModelTest {
     every { repository.currentUser } returns user
     mockkObject(AuthRepositoryProvider)
     every { AuthRepositoryProvider.repository } returns repository
+    mockkObject(TermsConsentRepositoryProvider.Companion)
+    every { TermsConsentRepositoryProvider.default } returns
+        TermsConsentRepositoryProvider { terms }
     try {
       assertEquals(user, EmailSignInViewModel().uiState.value.user)
     } finally {
-      unmockkObject(AuthRepositoryProvider)
+      unmockkObject(AuthRepositoryProvider, TermsConsentRepositoryProvider.Companion)
     }
+  }
+
+  @Test
+  fun aFirstSignIn_asksToAcceptTheTerms_withoutStartingSignIn() = runTest {
+    viewModel.onGoogleSignInClick(context, credentialManager)
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isConsentDialogOpen)
+    coVerify(exactly = 0) { credentialManager.getCredential(context, any<GetCredentialRequest>()) }
+  }
+
+  @Test
+  fun declining_closesThePopupAndSaysWhy_andTryingAgainAsksAgain() = runTest {
+    viewModel.onGoogleSignInClick(context, credentialManager)
+    viewModel.declineTerms()
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isConsentDialogOpen)
+    assertTrue(viewModel.uiState.value.hasDeclinedTerms)
+    assertFalse(terms.accepted.value)
+
+    viewModel.onGoogleSignInClick(context, credentialManager)
+    assertTrue(viewModel.uiState.value.isConsentDialogOpen)
+    assertFalse(viewModel.uiState.value.hasDeclinedTerms)
+    coVerify(exactly = 0) { credentialManager.getCredential(context, any<GetCredentialRequest>()) }
+  }
+
+  @Test
+  fun accepting_remembersIt_andSignsIn_evenIfItCantBeRemembered() = runTest {
+    val user = AuthUser("signed-in")
+    val credential = stubCredential()
+    coEvery { repository.signInWithGoogle(credential) } returns Result.success(user)
+
+    viewModel.onGoogleSignInClick(context, credentialManager)
+    viewModel.acceptTerms(context, credentialManager)
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isConsentDialogOpen)
+    assertTrue(terms.accepted.value)
+    assertEquals(user, viewModel.uiState.value.user)
+
+    // A full disk: sign-in still goes on, and this phone asks again next time
+    val failing = FakeTermsConsentRepository().apply { failAccept = true }
+    val other = EmailSignInViewModel(repository, failing)
+    other.acceptTerms(context, credentialManager)
+    advanceUntilIdle()
+    assertFalse(failing.accepted.value)
+    assertEquals(user, other.uiState.value.user)
+  }
+
+  @Test
+  fun termsAcceptedBefore_signInStartsAtOnce() = runTest {
+    val credential = stubCredential()
+    coEvery { repository.signInWithGoogle(credential) } returns
+        Result.success(AuthUser("signed-in"))
+    val accepted = EmailSignInViewModel(repository, FakeTermsConsentRepository(accepted = true))
+    advanceUntilIdle()
+
+    accepted.onGoogleSignInClick(context, credentialManager)
+    advanceUntilIdle()
+
+    assertFalse(accepted.uiState.value.isConsentDialogOpen)
+    coVerify(exactly = 1) { credentialManager.getCredential(context, any<GetCredentialRequest>()) }
   }
 
   @Test

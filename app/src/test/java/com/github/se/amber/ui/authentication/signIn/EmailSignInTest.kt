@@ -1,6 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex
-// Modified by nehachak1, with assistance from Claude Code
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication
 
@@ -12,11 +12,17 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performFirstLinkClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.credentials.CredentialManager
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
+import com.github.se.amber.data.consent.FakeTermsConsentRepository
+import com.github.se.amber.data.consent.TermsConsentRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.authentication.AuthUser
@@ -28,6 +34,7 @@ import com.github.se.amber.ui.authentication.signIn.EmailSignInScreen
 import com.github.se.amber.ui.authentication.signIn.EmailSignInTestTags
 import com.github.se.amber.ui.authentication.signIn.EmailSignInUIState
 import com.github.se.amber.ui.authentication.signIn.EmailSignInViewModel
+import com.github.se.amber.ui.authentication.signIn.TermsDocument
 import com.github.se.amber.ui.onboarding.AmberHeaderTestTags
 import com.github.se.amber.ui.utils.UiText
 import io.mockk.every
@@ -65,6 +72,7 @@ class EmailSignInScreenTest {
 
   private val repository = mockk<AuthRepository>()
   private val credentialManager = mockk<CredentialManager>()
+  private val terms = FakeTermsConsentRepository()
   private lateinit var viewModel: EmailSignInViewModel
   private var continueCount = 0
   private var googleSignInCount = 0
@@ -78,7 +86,7 @@ class EmailSignInScreenTest {
   @Before
   fun setUp() {
     every { repository.currentUser } returns null
-    viewModel = EmailSignInViewModel(repository)
+    viewModel = EmailSignInViewModel(repository, terms)
     continueCount = 0
     googleSignInCount = 0
   }
@@ -148,15 +156,16 @@ class EmailSignInScreenTest {
   }
 
   @Test
-  fun theScreenWelcomesTheUserAndGoogleIsTheOnlySignInOption() {
+  fun theScreenSaysWhatAmberIsFor_andGoogleIsTheOnlySignInOption() {
     setScreen()
 
     composeTestRule
-        .onNodeWithTag(EmailSignInTestTags.WELCOME)
-        .assertTextEquals(string(R.string.signInWelcome))
+        .onNodeWithTag(EmailSignInTestTags.TAGLINE)
+        .assertTextEquals(string(R.string.signInTagline))
     composeTestRule
-        .onNodeWithTag(EmailSignInTestTags.INSTRUCTION)
-        .assertTextEquals(string(R.string.signInInstruction))
+        .onNodeWithTag(EmailSignInTestTags.DESCRIPTION)
+        .assertTextEquals(string(R.string.signInDescription))
+    composeTestRule.onNodeWithTag(AuthenticationComponentTestTags.HIGHLIGHTS).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EmailSignInTestTags.GOOGLE_BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EmailSignInTestTags.HEADING).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EmailSignInTestTags.EMAIL_FIELD).assertDoesNotExist()
@@ -164,7 +173,14 @@ class EmailSignInScreenTest {
     composeTestRule.onNodeWithTag(EmailSignInTestTags.OR_DIVIDER).assertDoesNotExist()
     composeTestRule
         .onNodeWithTag(AuthenticationComponentTestTags.TERMS_FOOTER)
-        .assertTextEquals(string(R.string.signInTermsFooter))
+        .assertTextEquals(
+            ApplicationProvider.getApplicationContext<Context>()
+                .getString(
+                    R.string.signInTermsFooter,
+                    string(R.string.termsOfServiceTitle),
+                    string(R.string.privacyPolicyTitle),
+                )
+        )
   }
 
   @Test
@@ -173,8 +189,8 @@ class EmailSignInScreenTest {
     setScreen()
 
     composeTestRule
-        .onNodeWithTag(EmailSignInTestTags.WELCOME)
-        .assertTextEquals("Bienvenue sur Amber")
+        .onNodeWithTag(EmailSignInTestTags.TAGLINE)
+        .assertTextEquals("Vos souvenirs, à portée de main")
     composeTestRule
         .onNodeWithTag(EmailSignInTestTags.GOOGLE_BUTTON)
         .assertTextEquals("Se connecter avec Google")
@@ -255,7 +271,7 @@ class EmailSignInScreenTest {
   @Test
   fun existingUserInvokesGoogleNavigationCallback() {
     every { repository.currentUser } returns AuthUser("existing-user")
-    setScreen(EmailSignInViewModel(repository))
+    setScreen(EmailSignInViewModel(repository, terms))
     composeTestRule.waitForIdle()
 
     assertEquals(1, googleSignInCount)
@@ -268,7 +284,7 @@ class EmailSignInScreenTest {
 
     composeTestRule.onNodeWithTag(EmailSignInTestTags.GOOGLE_BUTTON).performClick()
 
-    verify(exactly = 1) { model.signInWithGoogle(any(), credentialManager) }
+    verify(exactly = 1) { model.onGoogleSignInClick(any(), credentialManager) }
   }
 
   @Test
@@ -304,6 +320,9 @@ class EmailSignInScreenTest {
     every { repository.currentUser } returns AuthUser("existing-user")
     mockkObject(AuthRepositoryProvider)
     every { AuthRepositoryProvider.repository } returns repository
+    mockkObject(TermsConsentRepositoryProvider.Companion)
+    every { TermsConsentRepositoryProvider.default } returns
+        TermsConsentRepositoryProvider { terms }
     try {
       composeTestRule.setContent { EmailSignInScreen(onGoogleSignIn = { googleSignInCount++ }) }
       composeTestRule.waitForIdle()
@@ -311,7 +330,56 @@ class EmailSignInScreenTest {
       verify { repository.currentUser }
       assertEquals(1, googleSignInCount)
     } finally {
-      unmockkObject(AuthRepositoryProvider)
+      unmockkObject(AuthRepositoryProvider, TermsConsentRepositoryProvider.Companion)
+    }
+  }
+
+  @Test
+  fun theConsentPopup_acceptsOrDeclines_andADeclineSaysWhySignInDidntStart() {
+    val model = mockViewModel(EmailSignInUIState(isConsentDialogOpen = true))
+    setScreen(model)
+
+    composeTestRule
+        .onNodeWithTag(AuthenticationComponentTestTags.CONSENT_DIALOG)
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.consentPointShare)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(AuthenticationComponentTestTags.CONSENT_ACCEPT)
+        .performScrollTo()
+        .performClick()
+    verify(exactly = 1) { model.acceptTerms(any(), credentialManager) }
+    composeTestRule.onNodeWithTag(AuthenticationComponentTestTags.CONSENT_DECLINE).performClick()
+    verify(exactly = 1) { model.declineTerms() }
+    composeTestRule.onNodeWithTag(EmailSignInTestTags.TERMS_DECLINED).assertDoesNotExist()
+  }
+
+  @Test
+  fun afterDeclining_theScreenSaysTheTermsMustBeAccepted() {
+    setScreen(mockViewModel(EmailSignInUIState(hasDeclinedTerms = true)))
+
+    composeTestRule
+        .onNodeWithTag(EmailSignInTestTags.TERMS_DECLINED)
+        .performScrollTo()
+        .assertTextEquals(string(R.string.signInTermsDeclined))
+  }
+
+  @Test
+  fun eachLinkOfTheFooter_opensItsDocument_untilItIsClosed() {
+    setScreen()
+
+    TermsDocument.entries.forEach { document ->
+      composeTestRule
+          .onNodeWithTag(AuthenticationComponentTestTags.TERMS_FOOTER)
+          .performFirstLinkClick { (it.item as LinkAnnotation.Clickable).tag == document.name }
+      composeTestRule.onNodeWithText(string(document.titleRes)).assertIsDisplayed()
+      composeTestRule.onNodeWithText(string(document.bodyRes)).assertExists()
+      composeTestRule
+          .onNodeWithTag(AuthenticationComponentTestTags.TERMS_DOCUMENT_ACTION)
+          .performScrollTo()
+          .performClick()
+      composeTestRule
+          .onNodeWithTag(AuthenticationComponentTestTags.TERMS_DOCUMENT)
+          .assertDoesNotExist()
     }
   }
 

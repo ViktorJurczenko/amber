@@ -1,12 +1,17 @@
 // Written by MeiliV, with assistance from OpenAI Codex
-// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication.signIn
 
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,13 +32,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_BIG
+import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_REGULAR
 import com.github.se.amber.ui.utils.asString
 
 /** Test tags of [EmailSignInScreen] and of its private helpers. */
 internal object EmailSignInTestTags {
-  const val WELCOME = "EmailSignIn_test_tag_welcome"
-  const val INSTRUCTION = "EmailSignIn_test_tag_instruction"
+  const val TAGLINE = "email_sign_in_tagline"
+  const val DESCRIPTION = "email_sign_in_description"
+  const val TERMS_DECLINED = "email_sign_in_terms_declined"
   const val HEADING = "email_sign_in_heading"
   const val EMAIL_FIELD = "email_sign_in_email_field"
   const val CONTINUE_BUTTON = "email_sign_in_continue_button"
@@ -93,7 +100,9 @@ fun EmailSignInScreen(
       onEmailChange = emailSignInViewModel::onEmailChange,
       // The ViewModel check stays as a guard behind the disabled button
       onContinue = { if (emailSignInViewModel.validateEmail()) onContinue() },
-      onGoogleSignIn = { emailSignInViewModel.signInWithGoogle(context, credentialManager) },
+      onGoogleSignIn = { emailSignInViewModel.onGoogleSignInClick(context, credentialManager) },
+      onAcceptTerms = { emailSignInViewModel.acceptTerms(context, credentialManager) },
+      onDeclineTerms = emailSignInViewModel::declineTerms,
   )
 }
 
@@ -108,6 +117,8 @@ fun EmailSignInScreen(
  * @param onEmailChange Called whenever the email field value changes.
  * @param onContinue Called when the user presses Continue.
  * @param onGoogleSignIn Called when the user presses the Google sign-in button.
+ * @param onAcceptTerms Called when the user accepts the terms in the consent popup.
+ * @param onDeclineTerms Called when the user closes the consent popup without accepting.
  */
 @Suppress("UNUSED_PARAMETER") // used by the email sign-in commented out below
 @Composable
@@ -117,6 +128,8 @@ internal fun EmailSignInContent(
     onEmailChange: (String) -> Unit = {},
     onContinue: () -> Unit = {},
     onGoogleSignIn: () -> Unit = {},
+    onAcceptTerms: () -> Unit = {},
+    onDeclineTerms: () -> Unit = {},
 ) {
   // Parameter spacing spaces the layout content (heading, email field, action group)
   AuthenticationLayout(modifier = modifier, spacing = CAREGIVER_PADDING_REGULAR) {
@@ -154,20 +167,25 @@ internal fun EmailSignInContent(
     //   OrDivider()
     // Close the action group's Column after the Google button below
     AuthenticationText(
-        modifier = Modifier.testTag(EmailSignInTestTags.WELCOME),
-        text = stringResource(R.string.signInWelcome),
+        modifier = Modifier.testTag(EmailSignInTestTags.TAGLINE),
+        text = stringResource(R.string.signInTagline),
         textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.headlineMedium,
+        style = MaterialTheme.typography.headlineSmall,
         color = MaterialTheme.colorScheme.primary,
+    )
+    // What Amber keeps, shown before it's said
+    AuthenticationHighlights(
+        modifier = Modifier.padding(top = CAREGIVER_PADDING_MEDIUM),
+        icons = signInHighlights,
     )
     AuthenticationText(
         modifier =
             Modifier.padding(bottom = CAREGIVER_PADDING_BIG)
-                .testTag(EmailSignInTestTags.INSTRUCTION),
-        text = stringResource(R.string.signInInstruction),
+                .testTag(EmailSignInTestTags.DESCRIPTION),
+        text = stringResource(R.string.signInDescription),
         textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.secondary,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     AuthenticationButton(
         text =
@@ -179,6 +197,18 @@ internal fun EmailSignInContent(
         enabled = !uiState.isLoading,
         leadingIcon = painterResource(R.drawable.google_logo),
     )
+    if (uiState.hasDeclinedTerms) {
+      AuthenticationText(
+          modifier = Modifier.testTag(EmailSignInTestTags.TERMS_DECLINED),
+          text = stringResource(R.string.signInTermsDeclined),
+          textAlign = TextAlign.Center,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+      )
+    }
+  }
+  if (uiState.isConsentDialogOpen) {
+    ConsentDialog(onAccept = onAcceptTerms, onDecline = onDeclineTerms)
   }
 }
 
@@ -214,3 +244,12 @@ internal fun EmailSignInContent(
 internal fun EmailSignInContentPreview() {
   AmberAppTheme { EmailSignInContent(uiState = EmailSignInUIState(email = "person@example.com")) }
 }
+
+/** What Amber keeps, in the order the description says it: photos, voices, places, appointments. */
+private val signInHighlights =
+    listOf(
+        Icons.Outlined.Photo,
+        Icons.Outlined.Mic,
+        Icons.Outlined.Place,
+        Icons.Outlined.Event,
+    )
