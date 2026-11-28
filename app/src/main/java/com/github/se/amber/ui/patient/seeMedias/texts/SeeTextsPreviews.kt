@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
-private enum class PreviewTextState {
+internal enum class PreviewTextState {
   Loading,
   Empty,
   Error,
@@ -42,40 +42,63 @@ private enum class PreviewTextState {
 }
 
 /** Only the approved-media observation is used by this preview. */
-private class PreviewMediaRepository(private val media: Flow<List<MediaItem>>) : MediaRepository {
+internal class PreviewMediaRepository(private val media: Flow<List<MediaItem>>) : MediaRepository {
   override fun observeApprovedMedia(circleId: String): Flow<List<MediaItem>> = media
 
-  override fun newMediaId(circleId: String): String = unused()
+  override fun newMediaId(circleId: String): String {
+    error("Not used by SeeTexts previews")
+  }
 
-  override fun observeMediaShowing(circleId: String, shownId: String): Flow<List<MediaItem>> =
-      unused()
+  override fun observeMediaShowing(circleId: String, shownId: String): Flow<List<MediaItem>> {
+    error("Not used by SeeTexts previews")
+  }
 
-  override fun observeCircleMedia(circleId: String): Flow<List<CircleMedia>> = unused()
+  override fun observeCircleMedia(circleId: String): Flow<List<CircleMedia>> {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun getMedia(circleId: String, mediaId: String): MediaItem? = unused()
+  override suspend fun getMedia(circleId: String, mediaId: String): MediaItem? {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun addMedia(circle: CareCircle, item: MediaItem, file: File?) = unused()
+  override suspend fun addMedia(circle: CareCircle, item: MediaItem, file: File?) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override fun observeOutbox(circleId: String): Flow<List<OutboxEntry>> = unused()
+  override fun observeOutbox(circleId: String): Flow<List<OutboxEntry>> {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun retrySend(circleId: String, mediaId: String) = unused()
+  override suspend fun retrySend(circleId: String, mediaId: String) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun discardUnsent(circleId: String, mediaId: String) = unused()
+  override suspend fun discardUnsent(circleId: String, mediaId: String) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun updateMedia(circleId: String, item: MediaItem) = unused()
+  override suspend fun updateMedia(circleId: String, item: MediaItem) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun deleteMedia(circle: CareCircle, item: MediaItem) = unused()
+  override suspend fun deleteMedia(circle: CareCircle, item: MediaItem) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun getFile(circle: CareCircle, item: MediaItem): File = unused()
+  override suspend fun getFile(circle: CareCircle, item: MediaItem): File {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun clearLocalMedia(circleId: String) = unused()
+  override suspend fun clearLocalMedia(circleId: String) {
+    error("Not used by SeeTexts previews")
+  }
 
-  override suspend fun clearLocalMedia() = unused()
-
-  private fun unused(): Nothing = error("Not used by SeeTexts previews")
+  override suspend fun clearLocalMedia() {
+    error("Not used by SeeTexts previews")
+  }
 }
 
-private class PreviewProfiles(
+internal class PreviewProfiles(
     private val profile: UserProfile,
     private val showError: Boolean,
 ) : ProfileRepository {
@@ -91,7 +114,7 @@ private class PreviewProfiles(
   override suspend fun getProfile(uid: String): Result<UserProfile?> = Result.success(profile)
 }
 
-private class PreviewCircles(private val circle: CareCircle) : CareCircleRepository {
+internal class PreviewCircles(private val circle: CareCircle) : CareCircleRepository {
   override fun newId(): String = circle.id
 
   override suspend fun getCircle(circleId: String): Result<CareCircle> = Result.success(circle)
@@ -100,7 +123,7 @@ private class PreviewCircles(private val circle: CareCircle) : CareCircleReposit
       error("Preview does not add people")
 }
 
-private class SeeTextsPreviewOwner(state: PreviewTextState) :
+internal class SeeTextsPreviewOwner(state: PreviewTextState) :
     ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
   override val viewModelStore = ViewModelStore()
   private val profile =
@@ -115,7 +138,7 @@ private class SeeTextsPreviewOwner(state: PreviewTextState) :
 
   private val profiles = PreviewProfiles(profile, state == PreviewTextState.Error)
   private val circles = PreviewCircles(circle)
-  private val activeCircles =
+  internal val activeCircles =
       object : ActiveCircleRepository {
         override fun activeCircleId(uid: String, circleIds: List<String>): Flow<String?> =
             flowOf(circleIds.firstOrNull { it.isNotBlank() })
