@@ -45,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -76,9 +75,6 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import kotlin.math.ceil
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 /** The default destination and route of the helpers, empty: the screen always passes its own. */
 private val emptyDestination =
@@ -443,13 +439,6 @@ private fun GuidanceIconBox(icon: ImageVector = Icons.Outlined.Flag) {
   }
 }
 
-/** The walk time of [route] in whole minutes, rounded up, as "About 5 minutes walking". */
-@Composable
-internal fun walkTimeText(route: Route = emptyRoute): String {
-  val minutes = ceil(route.durationSeconds.seconds / 1.minutes).toInt().coerceAtLeast(1)
-  return pluralStringResource(R.plurals.guidanceWalkMinutes, minutes, minutes)
-}
-
 /** What to do next, with the distance: "Turn left in 50 m", or "Pharmacy is in 20 m". */
 @Composable
 private fun GuidancePhase.Guiding.stepText(): String {
@@ -516,6 +505,19 @@ private val previewDestinations =
             kind = GuidanceDestinationKind.MEMORY,
         ),
     )
+private val previewChoosing =
+    GuidanceUIState(
+        destinations = previewDestinations,
+        searchQuery = "EPFL",
+        searchResults =
+            listOf(
+                previewDestination.copy(
+                    name = "EPFL",
+                    kind = GuidanceDestinationKind.SEARCH,
+                    address = "EPFL, Lausanne",
+                )
+            ),
+    )
 private val previewGuiding =
     GuidancePhase.Guiding(
         previewDestination,
@@ -529,21 +531,7 @@ private val previewGuiding =
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 internal fun GuidanceChoosingPreview() {
-  AmberAppTheme {
-    GuidanceChoosing(
-        GuidanceUIState(
-            destinations = previewDestinations,
-            searchQuery = "EPFL",
-            searchResults =
-                listOf(
-                    previewDestination.copy(
-                        name = "EPFL, Lausanne",
-                        kind = GuidanceDestinationKind.SEARCH,
-                    )
-                ),
-        )
-    )
-  }
+  AmberAppTheme { GuidanceChoosing(previewChoosing) }
 }
 
 /** Preview of [GuidanceStepCard] and the other phases, in light and dark mode. */
