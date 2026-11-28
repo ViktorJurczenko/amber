@@ -6,6 +6,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber
 
@@ -64,6 +65,8 @@ import com.github.se.amber.ui.onboarding.createCareCircle.CreateCareCircleScreen
 import com.github.se.amber.ui.onboarding.createProfile.CreateProfileScreen
 import com.github.se.amber.ui.onboarding.invitationRedemption.InvitationRedemptionScreen
 import com.github.se.amber.ui.patient.PatientHomeScreen
+import com.github.se.amber.ui.patient.guidance.GuidanceScreen
+import com.github.se.amber.ui.patient.guidance.guidanceTabFor
 import com.github.se.amber.ui.patient.parameters.PatientParameterScreen
 import com.github.se.amber.ui.patient.seeMedias.SeeMediasScreen
 import com.github.se.amber.ui.patient.seeMedias.audios.SeeAudiosScreen
@@ -277,6 +280,7 @@ fun AmberApp(
       composable(route = PatientScreen.Home.route) {
         PatientHomeScreen(
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onGoSomewhere = { navigationActions.navigateTo(PatientScreen.Guidance) },
         )
       }
       composable(route = PatientScreen.SeeMedias.route) {
@@ -287,7 +291,17 @@ fun AmberApp(
         )
       }
       composable(route = PatientScreen.Map.route) {
-        MapScreen(onTabSelected = { tab -> navigationActions.navigateToTab(tab) })
+        MapScreen(
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onGoSomewhere = { navigationActions.navigateTo(PatientScreen.Guidance) },
+        )
+      }
+      composable(route = PatientScreen.Guidance.route) {
+        GuidanceScreen(
+            selectedTab = guidanceTabFor(navigationActions.previousRoute()),
+            onBack = { navigationActions.goBack() },
+            onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+        )
       }
       composable(route = PatientScreen.SeePictures.route) {
         SeePicturesScreen(

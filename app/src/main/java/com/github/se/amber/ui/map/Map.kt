@@ -68,6 +68,7 @@ private const val INITIAL_ZOOM = 14f
  *
  * @param modifier modifier applied to the screen
  * @param onTabSelected Called when the user selects a patient navigation tab.
+ * @param onGoSomewhere Called when the user wants to be guided somewhere.
  * @param cameraPositionState Camera state shared with the map; callers can observe camera moves.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +76,7 @@ private const val INITIAL_ZOOM = 14f
 fun MapScreen(
     modifier: Modifier = Modifier,
     onTabSelected: (Tab) -> Unit = {},
+    onGoSomewhere: () -> Unit = {},
     viewModel: MediaMapViewModel = viewModel(),
     // Lausanne is the fallback while GPS is searching or location access is unavailable.
     cameraPositionState: CameraPositionState = rememberCameraPositionState {
@@ -179,6 +181,7 @@ fun MapScreen(
                   .onSizeChanged { cardHeight = with(density) { it.height.toDp() } }
                   .padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
+          onGoSomewhere = onGoSomewhere,
       )
       MapRecenterButton(
           // On the right side, just above the position card

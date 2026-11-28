@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
@@ -30,10 +31,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
+import com.github.se.amber.ui.patient.DisplayPatientButton
 import com.github.se.amber.ui.patient.DisplayPatientCircularIconButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
@@ -67,6 +70,7 @@ object MapTestTags {
   const val SEARCH = "map_search"
   const val POSITION_CARD = "map_position_card"
   const val RECENTER = "map_recenter"
+  const val GO_SOMEWHERE = "map_go_somewhere"
 }
 
 /** Search field placed over the map. */
@@ -115,16 +119,18 @@ internal fun MapRecenterButton(modifier: Modifier = Modifier, onRecenter: () -> 
 }
 
 /**
- * Position card that reflects the live GPS state. [locationState] selects the translated status
- * text.
+ * Position card that reflects the live GPS state, with the button to be guided somewhere.
+ * [locationState] selects the translated status text.
  *
  * @param modifier Positions the card at the bottom of the map.
  * @param locationState Current permission, GPS, or position state supplied by the ViewModel.
+ * @param onGoSomewhere Called when the user taps the Go somewhere button.
  */
 @Composable
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
     locationState: MediaMapLocationState = MediaMapLocationState.Searching,
+    onGoSomewhere: () -> Unit = {},
 ) {
   val detail =
       when (locationState) {
@@ -170,6 +176,15 @@ internal fun MapPositionCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
+      DisplayPatientButton(
+          onClick = onGoSomewhere,
+          text = stringResource(R.string.guidanceGoSomewhere),
+          textStyle = MaterialTheme.typography.labelLarge,
+          buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
+          fillWidth = false,
+          icon = Icons.AutoMirrored.Outlined.DirectionsWalk,
+          testTag = MapTestTags.GO_SOMEWHERE,
+      )
     }
   }
 }
