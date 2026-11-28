@@ -537,12 +537,25 @@ class AmberAppNavigationTest {
   // ---------------------------------------------------------------------------------------------
 
   @Test
-  fun patientHome_seeMedias_navigatesToSeeMedias() {
+  fun patientTabs_navigateToSeeMediasMapAndHome() {
     launch(NavGraphs.PATIENT)
 
     click(Tags.PATIENT_TAB_SEE_MEDIAS)
 
     assertRoute(PatientScreen.SeeMedias.route)
+
+    // Grant the real Android permission before Google Maps enables the device location layer.
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+    )
+    click(Tags.PATIENT_TAB_MAP)
+    assertRoute(PatientScreen.Map.route)
+    composeRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertExists()
+
+    click(Tags.PATIENT_TAB_HOME)
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test

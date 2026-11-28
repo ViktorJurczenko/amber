@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
+import com.github.se.amber.model.location.pointOrNull
 import com.github.se.amber.ui.navigation.BottomNavigationMenu
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
@@ -60,14 +63,17 @@ object MapScreenTestTags {
 private const val INITIAL_LATITUDE = 46.5197
 private const val INITIAL_LONGITUDE = 6.6323
 private const val INITIAL_ZOOM = 14f
+private const val SEARCH_ZOOM = 16f
 
 /**
  * Patient map centered on the first available device position.
  *
- * This composable handles Android's permission launcher and Google Maps camera.
+ * The ViewModel supplies location and place search state. This composable handles Android's
+ * permission launcher and Google Maps camera.
  *
  * @param modifier modifier applied to the screen
  * @param onTabSelected Called when the user selects a patient navigation tab.
+ * @param viewModel Handles location, place search, and recenter actions.
  * @param cameraPositionState Camera state shared with the map; callers can observe camera moves.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,11 +91,12 @@ fun MapScreen(
           )
     },
 ) {
-  val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+  val placeSearchState by viewModel.placeSearchState.collectAsStateWithLifecycle()
   val locationState by viewModel.locationState.collectAsStateWithLifecycle()
   val userPosition = (locationState as? MediaMapLocationState.Located)?.position
   var centeredOnFreshPosition by rememberSaveable { mutableStateOf(false) }
   val cameraScope = rememberCoroutineScope()
+  val focusManager = LocalFocusManager.current
 
   // Create an Android permission launcher (this does not show the dialog yet)
   // RequestMultiplePermission() lets the screen ask for both precise and approximate user location
@@ -131,6 +138,19 @@ fun MapScreen(
     centeredOnFreshPosition = step.centeredOnFresh
   }
 
+  // A chosen suggestion takes priority over the initial GPS centering
+  // Marking the initial centering complete keeps later GPS updates from moving the selected place
+  LaunchedEffect(placeSearchState.cameraTarget) {
+    val (lat, lng) = placeSearchState.cameraTarget?.pointOrNull() ?: return@LaunchedEffect
+    centeredOnFreshPosition = true
+    // Launched outside this effect: clearing the target restarts the effect,
+    // which would otherwise cancel the animation.
+    cameraScope.launch {
+      cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), SEARCH_ZOOM))
+    }
+    viewModel.onCameraTargetHandled()
+  }
+
   Scaffold(
       modifier = modifier,
       topBar = {
@@ -155,6 +175,7 @@ fun MapScreen(
       GoogleMap(
           modifier = Modifier.fillMaxSize().testTag(MapScreenTestTags.GOOGLE_MAP),
           cameraPositionState = cameraPositionState,
+          onMapClick = { focusManager.clearFocus() },
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
           // Google's own location button is off: MapRecenterButton replaces it, and can also ask
           // for the permission
@@ -169,8 +190,23 @@ fun MapScreen(
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
-          query = searchQuery,
+          state = placeSearchState,
           onQueryChange = viewModel::updateSearchQuery,
+
+          // User clicks on a suggestion in the location propositions
+          onSuggestionClick = { place ->
+            focusManager.clearFocus() // Clear focus when user taps the map
+            viewModel.selectPlace(place)
+          },
+          onRetrySearch = viewModel::retryPlaceSearch,
+
+          // User presses Search on the keyboard: takes the first currently displayed suggestion
+          onSearch = {
+            placeSearchState.suggestions.firstOrNull()?.let { place ->
+              focusManager.clearFocus() // Clear focus to dismiss the keyboard
+              viewModel.selectPlace(place)
+            }
+          },
       )
       MapPositionCard(
           modifier =
@@ -186,6 +222,7 @@ fun MapScreen(
               Modifier.align(Alignment.BottomEnd)
                   .padding(end = PATIENT_PADDING_SMALL, bottom = cardHeight),
           onRecenter = {
+            focusManager.clearFocus()
             // The ViewModel chooses an action; the UI performs the permission or camera API call
             when (val action = viewModel.recenter()) {
               // Ask for permission
@@ -212,8 +249,10 @@ fun MapScreen(
   }
 }
 
+/** Preview of the patient map; [viewModel] can be supplied by tests to avoid live repositories. */
 @Preview(showBackground = true, showSystemUi = true)
+@NonRestartableComposable
 @Composable
-internal fun MapScreenPreview() {
-  AmberAppTheme { MapScreen() }
+internal fun MapScreenPreview(viewModel: MediaMapViewModel = viewModel()) {
+  AmberAppTheme { MapScreen(viewModel = viewModel) }
 }
