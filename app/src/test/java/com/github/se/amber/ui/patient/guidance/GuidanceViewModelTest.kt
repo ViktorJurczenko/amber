@@ -141,7 +141,7 @@ class GuidanceViewModelTest {
   private fun moveTo(
       point: RoutePoint,
       isLastKnown: Boolean = false,
-      accuracy: Float = this.accuracy,
+      accuracy: Float? = this.accuracy,
   ) {
     location.updates.value =
         LocationUpdate.Position(DevicePosition(point.lat, point.lng, accuracy, isLastKnown))
@@ -343,13 +343,39 @@ class GuidanceViewModelTest {
   }
 
   @Test
-  fun lastKnownAndImprecisePositions_doNotMoveTheGuidanceOn() {
+  fun lastKnownAndImprecisePositions_doNotMoveTheGuidanceOn_butOneWithoutAnAccuracyDoes() {
     val viewModel = guidingViewModel()
 
     moveTo(AT_END, isLastKnown = true)
     moveTo(ON_SECOND_LEG, accuracy = (GUIDANCE_MAX_ACCURACY_METERS * 2).toFloat())
-
     assertEquals(0, viewModel.guiding.stepIndex)
+
+    // Some phones give no accuracy: the position is trusted rather than ignored
+    moveTo(ON_SECOND_LEG, accuracy = null)
+    assertEquals(1, viewModel.guiding.stepIndex)
+  }
+
+  @Test
+  fun go_onlyStartsAConfirmedRoute_soALateOrSecondTapDoesNothing() {
+    val viewModel = createViewModel()
+    viewModel.startGuidance()
+    assertEquals(GuidancePhase.Choosing, viewModel.phase)
+    assertFalse(location.isRunning)
+
+    val guiding = guidingViewModel()
+    moveTo(ON_SECOND_LEG)
+    guiding.startGuidance()
+    assertEquals(1, guiding.guiding.stepIndex)
+  }
+
+  @Test
+  fun aRouteWithoutSteps_goesStraightToTheDestination() {
+    routes.answer = { Result.success(L_ROUTE.copy(steps = emptyList())) }
+    val viewModel = guidingViewModel()
+
+    assertNull("the destination comes next", viewModel.guiding.nextManeuver)
+    moveTo(AT_END)
+    assertEquals(GuidancePhase.Arrived(endPlace), viewModel.phase)
   }
 
   @Test
@@ -449,7 +475,12 @@ class GuidanceViewModelTest {
     search = PlaceSearchRepository {
       searches++
       Result.success(
-          listOf(at(END, "Lausanne, Switzerland"), GeoLocation(placeName = "Nowhere"), at(START))
+          listOf(
+              at(END, "Lausanne, Switzerland"),
+              GeoLocation(placeName = "Nowhere"),
+              at(START),
+              GeoLocation(CORNER.lat, CORNER.lng),
+          )
       )
     }
     val viewModel = createViewModel()
@@ -462,7 +493,7 @@ class GuidanceViewModelTest {
     assertEquals(1, searches)
     // Named by what the patient typed, the address kept to tell them apart
     assertEquals(
-        listOf("Lausanne" to "Lausanne, Switzerland", "Lausanne" to null),
+        listOf("Lausanne" to "Lausanne, Switzerland", "Lausanne" to null, "Lausanne" to null),
         viewModel.uiState.value.searchResults.map { it.name to it.address },
     )
     assertFalse(viewModel.uiState.value.isSearching)
