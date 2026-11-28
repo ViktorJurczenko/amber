@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -119,77 +120,69 @@ fun GuidanceScreen(
         )
       },
   ) { paddingValues ->
-    if (phase is GuidancePhase.Guiding) {
-      // The map fills the screen, the step and Stop float over it, as on the map screen
-      Box(Modifier.fillMaxSize().padding(paddingValues)) {
-        val density = LocalDensity.current
-        var stepHeight by remember { mutableStateOf(0.dp) }
-        var stopHeight by remember { mutableStateOf(0.dp) }
-        routeMap(
-            Modifier.fillMaxSize(),
-            phase,
-            PaddingValues(top = stepHeight, bottom = stopHeight),
-        )
-        GuidanceStepCard(
-            // Measured height includes the card's outer padding
-            Modifier.align(Alignment.TopCenter)
-                .onSizeChanged { stepHeight = with(density) { it.height.toDp() } }
-                .padding(PATIENT_PADDING_SMALL),
-            phase,
-        )
-        StopButton(
-            Modifier.align(Alignment.BottomCenter)
-                .onSizeChanged { stopHeight = with(density) { it.height.toDp() } }
-                .padding(PATIENT_PADDING_SMALL),
-            onClick = { isStopDialogOpen = true },
-        )
-      }
-    } else {
-      // Centered when it fits, scrolled when it doesn't
-      Box(
-          Modifier.fillMaxSize().padding(paddingValues).padding(PATIENT_PADDING_SMALL),
-          contentAlignment = Alignment.Center,
-      ) {
-        Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
-        ) {
-          when (phase) {
-            // The confirm dialog shows over the places, which stay where they were
-            GuidancePhase.Choosing,
-            is GuidancePhase.Confirming ->
-                GuidanceChoosing(
-                    state = uiState,
-                    onQueryChange = viewModel::setSearchQuery,
-                    onSearch = viewModel::search,
-                    onChoose = viewModel::chooseDestination,
-                )
-            is GuidancePhase.LoadingRoute -> {
-              GuidanceLoading(phase.destination.name)
-              StopButton(onClick = viewModel::stop)
-            }
-            is GuidancePhase.Arrived -> GuidanceArrived(phase.destination.name, onDone = leave)
-            is GuidancePhase.Problem ->
-                GuidanceProblemContent(
-                    problem = phase.problem,
-                    onAction = {
-                      if (phase.problem == GuidanceProblem.NO_PERMISSION) {
-                        permissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                            )
-                        )
-                      } else {
-                        viewModel.retry()
-                      }
-                    },
-                    onChooseAnother = viewModel::stop,
-                )
-            is GuidancePhase.Guiding -> Unit // shown above
+    when (phase) {
+      is GuidancePhase.Guiding ->
+          // The map fills the screen, the step and Stop float over it, as on the map screen
+          Box(Modifier.fillMaxSize().padding(paddingValues)) {
+            val density = LocalDensity.current
+            var stepHeight by remember { mutableStateOf(0.dp) }
+            var stopHeight by remember { mutableStateOf(0.dp) }
+            routeMap(
+                Modifier.fillMaxSize(),
+                phase,
+                PaddingValues(top = stepHeight, bottom = stopHeight),
+            )
+            GuidanceStepCard(
+                // Measured height includes the card's outer padding
+                Modifier.align(Alignment.TopCenter)
+                    .onSizeChanged { stepHeight = with(density) { it.height.toDp() } }
+                    .padding(PATIENT_PADDING_SMALL),
+                phase,
+            )
+            StopButton(
+                Modifier.align(Alignment.BottomCenter)
+                    .onSizeChanged { stopHeight = with(density) { it.height.toDp() } }
+                    .padding(PATIENT_PADDING_SMALL),
+                onClick = { isStopDialogOpen = true },
+            )
           }
-        }
-      }
+      // The confirm dialog shows over the places, which stay where they were
+      GuidancePhase.Choosing,
+      is GuidancePhase.Confirming ->
+          CenteredContent(paddingValues) {
+            GuidanceChoosing(
+                state = uiState,
+                onQueryChange = viewModel::setSearchQuery,
+                onSearch = viewModel::search,
+                onChoose = viewModel::chooseDestination,
+            )
+          }
+      is GuidancePhase.LoadingRoute ->
+          CenteredContent(paddingValues) {
+            GuidanceLoading(phase.destination.name)
+            StopButton(onClick = viewModel::stop)
+          }
+      is GuidancePhase.Arrived ->
+          CenteredContent(paddingValues) { GuidanceArrived(phase.destination.name, onDone = leave) }
+      is GuidancePhase.Problem ->
+          CenteredContent(paddingValues) {
+            GuidanceProblemContent(
+                problem = phase.problem,
+                onAction = {
+                  if (phase.problem == GuidanceProblem.NO_PERMISSION) {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        )
+                    )
+                  } else {
+                    viewModel.retry()
+                  }
+                },
+                onChooseAnother = viewModel::stop,
+            )
+          }
     }
   }
 
@@ -242,6 +235,24 @@ private fun StopButton(modifier: Modifier = Modifier, onClick: () -> Unit = {}) 
       onClick = onClick,
       testTag = GuidanceTestTags.STOP,
   )
+}
+
+/** Content of a phase other than guiding: centered when it fits, scrolled when it doesn't. */
+@Composable
+private fun CenteredContent(
+    paddingValues: PaddingValues = PaddingValues(),
+    content: @Composable ColumnScope.() -> Unit = {},
+) {
+  Box(
+      Modifier.fillMaxSize().padding(paddingValues).padding(PATIENT_PADDING_SMALL),
+      contentAlignment = Alignment.Center,
+  ) {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+        content = content,
+    )
+  }
 }
 
 /** Preview of [GuidanceScreen] using the Amber application theme. */
