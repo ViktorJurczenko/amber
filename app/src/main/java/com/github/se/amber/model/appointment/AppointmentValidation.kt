@@ -23,6 +23,12 @@ enum class AppointmentValidationError {
    * when one value is below 0 or above [MAX_REMINDER_MINUTES].
    */
   INVALID_REMINDERS,
+
+  /**
+   * [Appointment.recurrence] is set, but [Recurrence.every] is below 1, or [Recurrence.untilAt] is
+   * before [Appointment.startAt].
+   */
+  INVALID_RECURRENCE,
 }
 
 /**
@@ -36,6 +42,7 @@ enum class AppointmentValidationError {
  */
 fun Appointment.validationError(): AppointmentValidationError? {
   val duration = durationMinutes
+  val recurrence = recurrence
   return when {
     title.isBlank() -> AppointmentValidationError.BLANK_TITLE
     startAt <= 0L -> AppointmentValidationError.MISSING_START
@@ -44,6 +51,9 @@ fun Appointment.validationError(): AppointmentValidationError? {
     reminderMinutesBefore.size > MAX_REMINDERS ||
         reminderMinutesBefore.any { it !in 0..MAX_REMINDER_MINUTES } ->
         AppointmentValidationError.INVALID_REMINDERS
+    recurrence != null &&
+        (recurrence.every < 1 || (recurrence.untilAt ?: Long.MAX_VALUE) < startAt) ->
+        AppointmentValidationError.INVALID_RECURRENCE
     else -> null
   }
 }

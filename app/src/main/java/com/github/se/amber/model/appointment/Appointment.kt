@@ -30,6 +30,8 @@ import com.github.se.amber.model.location.GeoLocation
  *   [durationMinutes] is null or between 1 and 1440, and [reminderMinutesBefore] holds at most 5
  *   values from 0 to 7 days;
  * - [lastEndAt] is [startAt] plus [durationMinutes], or plus 60 minutes when it is null;
+ * - [recurrence] is null. The check of [lastEndAt] above only fits a one-off appointment, so the
+ *   rules refuse a series;
  * - every field has the type this class expects, so the app can read it back;
  * - [updatedBy] is the user saving it;
  * - every attendee is a member of the circle.
@@ -44,9 +46,10 @@ import com.github.se.amber.model.location.GeoLocation
  * Reminders: [reminderMinutesBefore] says when they come. Everyone linked to the appointment gets
  * them: [patientId] and the attendees (see `isLinkedTo`).
  *
- * Recurrence (e.g. weekly physio) isn't handled yet. For now each occurrence is its own
- * appointment. Read appointments through `occurrencesIn`, so repeating ones can be added later
- * without changing the callers.
+ * Recurrence: an appointment with a [recurrence] repeats, such as physio every Tuesday. It is
+ * stored once, as one document for the whole series. Read appointments through `occurrencesIn`,
+ * which gives each occurrence in a window of days as a copy with its own [startAt]. Edit or delete
+ * the appointment itself, never a copy (see `occurrencesIn`).
  *
  * New fields must get a default value, so documents written before they existed can still be read.
  * Computed values must be extension functions, like [validationError]. Firestore stores every
@@ -64,6 +67,8 @@ data class Appointment(
     // When it happens
     override val startAt: Long = 0L,
     override val durationMinutes: Int? = null,
+    // How it repeats; null means it happens once. For a series, startAt is its first occurrence.
+    val recurrence: Recurrence? = null,
 
     // Where, and who comes along
     override val location: GeoLocation? = null, // copied from a Place, or entered
@@ -82,9 +87,10 @@ data class Appointment(
 
     // Stored for queries. Set by the repository.
 
-    // End time of the appointment, in epoch milliseconds. The "not over yet" query filters on it.
-    // Repeating appointments will be implemented later. For one of them, it will be the end of its
-    // last occurrence. That is why it is stored, and why it is named lastEndAt rather than endAt.
+    // End time of the last occurrence, in epoch milliseconds (see computeLastEndAt). The "not over
+    // yet" query filters on it. For a one-off appointment, it is its end. A series without an end
+    // stores Long.MAX_VALUE, so it stays in every later window. That is why it is stored, and why
+    // it is named lastEndAt rather than endAt.
     val lastEndAt: Long = 0L,
 
     // Record keeping. Set by the repository: the created fields on create, the updated fields on

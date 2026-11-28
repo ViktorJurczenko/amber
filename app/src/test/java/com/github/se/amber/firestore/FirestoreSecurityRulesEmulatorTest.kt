@@ -634,6 +634,11 @@ class FirestoreSecurityRulesEmulatorTest {
     val created = appointment("a1", care)
 
     fs.assertSucceeds(care, fs.set("$path/a1", created))
+    // a series: the check of lastEndAt only fits a one-off appointment
+    fs.assertFails(
+        care,
+        fs.set("$path/a2", appointment("a2", care) + ("recurrence" to mapOf("unit" to "WEEK"))),
+    )
     // created as someone else, or with an end before its start
     fs.assertFails(care, fs.set("$path/a2", appointment("a2", care2)))
     fs.assertFails(care, fs.set("$path/a2", appointment("a2", care) + ("lastEndAt" to START - 1)))
@@ -1105,6 +1110,8 @@ class FirestoreSecurityRulesEmulatorTest {
             "createdAt" to START - 1,
             "updatedBy" to savedBy,
             "updatedAt" to START - 1,
+            // Firestore writes the null field too, as set() does.
+            "recurrence" to null,
         )
 
     private fun media(id: String, authorId: String, storagePath: String) =

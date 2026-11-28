@@ -13,7 +13,8 @@ import com.github.se.amber.model.appointment.occurrencesIn
 import com.github.se.amber.model.appointment.planReminders
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.calendar.dayWindow
-import com.github.se.amber.model.calendar.localDateOf
+import com.github.se.amber.model.calendar.occurrenceKey
+import com.github.se.amber.model.calendar.toLocalDate
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
@@ -130,7 +131,7 @@ class AppointmentReminderCheck(
     val last = store.lastCheckedAt(uid) ?: now
     val alreadyShown = store.shownSinceLastCheck(uid)
     val zone = zone()
-    val today = localDateOf(now, zone)
+    val today = now.toLocalDate(zone)
     val reads = readEveryCircle(profile.circleIds, today) ?: return retryAt
     val window = dayWindow(today, WINDOW_DAYS, zone)
 
@@ -165,7 +166,7 @@ class AppointmentReminderCheck(
 
   /** Names the reminder, so the store can tell it was shown. */
   private val PlannedReminder.key: String
-    get() = "${occurrence.id}@${occurrence.startAt}@$minutesBefore"
+    get() = "${occurrence.occurrenceKey()}@$minutesBefore"
 
   /**
    * Reads the appointments of [circleIds] at the same time.

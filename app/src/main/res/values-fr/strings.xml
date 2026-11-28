@@ -489,6 +489,7 @@
     <string name="addAppointmentErrorMissingStart">L\'événement doit avoir une date de début</string>
     <string name="addAppointmentErrorInvalidDuration">Impossible d\'ajouter l\'événement : sa durée doit être comprise entre 1 minute et 24 heures.</string>
     <string name="addAppointmentErrorInvalidReminders">Impossible d\'ajouter l\'événement : ses rappels ne sont pas valides.</string>
+    <string name="addAppointmentErrorInvalidRecurrence">Impossible d\'ajouter l\'événement : sa répétition n\'est pas valide.</string>
     <string name="addAppointmentErrorNoPatient">Le patient n\'a pas encore rejoint le cercle de soins.</string>
     <string name="addAppointmentErrorNotFound">Cet événement n\'existe plus</string>
     <string name="addAppointmentErrorPermissionDenied">Vous n\'avez pas la permission d\'ajouter un événement</string>

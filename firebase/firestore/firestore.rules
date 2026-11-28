@@ -239,8 +239,10 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'id', 'title', 'notes', 'startAt', 'durationMinutes', 'location', 'attendeeIds',
           'reminderMinutesBefore', 'patientId', 'lastEndAt', 'createdBy', 'createdAt', 'updatedBy',
-          'updatedAt'
+          'updatedAt', 'recurrence'
         ])
+        // Only a one-off appointment: the check of lastEndAt below doesn't fit a series.
+        && data.get('recurrence', null) == null
         && data.title is string
         && data.title.trim().size() > 0
         && data.notes is string
@@ -257,8 +259,8 @@ service cloud.firestore {
     // The start is set, the duration is unknown or between 1 minute and 1 day, and lastEndAt is
     // the end the app computes: the start plus the duration, or plus 60 minutes when it is
     // unknown. The calendar's query trusts lastEndAt, so a wrong one would show the appointment on
-    // days it doesn't cover. Repeating appointments will be implemented later, with a lastEndAt at
-    // the end of their last occurrence. This check will then have to change.
+    // days it doesn't cover. This check fits a one-off appointment only. A repeating one needs a
+    // lastEndAt at the end of its last occurrence, so the rules refuse it (see isValidAppointment).
     function hasValidAppointmentTime(data) {
       let minutes = data.get('durationMinutes', null);
       return data.startAt is int

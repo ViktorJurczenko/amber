@@ -952,6 +952,32 @@ class FirestoreSecurityRulesTest {
   }
 
   /**
+   * The recurrence of an appointment: the key is allowed, but only as null, so a one-off
+   * appointment written by the app is accepted and a series is refused.
+   */
+  @Test
+  fun appointments_recurrenceOnlyNull_enforcedByFakeStore() {
+    val db = FakeFirestore()
+    db.putUser(UserProfile(uid = "care", role = Role.CAREGIVER, circleIds = listOf("c1")))
+    db.putUser(UserProfile(uid = "pat", role = Role.PATIENT, circleIds = listOf("c1")))
+    db.putCircle(CareCircle(id = "c1", patientId = "pat", memberIds = listOf("care", "pat")))
+    val care = db.rulesFor("care")
+    val pat = db.rulesFor("pat")
+    val created = storedAppointment("care")
+    val series = mapOf("recurrence" to mapOf("unit" to "WEEK", "every" to 1L))
+
+    // The mapper writes the key, as null.
+    assertTrue(created.containsKey("recurrence"))
+    assertTrue(care.canCreateAppointment("c1", "a1", created))
+    assertTrue(pat.canCreateAppointment("c1", "a1", storedAppointment("pat")))
+    assertTrue(care.canCreateAppointment("c1", "a1", created - "recurrence"))
+    assertFalse(care.canCreateAppointment("c1", "a1", created + series))
+    val edit = created + ("updatedBy" to "pat")
+    assertTrue(pat.canUpdateAppointment("c1", "a1", created, edit))
+    assertFalse(pat.canUpdateAppointment("c1", "a1", created, edit + series))
+  }
+
+  /**
    * The patient of an appointment: copied from the circle on create, then never changed. A circle
    * without a patient can't have appointments.
    */
@@ -1349,6 +1375,8 @@ private class FirestoreSecurityRules(
     val memberIds = lookup.circle(circleId)?.memberIds ?: return false
     return data["id"] == appointmentId &&
         APPOINTMENT_FIELDS.containsAll(data.keys) &&
+        // Only a one-off appointment: the check of lastEndAt doesn't fit a series.
+        data["recurrence"] == null &&
         title.isNotBlank() &&
         data["notes"] is String &&
         hasValidAppointmentTime(data) &&
@@ -1463,6 +1491,7 @@ private class FirestoreSecurityRules(
             "createdAt",
             "updatedBy",
             "updatedAt",
+            "recurrence",
         )
   }
 

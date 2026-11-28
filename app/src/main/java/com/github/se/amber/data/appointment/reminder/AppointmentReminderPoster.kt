@@ -7,8 +7,9 @@ import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.appointment.Appointment
 import com.github.se.amber.model.appointment.PlannedReminder
 import com.github.se.amber.model.authentication.AuthRepository
-import com.github.se.amber.model.calendar.localDateOf
+import com.github.se.amber.model.calendar.occurrenceKey
 import com.github.se.amber.model.calendar.startDateTime
+import com.github.se.amber.model.calendar.toLocalDate
 import com.github.se.amber.model.circle.displayNameOf
 import java.time.ZoneId
 
@@ -45,23 +46,17 @@ class AppointmentReminderPoster(
     val occurrence = reminder.occurrence
     notifier.show(
         ReminderNotification(
-            tag = tagOf(occurrence),
+            // Every reminder of one occurrence gets the same tag, so a later one replaces the
+            // earlier one in the notification shade, and the occurrence is never shown twice.
+            tag = occurrence.occurrenceKey(),
             title = occurrence.title,
             start = occurrence.startDateTime(zone),
-            today = localDateOf(nowMillis(), zone),
+            today = nowMillis().toLocalDate(zone),
             otherNames = otherNames(circleId, occurrence, uid),
         )
     )
     return true
   }
-
-  /**
-   * The tag of the notification of [occurrence]: its id and its start. Every reminder of one
-   * occurrence gets the same tag, so a later one replaces the earlier one in the notification
-   * shade, and the occurrence is never shown twice. The occurrences of a repeating appointment
-   * share their id, so the start tells them apart.
-   */
-  private fun tagOf(occurrence: Appointment): String = "${occurrence.id}@${occurrence.startAt}"
 
   /**
    * The names of the people linked to [occurrence], except the reader [uid]. On the patient's

@@ -491,6 +491,7 @@
     <string name="addAppointmentErrorMissingStart">The event needs a start date</string>
     <string name="addAppointmentErrorInvalidDuration">We couldn\'t add the event: its duration must be between 1 minute and 24 hours.</string>
     <string name="addAppointmentErrorInvalidReminders">We couldn\'t add the event: its reminders aren\'t valid.</string>
+    <string name="addAppointmentErrorInvalidRecurrence">We couldn\'t add the event: how it repeats isn\'t valid.</string>
     <string name="addAppointmentErrorNoPatient">The patient hasn\'t joined the care circle yet.</string>
     <string name="addAppointmentErrorNotFound">This event no longer exists</string>
     <string name="addAppointmentErrorPermissionDenied">You do not have permission to add an event</string>
