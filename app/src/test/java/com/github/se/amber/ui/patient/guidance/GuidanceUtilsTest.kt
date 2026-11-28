@@ -15,6 +15,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.github.se.amber.R
 import com.github.se.amber.model.directions.Maneuver
@@ -55,13 +57,25 @@ class GuidanceUtilsTest {
   fun choosing_listsThePlaces_andEachSearchState_withItsOwnCallback() {
     val chosen = mutableListOf<GuidanceDestination>()
     var searches = 0
+    var typed = ""
     var state by mutableStateOf(GuidanceUIState())
     composeTestRule.setContent {
       AmberAppTheme {
-        GuidanceChoosing(state = state, onSearch = { searches++ }, onChoose = { chosen += it })
+        GuidanceChoosing(
+            state = state,
+            onQueryChange = { typed = it },
+            onSearch = { searches++ },
+            onChoose = { chosen += it },
+        )
       }
     }
     composeTestRule.onNodeWithTag(GuidanceTestTags.NO_DESTINATIONS).assertIsDisplayed()
+
+    // Typing passes the text on, and the keyboard's search key searches now
+    composeTestRule.onNodeWithTag(GuidanceTestTags.SEARCH_FIELD).performTextInput(found.name)
+    assertEquals(found.name, typed)
+    composeTestRule.onNodeWithTag(GuidanceTestTags.SEARCH_FIELD).performImeAction()
+    assertEquals(1, searches)
 
     // One place of each kind, each saying what kind it is, for screen readers
     val kinds =
@@ -88,7 +102,7 @@ class GuidanceUtilsTest {
         .onNodeWithTag(GuidanceTestTags.SEARCH_ERROR)
         .assertTextEquals(string(R.string.guidanceSearchError))
     composeTestRule.onNodeWithTag(GuidanceTestTags.SEARCH_RETRY).performClick()
-    assertEquals(1, searches)
+    assertEquals(2, searches)
 
     state = state.copy(searchErrorRes = null, noSearchResults = true)
     composeTestRule.onNodeWithTag(GuidanceTestTags.NO_SEARCH_RESULTS).assertIsDisplayed()
