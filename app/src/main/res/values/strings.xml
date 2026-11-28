@@ -454,6 +454,8 @@
     <string name="patientMapLastKnown">Last known position</string>
     <string name="patientMapLocationFound">Current position</string>
     <string name="patientMapRecenter">Recenter</string>
+    <string name="patientMapSearchFailed">Couldn\'t search places. Check your connection and try again.</string>
+    <string name="patientMapNoPlaceFound">No places found. Try another search.</string>
     <string name="mediaMapErrorNoProfile">No profile found.</string>
     <string name="mediaMapErrorLoadProfile">Failed to load the profile.</string>
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
