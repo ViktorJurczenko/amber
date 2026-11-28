@@ -27,12 +27,14 @@ class CalendarTimeTest {
       ZonedDateTime.of(dateTime, zurich).toInstant().toEpochMilli()
 
   @Test
-  fun localDateOfGivesTheDayInTheGivenZone() {
-    // 23:30 in Zurich is already the next day in Tokyo
+  fun aTimeGivesTheDayAndTheClockTimeInTheGivenZone() {
+    // 23:30 in Zurich is already 07:30 the next day in Tokyo
     val lateEvening = zurichMillis(LocalDateTime.of(2026, 11, 24, 23, 30))
 
-    assertEquals(LocalDate.of(2026, 11, 24), localDateOf(lateEvening, zurich))
-    assertEquals(LocalDate.of(2026, 11, 25), localDateOf(lateEvening, tokyo))
+    assertEquals(LocalDate.of(2026, 11, 24), lateEvening.toLocalDate(zurich))
+    assertEquals(LocalDate.of(2026, 11, 25), lateEvening.toLocalDate(tokyo))
+    assertEquals(LocalDateTime.of(2026, 11, 24, 23, 30), lateEvening.toLocalDateTime(zurich))
+    assertEquals(LocalDateTime.of(2026, 11, 25, 7, 30), lateEvening.toLocalDateTime(tokyo))
   }
 
   @Test

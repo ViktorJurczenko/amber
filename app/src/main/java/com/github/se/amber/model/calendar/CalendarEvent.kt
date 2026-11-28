@@ -16,8 +16,8 @@ const val MAX_DURATION_MINUTES = 24 * 60
  * It holds everything the calendar shows. A screen can draw any event from this interface alone.
  * The fields used only for storage stay in the implementing class.
  *
- * An appointment implements it. Each occurrence of a repeating appointment will implement it too,
- * once they are implemented. Other kinds of events might implement it later. The helpers in
+ * An appointment implements it. Each occurrence of a repeating appointment, from `occurrencesIn`,
+ * is an appointment too. Other kinds of events might implement it later. The helpers in
  * CalendarStatus.kt work the same way for all of them.
  *
  * An interface can't hold values, so each implementing class declares these fields itself. Computed
@@ -29,8 +29,8 @@ interface CalendarEvent {
   // What it is
 
   /**
-   * Identifies it on the calendar. The screen uses it as the key of the list item. For an
-   * appointment, it is the document id. It must be unique among the events shown together.
+   * Identifies the event. For an appointment, it is the document id. The occurrences of a repeating
+   * appointment share it, so the key of a list item is [occurrenceKey], not the id alone.
    */
   val id: String
 
@@ -62,3 +62,15 @@ interface CalendarEvent {
    */
   val attendeeIds: List<String>
 }
+
+/**
+ * Tells one occurrence apart from the others, such as "a1@1764000000000". The occurrences of a
+ * repeating appointment share their [CalendarEvent.id] and differ by [CalendarEvent.startAt], so
+ * the key holds both. The screens use it as the key of a list item, and the reminders as the tag of
+ * the notification.
+ *
+ * The reminders store it on the phone, so changing its format would show their reminders again.
+ *
+ * @return the id and the start, joined by "@".
+ */
+fun CalendarEvent.occurrenceKey(): String = "$id@$startAt"

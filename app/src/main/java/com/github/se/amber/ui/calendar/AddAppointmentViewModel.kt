@@ -1,4 +1,5 @@
 // Written by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.calendar
 
@@ -214,6 +215,8 @@ open class AddAppointmentViewModel(
                   R.string.addAppointmentErrorInvalidDuration
               AppointmentValidationError.INVALID_REMINDERS ->
                   R.string.addAppointmentErrorInvalidReminders
+              AppointmentValidationError.INVALID_RECURRENCE ->
+                  R.string.addAppointmentErrorInvalidRecurrence
             }
         is AppointmentError.NoPatient -> R.string.addAppointmentErrorNoPatient
         is AppointmentError.NotFound -> R.string.addAppointmentErrorNotFound
