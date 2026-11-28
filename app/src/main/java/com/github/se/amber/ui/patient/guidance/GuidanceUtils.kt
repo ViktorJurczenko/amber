@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -526,32 +526,22 @@ private val previewGuiding =
         isOffRoute = true,
     )
 
-/** Preview of [GuidanceChoosing] with a few places and a search, in light and dark mode. */
+/**
+ * Preview of every part of the guidance screen, in light and dark mode. The map itself only shows
+ * with Google Play services.
+ */
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-internal fun GuidanceChoosingPreview() {
-  AmberAppTheme { GuidanceChoosing(previewChoosing) }
-}
-
-/** Preview of [GuidanceStepCard] and the other phases, in light and dark mode. */
-@Preview(showBackground = true)
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-internal fun GuidancePhasesPreview() {
+internal fun GuidanceUtilsPreview() {
   AmberAppTheme {
     Column(verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL)) {
+      GuidanceChoosing(previewChoosing)
       GuidanceStepCard(guiding = previewGuiding)
+      GuidanceRouteMap(Modifier.fillMaxWidth().height(SURFACE_BIG))
       GuidanceLoading(previewDestination.name)
       GuidanceArrived(previewDestination.name)
       GuidanceProblemContent(GuidanceProblem.NO_PERMISSION)
     }
   }
-}
-
-/** Preview of [GuidanceRouteMap]; the map itself only shows with Google Play services. */
-@Preview(showBackground = true)
-@Composable
-internal fun GuidanceRouteMapPreview() {
-  AmberAppTheme { GuidanceRouteMap(Modifier.fillMaxSize()) }
 }
