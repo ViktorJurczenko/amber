@@ -4,6 +4,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.navigation
 
@@ -226,6 +227,12 @@ sealed class PatientScreen(
           route = "patient_map",
           title = R.string.screenTitlePatientMap,
           isTopLevelDestination = true,
+      )
+
+  data object Guidance :
+      PatientScreen(
+          route = "patient_guidance",
+          title = R.string.screenTitlePatientGuidance,
       )
 }
 

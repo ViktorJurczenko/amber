@@ -37,6 +37,7 @@
     <string name="screenTitlePatientSeeAudios">See Audios</string>
     <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientMap">Map</string>
+    <string name="screenTitlePatientGuidance">Go somewhere</string>
     <string name="screenTitlePatientParameters">Parameters</string>
 
     <!-- EmailSignIn -->

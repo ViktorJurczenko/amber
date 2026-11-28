@@ -4,6 +4,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -43,7 +46,7 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
-import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
+import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 
 /** No-op [ProfileRepository] used by Compose previews (and preview-driven tests). */
@@ -62,6 +65,7 @@ private object PreviewPatientHomeProfileRepository : ProfileRepository {
 object PatientHomeTestTags {
   const val GREETINGS = "patient_home_greetings"
   const val TITLE = "patient_home_title"
+  const val GO_SOMEWHERE = "patient_home_go_somewhere"
 }
 
 /**
@@ -71,12 +75,14 @@ object PatientHomeTestTags {
  *
  * @param homeViewModel ViewModel providing the patient profile displayed on the screen.
  * @param onTabSelected Callback invoked when the user selects a bottom navigation tab.
+ * @param onGoSomewhere Callback invoked when the user wants to be guided somewhere.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientHomeScreen(
     homeViewModel: PatientHomeViewModel = viewModel(),
     onTabSelected: (Tab) -> Unit = {},
+    onGoSomewhere: () -> Unit = {},
 ) {
   val context = LocalContext.current
   val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -122,8 +128,16 @@ fun PatientHomeScreen(
               color = MaterialTheme.colorScheme.onBackground,
               style = MaterialTheme.typography.headlineMedium,
           )
+          DisplayPatientButton(
+              modifier = Modifier.padding(top = PATIENT_PADDING_MEDIUM),
+              text = stringResource(R.string.guidanceGoSomewhere),
+              icon = Icons.AutoMirrored.Outlined.DirectionsWalk,
+              description = stringResource(R.string.guidanceGoSomewhere),
+              onClick = onGoSomewhere,
+              testTag = PatientHomeTestTags.GO_SOMEWHERE,
+          )
           Calendar(
-              modifier = Modifier.padding(top = PATIENT_PADDING_ENORMOUS),
+              modifier = Modifier.padding(top = PATIENT_PADDING_MEDIUM),
               isPatient = true,
           )
         }

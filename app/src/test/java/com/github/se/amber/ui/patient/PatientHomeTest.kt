@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -321,5 +322,20 @@ class PatientHomeScreenTest {
     setScreen()
     composeTestRule.onNodeWithTag(CalendarTestTags.CALENDAR).assertIsDisplayed()
     assertEquals(Typography().headlineMedium.fontSize, monthTitleFontSize())
+  }
+
+  @Test
+  fun goSomewhereButton_isShownUnderTheGreeting_andOpensGuidance() {
+    var opened = 0
+    composeTestRule.setContent {
+      PatientHomeScreen(homeViewModel = viewModel, onGoSomewhere = { opened++ })
+    }
+
+    composeTestRule
+        .onNodeWithTag(PatientHomeTestTags.GO_SOMEWHERE)
+        .assertIsDisplayed()
+        .assertTextEquals(string(R.string.guidanceGoSomewhere))
+        .performClick()
+    assertEquals(1, opened)
   }
 }

@@ -2,10 +2,12 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.navigation
 
 import android.os.Bundle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
@@ -239,5 +241,28 @@ class NavigationActionsTest {
   @Test
   fun personIdFrom_isEmptyWithoutArguments() {
     assertEquals("", actions.personIdFrom(null))
+  }
+
+  @Test
+  fun guidance_isPushedOverTheScreenThatOpenedIt_soBackReturnsThere() {
+    for (from in listOf(PatientScreen.Home, PatientScreen.Map)) {
+      val options = optionsUsedToNavigateTo(PatientScreen.Guidance, fromRoute = from.route)
+
+      assertFalse(options.shouldLaunchSingleTop())
+      assertNull(options.popUpToRoute)
+    }
+  }
+
+  @Test
+  fun previousRoute_isTheScreenUnderTheCurrentOne_orEmptyWithoutOne() {
+    every { navController.previousBackStackEntry } returns
+        mockk<NavBackStackEntry> {
+          every { destination } returns
+              mockk<NavDestination> { every { route } returns PatientScreen.Home.route }
+        }
+    assertEquals(PatientScreen.Home.route, actions.previousRoute())
+
+    every { navController.previousBackStackEntry } returns null
+    assertEquals("", actions.previousRoute())
   }
 }

@@ -1,4 +1,5 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.navigation
 
@@ -55,6 +56,16 @@ open class NavigationActions(private val navController: NavHostController) {
    */
   open fun currentRoute(): String {
     return navController.currentDestination?.route ?: ""
+  }
+
+  /**
+   * Get the route of the screen under the current one in the back stack, the one [goBack] returns
+   * to.
+   *
+   * @return The previous route, or an empty string when there is none
+   */
+  open fun previousRoute(): String {
+    return navController.previousBackStackEntry?.destination?.route ?: ""
   }
 
   /**

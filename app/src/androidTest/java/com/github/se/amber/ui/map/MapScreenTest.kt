@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -184,9 +185,7 @@ class MapScreenTest {
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
 
-    composeTestRule
-        .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapRecenter))
-        .performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     composeTestRule.waitForIdle()
     assertEquals(MapRecenterAction.MoveTo(fresh), viewModel.recenter())
 
@@ -256,7 +255,7 @@ class MapScreenTest {
 
     assertEquals(1, registry.requestCount.get())
 
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(2, registry.requestCount.get())
   }
 
@@ -289,7 +288,7 @@ class MapScreenTest {
     }
 
     composeTestRule.onNodeWithText(text(R.string.patientMapLocationUnavailable)).assertIsDisplayed()
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(MediaMapLocationState.Unavailable, viewModel.locationState.value)
   }
 }

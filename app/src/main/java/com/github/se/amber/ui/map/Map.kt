@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -38,6 +39,7 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -66,6 +68,7 @@ private const val INITIAL_ZOOM = 14f
  *
  * @param modifier modifier applied to the screen
  * @param onTabSelected Called when the user selects a patient navigation tab.
+ * @param onGoSomewhere Called when the user wants to be guided somewhere.
  * @param cameraPositionState Camera state shared with the map; callers can observe camera moves.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,6 +76,7 @@ private const val INITIAL_ZOOM = 14f
 fun MapScreen(
     modifier: Modifier = Modifier,
     onTabSelected: (Tab) -> Unit = {},
+    onGoSomewhere: () -> Unit = {},
     viewModel: MediaMapViewModel = viewModel(),
     // Lausanne is the fallback while GPS is searching or location access is unavailable.
     cameraPositionState: CameraPositionState = rememberCameraPositionState {
@@ -154,9 +158,16 @@ fun MapScreen(
           modifier = Modifier.fillMaxSize().testTag(MapScreenTestTags.GOOGLE_MAP),
           cameraPositionState = cameraPositionState,
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
-          uiSettings = MapUiSettings(zoomControlsEnabled = true),
-          // Reserve space for the position card so Google's zoom controls stay accessible.
-          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight),
+          // Google's own location button is off: MapRecenterButton replaces it, and can also ask
+          // for the permission
+          uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = false),
+          // Reserve space for the position card and the recenter button, so Google's zoom
+          // controls sit above them
+          contentPadding =
+              PaddingValues(
+                  end = PATIENT_PADDING_MINI,
+                  bottom = cardHeight + PATIENT_BUTTON_HEIGHT_SMALL + PATIENT_PADDING_SMALL,
+              ),
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
@@ -170,6 +181,13 @@ fun MapScreen(
                   .onSizeChanged { cardHeight = with(density) { it.height.toDp() } }
                   .padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
+          onGoSomewhere = onGoSomewhere,
+      )
+      MapRecenterButton(
+          // On the right side, just above the position card
+          modifier =
+              Modifier.align(Alignment.BottomEnd)
+                  .padding(end = PATIENT_PADDING_SMALL, bottom = cardHeight),
           onRecenter = {
             // The ViewModel chooses an action; the UI performs the permission or camera API call
             when (val action = viewModel.recenter()) {

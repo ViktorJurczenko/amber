@@ -6,8 +6,8 @@ import com.github.se.amber.R
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
 import com.github.se.amber.data.circle.SavedPlacesRepository
+import com.github.se.amber.data.directions.FakeRouteRepository
 import com.github.se.amber.data.directions.RouteError
-import com.github.se.amber.data.directions.RouteRepository
 import com.github.se.amber.data.location.FakeLocationUpdatesRepository
 import com.github.se.amber.data.location.FakeMediaLocationRepository
 import com.github.se.amber.data.location.LocationUpdate
@@ -67,20 +67,6 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GuidanceViewModelTest {
-
-  /**
-   * A [RouteRepository] that records what it is asked, and answers with [answer]: [L_ROUTE] unless
-   * the test changes it, for example to wait on a [CompletableDeferred].
-   */
-  private class FakeRouteRepository : RouteRepository {
-    val requests = mutableListOf<Pair<RoutePoint, RoutePoint>>()
-    var answer: suspend () -> Result<Route> = { Result.success(L_ROUTE) }
-
-    override suspend fun walkingRoute(from: RoutePoint, to: RoutePoint): Result<Route> {
-      requests += from to to
-      return answer()
-    }
-  }
 
   private val circle = CareCircle(id = "circle1", patientId = "patient")
   private val patient =
