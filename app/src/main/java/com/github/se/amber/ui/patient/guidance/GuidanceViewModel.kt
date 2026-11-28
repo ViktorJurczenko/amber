@@ -97,15 +97,18 @@ enum class GuidanceDestinationKind {
  *
  * @param id the id of what it comes from (appointment, saved place or pin), or its index in the
  *   search results.
- * @param name what the patient sees: the appointment title or the place name, as the user typed it.
+ * @param name what the patient sees: the appointment title, the place name as the user typed it,
+ *   or, for a search result, what the patient searched for.
  * @param point where to go.
  * @param kind where it comes from.
+ * @param address the full address of a search result, to tell results apart and check the place.
  */
 data class GuidanceDestination(
     val id: String,
     val name: String,
     val point: RoutePoint,
     val kind: GuidanceDestinationKind,
+    val address: String? = null,
 )
 
 /**
@@ -576,13 +579,17 @@ private fun MediaMarker.toDestination(): GuidanceDestination? =
         ?.takeIf { it.isNotBlank() }
         ?.let { GuidanceDestination(id, it, RoutePoint(lat, lng), GuidanceDestinationKind.MEMORY) }
 
-/** A search result, named by its place name, or by [query] without one. */
+/**
+ * A search result, named by what the patient searched for: "EPFL" means more to them than the
+ * place's address, which is kept to tell results apart.
+ */
 private fun GeoLocation.toSearchResult(index: Int, query: String): GuidanceDestination? =
     toRoutePointOrNull()?.let {
       GuidanceDestination(
           index.toString(),
-          placeName?.takeIf { name -> name.isNotBlank() } ?: query,
+          query.trim(),
           it,
           GuidanceDestinationKind.SEARCH,
+          address = placeName?.takeIf { name -> name.isNotBlank() },
       )
     }

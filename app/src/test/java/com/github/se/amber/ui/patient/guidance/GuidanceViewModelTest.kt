@@ -460,9 +460,10 @@ class GuidanceViewModelTest {
     assertEquals(0, searches)
     viewModel.type("Lausanne")
     assertEquals(1, searches)
+    // Named by what the patient typed, the address kept to tell them apart
     assertEquals(
-        listOf("Lausanne, Switzerland", "Lausanne"),
-        viewModel.uiState.value.searchResults.map { it.name },
+        listOf("Lausanne" to "Lausanne, Switzerland", "Lausanne" to null),
+        viewModel.uiState.value.searchResults.map { it.name to it.address },
     )
     assertFalse(viewModel.uiState.value.isSearching)
     assertFalse(viewModel.uiState.value.noSearchResults)
