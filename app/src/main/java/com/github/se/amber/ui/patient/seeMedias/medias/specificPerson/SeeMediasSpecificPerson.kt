@@ -1,4 +1,5 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient.seeMedias.medias.specificPerson
 
@@ -23,6 +24,8 @@ import com.github.se.amber.ui.media.MediaImage
 import com.github.se.amber.ui.media.aspectRatioOf
 import com.github.se.amber.ui.media.audio.AudioPlaybackState
 import com.github.se.amber.ui.media.audio.DisplayAudioPlayback
+import com.github.se.amber.ui.media.pinchToZoom
+import com.github.se.amber.ui.media.rememberPictureZoomState
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMedias
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasConfig
@@ -109,6 +112,7 @@ fun SeeMediasSpecificPersonScreen(
               modifier =
                   modifier
                       .aspectRatioOf(item)
+                      .pinchToZoom(rememberPictureZoomState())
                       .testTag(SeeMediasSpecificPersonTestTags.media(item.id)),
               loading = { CircularProgressIndicator() },
           )

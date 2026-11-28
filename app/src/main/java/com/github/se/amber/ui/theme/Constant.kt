@@ -1,10 +1,10 @@
 // Written by LaMaier.
-// Modified by nehachak1, with assistance from Claude Code.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Yuhan YANG, with assistance from Cursor
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by LaMaier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.theme
 
@@ -140,6 +140,16 @@ const val DIALOG_WIDTH = 0.8f
  * taller.
  */
 const val POPUP_DIALOG_MIN_HEIGHT_FRACTION = 0.5f
+
+// ------- PICTURE ZOOM -------
+/** Scale of a picture at its normal size, not zoomed. */
+const val PICTURE_NO_ZOOM = 1f
+
+/** How far a picture can be zoomed in its card: enough to see a face in a group photo. */
+const val PICTURE_MAX_ZOOM = 4f
+
+/** How far a double tap zooms a picture. */
+const val PICTURE_DOUBLE_TAP_ZOOM = 2f
 
 // ------- AUDIO PLAYBACK -------
 /** Opacity Material uses for a disabled control. */

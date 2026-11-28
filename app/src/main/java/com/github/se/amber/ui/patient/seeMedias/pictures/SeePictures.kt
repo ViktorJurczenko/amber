@@ -1,6 +1,7 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient.seeMedias.pictures
 
@@ -14,6 +15,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.se.amber.R
 import com.github.se.amber.ui.media.MediaImage
 import com.github.se.amber.ui.media.aspectRatioOf
+import com.github.se.amber.ui.media.pinchToZoom
+import com.github.se.amber.ui.media.rememberPictureZoomState
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMedias
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasConfig
@@ -64,7 +67,11 @@ fun SeePicturesScreen(
     MediaImage(
         circle = circle,
         picture = picture,
-        modifier = modifier.aspectRatioOf(picture).testTag(SeePicturesTestTags.picture(picture.id)),
+        modifier =
+            modifier
+                .aspectRatioOf(picture)
+                .pinchToZoom(rememberPictureZoomState())
+                .testTag(SeePicturesTestTags.picture(picture.id)),
         loading = { CircularProgressIndicator() },
     )
   }

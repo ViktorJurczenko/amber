@@ -1,10 +1,16 @@
 // Written by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.media
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +19,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import com.github.se.amber.model.location.GeoLocation
 import com.github.se.amber.model.media.MemoryDate
 import com.github.se.amber.model.user.Person
@@ -24,6 +42,9 @@ import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS
 import com.github.se.amber.ui.theme.PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
+import com.github.se.amber.ui.theme.PICTURE_DOUBLE_TAP_ZOOM
+import com.github.se.amber.ui.theme.PICTURE_MAX_ZOOM
+import com.github.se.amber.ui.theme.PICTURE_NO_ZOOM
 import com.github.se.amber.ui.theme.ROUND_CORNER
 import java.util.Locale
 
@@ -125,3 +146,81 @@ fun DisplayRelatedPersonButton(
 internal fun DisplayRelatedPersonButtonPreview() {
   AmberAppTheme { DisplayRelatedPersonButton(person = Person(id = "1", firstName = "Alice")) }
 }
+
+/**
+ * How far a picture is zoomed in its card, and how far it's moved. At its normal size it isn't
+ * moved, and when zoomed it never moves past the card's edges.
+ */
+@Stable
+class PictureZoomState {
+  var scale by mutableFloatStateOf(PICTURE_NO_ZOOM)
+    private set
+
+  var offset by mutableStateOf(Offset.Zero)
+    private set
+
+  val isZoomed: Boolean
+    get() = scale > PICTURE_NO_ZOOM
+
+  /**
+   * Zooms by [zoom] and moves by [pan], within [PICTURE_MAX_ZOOM] and the card.
+   *
+   * @param zoom how much to zoom: above 1 zooms in, below 1 zooms out.
+   * @param pan how far the fingers moved, in pixels.
+   * @param size the size of the card, in pixels.
+   */
+  fun transform(
+      zoom: Float = PICTURE_NO_ZOOM,
+      pan: Offset = Offset.Zero,
+      size: IntSize = IntSize.Zero,
+  ) {
+    scale = (scale * zoom).coerceIn(PICTURE_NO_ZOOM, PICTURE_MAX_ZOOM)
+    // How far the zoomed picture goes past each edge of the card
+    val maxX = size.width * (scale - PICTURE_NO_ZOOM) / 2
+    val maxY = size.height * (scale - PICTURE_NO_ZOOM) / 2
+    offset =
+        if (isZoomed) {
+          Offset((offset.x + pan.x).coerceIn(-maxX, maxX), (offset.y + pan.y).coerceIn(-maxY, maxY))
+        } else {
+          Offset.Zero
+        }
+  }
+
+  /** Zooms in to [PICTURE_DOUBLE_TAP_ZOOM], or back to the normal size when already zoomed. */
+  fun toggle() {
+    scale = if (isZoomed) PICTURE_NO_ZOOM else PICTURE_DOUBLE_TAP_ZOOM
+    offset = Offset.Zero
+  }
+}
+
+/** A [PictureZoomState] kept while the picture is shown. */
+@Composable fun rememberPictureZoomState(): PictureZoomState = remember { PictureZoomState() }
+
+/**
+ * Lets the user zoom into the picture inside its card: two fingers zoom, one finger moves the
+ * zoomed picture, and a double tap zooms in or back out. At the normal size, one finger is left to
+ * the list, so it still scrolls.
+ *
+ * @param state how far the picture is zoomed; tests pass their own.
+ */
+fun Modifier.pinchToZoom(state: PictureZoomState): Modifier =
+    clipToBounds()
+        .pointerInput(state) {
+          awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            do {
+              val event = awaitPointerEvent()
+              if (event.changes.count { it.pressed } > 1 || state.isZoomed) {
+                state.transform(event.calculateZoom(), event.calculatePan(), size)
+                event.changes.forEach { if (it.positionChanged()) it.consume() }
+              }
+            } while (event.changes.any { it.pressed })
+          }
+        }
+        .pointerInput(state) { detectTapGestures(onDoubleTap = { state.toggle() }) }
+        .graphicsLayer {
+          scaleX = state.scale
+          scaleY = state.scale
+          translationX = state.offset.x
+          translationY = state.offset.y
+        }
