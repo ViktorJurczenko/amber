@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,9 @@ import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
+import kotlin.math.ceil
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Guides the patient step by step to a place that matters to them.
@@ -120,6 +124,19 @@ fun GuidanceScreen(
         )
       },
   ) { paddingValues ->
+    // Phases other than guiding: centered when they fit, scrolled when they don't
+    val centered: @Composable (@Composable ColumnScope.() -> Unit) -> Unit = { content ->
+      Box(
+          Modifier.fillMaxSize().padding(paddingValues).padding(PATIENT_PADDING_SMALL),
+          contentAlignment = Alignment.Center,
+      ) {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+            content = content,
+        )
+      }
+    }
     when (phase) {
       is GuidancePhase.Guiding ->
           // The map fills the screen, the step and Stop float over it, as on the map screen
@@ -149,7 +166,7 @@ fun GuidanceScreen(
       // The confirm dialog shows over the places, which stay where they were
       GuidancePhase.Choosing,
       is GuidancePhase.Confirming ->
-          CenteredContent(paddingValues) {
+          centered {
             GuidanceChoosing(
                 state = uiState,
                 onQueryChange = viewModel::setSearchQuery,
@@ -158,14 +175,14 @@ fun GuidanceScreen(
             )
           }
       is GuidancePhase.LoadingRoute ->
-          CenteredContent(paddingValues) {
+          centered {
             GuidanceLoading(phase.destination.name)
             StopButton(onClick = viewModel::stop)
           }
       is GuidancePhase.Arrived ->
-          CenteredContent(paddingValues) { GuidanceArrived(phase.destination.name, onDone = leave) }
+          centered { GuidanceArrived(phase.destination.name, onDone = leave) }
       is GuidancePhase.Problem ->
-          CenteredContent(paddingValues) {
+          centered {
             GuidanceProblemContent(
                 problem = phase.problem,
                 onAction = {
@@ -187,9 +204,11 @@ fun GuidanceScreen(
   }
 
   if (phase is GuidancePhase.Confirming) {
+    // The walk time in whole minutes, rounded up
+    val walkMinutes = ceil(phase.route.durationSeconds.seconds / 1.minutes).toInt().coerceAtLeast(1)
     DisplayPatientDialog(
         title = stringResource(R.string.guidanceConfirmTitle, phase.destination.name),
-        message = walkTimeText(phase.route),
+        message = pluralStringResource(R.plurals.guidanceWalkMinutes, walkMinutes, walkMinutes),
         // The address of a searched place, to check it's the right one
         detail = phase.destination.address.orEmpty(),
         confirmText = stringResource(R.string.guidanceGo),
@@ -235,24 +254,6 @@ private fun StopButton(modifier: Modifier = Modifier, onClick: () -> Unit = {}) 
       onClick = onClick,
       testTag = GuidanceTestTags.STOP,
   )
-}
-
-/** Content of a phase other than guiding: centered when it fits, scrolled when it doesn't. */
-@Composable
-private fun CenteredContent(
-    paddingValues: PaddingValues = PaddingValues(),
-    content: @Composable ColumnScope.() -> Unit = {},
-) {
-  Box(
-      Modifier.fillMaxSize().padding(paddingValues).padding(PATIENT_PADDING_SMALL),
-      contentAlignment = Alignment.Center,
-  ) {
-    Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
-        content = content,
-    )
-  }
 }
 
 /** Preview of [GuidanceScreen] using the Amber application theme. */
