@@ -103,14 +103,15 @@ class MapUtilsTest {
   }
 
   @Test
-  fun positionCard_displaysEachState_andRecenterIsASeparateButtonThatPassesClicks() {
+  fun positionCard_displaysEachState_andGoSomewhereAndRecenterPassTheirClicks() {
     val location = mutableStateOf<MediaMapLocationState>(MediaMapLocationState.Searching)
     var recenters = 0
+    var goSomewheres = 0
     composeTestRule.setContent {
       AmberAppTheme {
         Column {
           MapRecenterButton(onRecenter = { recenters++ })
-          MapPositionCard(locationState = location.value)
+          MapPositionCard(locationState = location.value, onGoSomewhere = { goSomewheres++ })
         }
       }
     }
@@ -156,6 +157,11 @@ class MapUtilsTest {
 
     recenterButton.performClick()
     assertEquals(1, recenters)
+    composeTestRule
+        .onNodeWithTag(MapTestTags.GO_SOMEWHERE)
+        .assertTextEquals(context.getString(R.string.guidanceGoSomewhere))
+        .performClick()
+    assertEquals(1 to 1, recenters to goSomewheres)
   }
 
   @Test
