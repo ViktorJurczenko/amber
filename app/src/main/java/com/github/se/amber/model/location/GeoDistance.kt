@@ -34,7 +34,7 @@ const val NEARBY_MAX_ACCURACY_METERS = 200.0
 const val SAME_PLACE_RADIUS_METERS = 25.0
 
 /** Mean radius of the Earth, in meters, as used by the haversine formula. */
-private const val EARTH_RADIUS_METERS = 6_371_000.0
+internal const val EARTH_RADIUS_METERS = 6_371_000.0
 
 /**
  * Distance in meters between two points along the Earth's surface (haversine formula, on a sphere:

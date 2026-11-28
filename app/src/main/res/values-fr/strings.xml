@@ -463,6 +463,16 @@
     <string name="mediaMapErrorNoCircle">Aucun cercle de soins trouvé.</string>
     <string name="mediaMapErrorLoadMedia">Impossible de charger les souvenirs de la carte.</string>
 
+    <!-- Guidance -->
+    <string name="guidanceProblemNoPermission">Autorisez la localisation pour qu\'Amber vous guide</string>
+    <string name="guidanceProblemLocationOff">Activez la localisation pour qu\'Amber vous guide</string>
+    <string name="guidanceProblemNoPosition">Amber ne trouve pas où vous êtes</string>
+    <string name="guidanceProblemOffline">Pas d\'internet. Connectez-vous pour trouver le chemin</string>
+    <string name="guidanceProblemNoRoute">Il n\'y a pas de chemin à pied vers ce lieu</string>
+    <string name="guidanceProblemDailyLimit">Amber ne peut plus chercher de chemin aujourd\'hui. Réessayez demain</string>
+    <string name="guidanceProblemUnknown">Le chemin n\'a pas pu être trouvé</string>
+    <string name="guidanceSearchError">La recherche n\'a pas marché. Réessayez</string>
+
     <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
     <string name="appointmentReminderChannel">Rappels de rendez-vous</string>
     <string name="appointmentReminderTitle">Rendez-vous à venir</string>

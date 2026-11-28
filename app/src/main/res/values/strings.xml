@@ -461,6 +461,16 @@
     <string name="mediaMapErrorNoCircle">No care circle found.</string>
     <string name="mediaMapErrorLoadMedia">Failed to load the memories of the map.</string>
 
+    <!-- Guidance -->
+    <string name="guidanceProblemNoPermission">Allow location so Amber can guide you</string>
+    <string name="guidanceProblemLocationOff">Turn on location so Amber can guide you</string>
+    <string name="guidanceProblemNoPosition">Amber can\'t find where you are</string>
+    <string name="guidanceProblemOffline">No internet. Connect to find the way</string>
+    <string name="guidanceProblemNoRoute">There is no walking way to this place</string>
+    <string name="guidanceProblemDailyLimit">Amber can\'t find more ways today. Try again tomorrow</string>
+    <string name="guidanceProblemUnknown">The way could not be found</string>
+    <string name="guidanceSearchError">The search did not work. Try again</string>
+
     <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
     <string name="appointmentReminderChannel">Appointment reminders</string>
     <string name="appointmentReminderTitle">Upcoming appointment</string>
