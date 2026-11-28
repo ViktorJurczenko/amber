@@ -1,6 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex
-// Modified by nehachak1, with assistance from Claude Code
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.authentication.signIn
 
@@ -13,6 +13,8 @@ import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.se.amber.R
+import com.github.se.amber.data.consent.TermsConsentRepository
+import com.github.se.amber.data.consent.TermsConsentRepositoryProvider
 import com.github.se.amber.model.authentication.AuthRepository
 import com.github.se.amber.model.authentication.AuthRepositoryProvider
 import com.github.se.amber.model.authentication.AuthUser
@@ -21,8 +23,11 @@ import com.github.se.amber.ui.utils.UiText
 import com.github.se.amber.ui.utils.errorText
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -35,12 +40,20 @@ private const val TAG = "EmailSignInViewModel"
  * @param isLoading Whether a Google sign-in operation is currently running.
  * @param user Authenticated user after a successful Google sign-in, or null otherwise.
  * @param error Message describing the latest sign-in error, or null when there is no error.
+ * @param hasAcceptedTerms Whether the Terms of Service and Privacy Policy were accepted on this
+ *   phone, so sign-in doesn't ask again.
+ * @param isConsentDialogOpen Whether the popup asking to accept the terms is shown.
+ * @param hasDeclinedTerms Whether the user closed that popup without accepting, to say why sign-in
+ *   didn't start.
  */
 data class EmailSignInUIState(
     val email: String = "",
     val isLoading: Boolean = false,
     val user: AuthUser? = null,
     val error: UiText? = null,
+    val hasAcceptedTerms: Boolean = false,
+    val isConsentDialogOpen: Boolean = false,
+    val hasDeclinedTerms: Boolean = false,
 )
 
 /**
@@ -51,9 +64,12 @@ data class EmailSignInUIState(
  * caller displaying the screen.
  *
  * @param repository Repository used to access authentication operations.
+ * @param termsRepository Remembers whether the terms were accepted on this phone.
  */
 class EmailSignInViewModel(
     private val repository: AuthRepository = AuthRepositoryProvider.repository,
+    private val termsRepository: TermsConsentRepository =
+        TermsConsentRepositoryProvider.default.repository,
 ) : ViewModel() {
 
   private val _uiState =
@@ -63,6 +79,48 @@ class EmailSignInViewModel(
           )
       )
   val uiState = _uiState.asStateFlow() // Read-only
+
+  init {
+    termsRepository.hasAccepted
+        .onEach { accepted -> _uiState.update { it.copy(hasAcceptedTerms = accepted) } }
+        .launchIn(viewModelScope)
+  }
+
+  /**
+   * Starts Google sign-in, first asking to accept the terms if they weren't accepted on this phone.
+   *
+   * @param context Android context used by Credential Manager.
+   * @param credentialManager Credential Manager used to request the Google credential.
+   */
+  fun onGoogleSignInClick(context: Context, credentialManager: CredentialManager) {
+    if (_uiState.value.hasAcceptedTerms) {
+      signInWithGoogle(context, credentialManager)
+    } else {
+      _uiState.update { it.copy(isConsentDialogOpen = true, hasDeclinedTerms = false) }
+    }
+  }
+
+  /**
+   * Remembers that the terms were accepted, then starts Google sign-in. If they can't be
+   * remembered, sign-in still starts, and the next sign-in on this phone asks again.
+   *
+   * @param context Android context used by Credential Manager.
+   * @param credentialManager Credential Manager used to request the Google credential.
+   */
+  fun acceptTerms(context: Context, credentialManager: CredentialManager) {
+    _uiState.update { it.copy(isConsentDialogOpen = false, hasAcceptedTerms = true) }
+    // A failure is only logged: cancelling the ViewModel still cancels the write, as usual
+    val logFailure = CoroutineExceptionHandler { _, e ->
+      Log.e(TAG, "Could not remember that the terms were accepted", e)
+    }
+    viewModelScope.launch(logFailure) { termsRepository.accept() }
+    signInWithGoogle(context, credentialManager)
+  }
+
+  /** Closes the popup without accepting: sign-in doesn't start, and the screen says why. */
+  fun declineTerms() {
+    _uiState.update { it.copy(isConsentDialogOpen = false, hasDeclinedTerms = true) }
+  }
 
   /**
    * Updates the email address displayed by the screen, cut at [InputValidation.EMAIL_MAX_LENGTH].
