@@ -9,6 +9,10 @@ import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewCircles
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewMediaRepository
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewProfiles
+import com.github.se.amber.ui.patient.seeMedias.seeMediasPreviewActiveCircles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -61,7 +65,7 @@ class SeeTextsPreviewsTest {
   @Test
   fun previewMediaRepository_observeApprovedMedia_andUnusedApis() = runTest {
     val media = listOf(MediaItem.Text(id = "t1", text = "hello"))
-    val repo = PreviewMediaRepository(flowOf(media))
+    val repo = SeeMediasPreviewMediaRepository(flowOf(media))
     assertEquals(media, repo.observeApprovedMedia("preview").first())
 
     assertThrows(IllegalStateException::class.java) { repo.newMediaId("preview") }
@@ -82,35 +86,43 @@ class SeeTextsPreviewsTest {
 
   @Test
   fun previewProfilesAndCircles_coverSuccessErrorAndUnusedApis() = runTest {
-    val ok = PreviewProfiles(profile, showError = false)
+    val ok = SeeMediasPreviewProfiles(profile, showError = false)
     assertEquals(profile, ok.getCurrentProfile().getOrNull())
     assertEquals(profile, ok.getProfile("preview").getOrNull())
 
-    val failing = PreviewProfiles(profile, showError = true)
+    val failing = SeeMediasPreviewProfiles(profile, showError = true)
     assertTrue(failing.getCurrentProfile().isFailure)
 
     assertFails { ok.createProfile(Person(), Role.PATIENT) }
     assertFails { ok.updateOnboardingProfile(Person(), Role.PATIENT) }
+    assertFails { failing.createProfile(Person(), Role.PATIENT) }
+    assertFails { failing.updateOnboardingProfile(Person(), Role.PATIENT) }
 
-    val circles = PreviewCircles(circle)
+    val circles = SeeMediasPreviewCircles(circle)
     assertEquals("preview", circles.newId())
     assertEquals(circle, circles.getCircle("preview").getOrNull())
     assertFails { circles.addPerson("preview", Person()) }
   }
 
   @Test
-  fun previewOwner_factoryAndActiveCircleHelpers() = runTest {
-    val owner = SeeTextsPreviewOwner(PreviewTextState.Content)
-    val factory = owner.defaultViewModelProviderFactory
+  fun previewActiveCircles_picksFirstNonBlankAndIgnoresWrites() = runTest {
+    val active = seeMediasPreviewActiveCircles()
+    assertEquals("preview", active.activeCircleId("u", listOf("preview")).first())
+    assertNull(active.activeCircleId("u", listOf(" ", "")).first())
+    active.setActiveCircle("u", "preview")
+    active.clear("u")
+  }
 
-    assertTrue(factory.create(SeeTextsViewModel::class.java) is SeeTextsViewModel)
-    assertTrue(factory.create(MediaCardViewModel::class.java) is MediaCardViewModel)
-    assertThrows(IllegalStateException::class.java) { factory.create(DummyViewModel::class.java) }
-
-    assertEquals("preview", owner.activeCircles.activeCircleId("u", listOf("preview")).first())
-    assertNull(owner.activeCircles.activeCircleId("u", listOf(" ", "")).first())
-    owner.activeCircles.setActiveCircle("u", "preview")
-    owner.activeCircles.clear("u")
+  @Test
+  fun previewOwner_factoryWorksForEveryPreviewState() = runTest {
+    PreviewTextState.entries.forEach { state ->
+      val owner = SeeTextsPreviewOwner(state)
+      val factory = owner.defaultViewModelProviderFactory
+      assertTrue(factory.create(SeeTextsViewModel::class.java) is SeeTextsViewModel)
+      assertTrue(factory.create(MediaCardViewModel::class.java) is MediaCardViewModel)
+      assertThrows(IllegalStateException::class.java) { factory.create(DummyViewModel::class.java) }
+      assertEquals("preview", owner.activeCircles.activeCircleId("u", listOf("preview")).first())
+    }
   }
 
   private class DummyViewModel : ViewModel()

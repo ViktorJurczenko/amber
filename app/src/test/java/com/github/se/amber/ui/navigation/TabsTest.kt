@@ -1,6 +1,7 @@
 // Written by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.navigation
 
@@ -111,6 +112,13 @@ class TabsTest {
   @Test
   fun patientSeeMediasDestinationIsPatientSeeMediasScreen() {
     assertEquals(PatientScreen.SeeMedias, PatientTab.SeeMedias.destination)
+  }
+
+  @Test
+  fun patientSeeTextsScreenHasRouteAndTitle() {
+    assertEquals("patient_see_texts", PatientScreen.SeeTexts.route)
+    assertEquals(R.string.screenTitlePatientSeeTexts, PatientScreen.SeeTexts.title)
+    assertEquals(false, PatientScreen.SeeTexts.isTopLevelDestination)
   }
 
   @Test

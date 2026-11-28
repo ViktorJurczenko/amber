@@ -13,24 +13,21 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.github.se.amber.data.circle.ActiveCircleRepository
-import com.github.se.amber.data.circle.CareCircleRepository
-import com.github.se.amber.data.profile.ProfileRepository
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.location.GeoLocation
-import com.github.se.amber.model.media.CircleMedia
 import com.github.se.amber.model.media.MediaItem
-import com.github.se.amber.model.media.MediaRepository
 import com.github.se.amber.model.media.MemoryDate
-import com.github.se.amber.model.media.OutboxEntry
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.media.MediaCardViewModel
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewCircles
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewMediaRepository
+import com.github.se.amber.ui.patient.seeMedias.SeeMediasPreviewProfiles
+import com.github.se.amber.ui.patient.seeMedias.seeMediasPreviewActiveCircles
 import com.github.se.amber.ui.theme.AmberAppTheme
-import java.io.File
 import java.time.Month
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
@@ -39,88 +36,6 @@ internal enum class PreviewTextState {
   Empty,
   Error,
   Content,
-}
-
-/** Only the approved-media observation is used by this preview. */
-internal class PreviewMediaRepository(private val media: Flow<List<MediaItem>>) : MediaRepository {
-  override fun observeApprovedMedia(circleId: String): Flow<List<MediaItem>> = media
-
-  override fun newMediaId(circleId: String): String {
-    error("Not used by SeeTexts previews")
-  }
-
-  override fun observeMediaShowing(circleId: String, shownId: String): Flow<List<MediaItem>> {
-    error("Not used by SeeTexts previews")
-  }
-
-  override fun observeCircleMedia(circleId: String): Flow<List<CircleMedia>> {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun getMedia(circleId: String, mediaId: String): MediaItem? {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun addMedia(circle: CareCircle, item: MediaItem, file: File?) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override fun observeOutbox(circleId: String): Flow<List<OutboxEntry>> {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun retrySend(circleId: String, mediaId: String) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun discardUnsent(circleId: String, mediaId: String) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun updateMedia(circleId: String, item: MediaItem) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun deleteMedia(circle: CareCircle, item: MediaItem) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun getFile(circle: CareCircle, item: MediaItem): File {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun clearLocalMedia(circleId: String) {
-    error("Not used by SeeTexts previews")
-  }
-
-  override suspend fun clearLocalMedia() {
-    error("Not used by SeeTexts previews")
-  }
-}
-
-internal class PreviewProfiles(
-    private val profile: UserProfile,
-    private val showError: Boolean,
-) : ProfileRepository {
-  override suspend fun createProfile(person: Person, role: Role): Result<Unit> =
-      error("Preview does not create profiles")
-
-  override suspend fun updateOnboardingProfile(person: Person, role: Role): Result<Unit> =
-      error("Preview does not update profiles")
-
-  override suspend fun getCurrentProfile(): Result<UserProfile?> =
-      if (showError) Result.failure(Exception("preview")) else Result.success(profile)
-
-  override suspend fun getProfile(uid: String): Result<UserProfile?> = Result.success(profile)
-}
-
-internal class PreviewCircles(private val circle: CareCircle) : CareCircleRepository {
-  override fun newId(): String = circle.id
-
-  override suspend fun getCircle(circleId: String): Result<CareCircle> = Result.success(circle)
-
-  override suspend fun addPerson(circleId: String, person: Person): Result<Person> =
-      error("Preview does not add people")
 }
 
 internal class SeeTextsPreviewOwner(state: PreviewTextState) :
@@ -136,24 +51,16 @@ internal class SeeTextsPreviewOwner(state: PreviewTextState) :
   private val circle =
       CareCircle(id = "preview", people = mapOf("relative" to Person(firstName = "Evangeline")))
 
-  private val profiles = PreviewProfiles(profile, state == PreviewTextState.Error)
-  private val circles = PreviewCircles(circle)
-  internal val activeCircles =
-      object : ActiveCircleRepository {
-        override fun activeCircleId(uid: String, circleIds: List<String>): Flow<String?> =
-            flowOf(circleIds.firstOrNull { it.isNotBlank() })
-
-        override suspend fun setActiveCircle(uid: String, id: String) = Unit
-
-        override suspend fun clear(uid: String) = Unit
-      }
+  private val profiles = SeeMediasPreviewProfiles(profile, state == PreviewTextState.Error)
+  private val circles = SeeMediasPreviewCircles(circle)
+  internal val activeCircles: ActiveCircleRepository = seeMediasPreviewActiveCircles()
 
   private val longBody =
       List(8) { "This story is long enough for Show more to appear in the preview." }
           .joinToString("\n")
 
   private val media =
-      PreviewMediaRepository(
+      SeeMediasPreviewMediaRepository(
           when (state) {
             PreviewTextState.Loading -> flow { awaitCancellation() }
             PreviewTextState.Content ->
