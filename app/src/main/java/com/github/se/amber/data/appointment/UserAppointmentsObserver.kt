@@ -112,7 +112,9 @@ open class UserAppointmentsObserver(
     // already report their own sign-in and profile errors, and this one would hide them.
     val uid = runCatching {
       authRepo().currentUser?.uid
-    }.onFailure { Log.e(TAG, "Reading the signed-in user failed", it) }.getOrNull()
+    }
+        .onFailure { Log.e(TAG, "Reading the signed-in user failed", it) }
+        .getOrNull()
     val profile = uid?.let { profileRepo().getProfile(it).getOrThrow() }
     when {
       uid == null || profile == null -> emit(null)

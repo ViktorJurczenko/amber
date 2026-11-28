@@ -221,12 +221,18 @@ class UserAppointmentsObserverTest {
   // ---------- default parameters ----------
 
   @Test
-  fun byDefaultTheAppointmentsOfAPatientForTodayAreWatched() = runTest {
+  fun byDefaultAPatientWatchesTheAppointmentsOfTheCurrentDay() = runTest {
     val local = FakeAppointmentRepository(ZoneId.systemDefault())
     val noon = LocalDate.now().atTime(12, 0).atZone(ZoneId.systemDefault())
+    // It lasts until noon tomorrow, so the test also passes if the day changes while it runs.
     local.addAppointment(
         CareCircle(id = FIRST_CIRCLE, patientId = PATIENT),
-        Appointment(id = "today", title = "Visit", startAt = noon.toInstant().toEpochMilli()),
+        Appointment(
+            id = "today",
+            title = "Visit",
+            startAt = noon.toInstant().toEpochMilli(),
+            durationMinutes = MINUTES_IN_A_DAY,
+        ),
     )
     val result = observer(local).observeUserAppointments().first { it.ids().isNotEmpty() }
     assertEquals(listOf("today"), result.ids())
@@ -235,6 +241,15 @@ class UserAppointmentsObserverTest {
   @Test
   fun aWindowLastsOneDayByDefault() {
     assertEquals(1, AppointmentWindow().days)
+  }
+
+  @Test
+  fun aWindowStartsTodayByDefault() {
+    // Today is read before and after, so the test also passes if the day changes while it runs.
+    val before = LocalDate.now()
+    val firstDay = AppointmentWindow().firstDay
+    val after = LocalDate.now()
+    assertTrue(firstDay == before || firstDay == after)
   }
 
   @Test
@@ -349,5 +364,6 @@ class UserAppointmentsObserverTest {
     const val PATIENT = "patient"
     const val FIRST_CIRCLE = "first-circle"
     const val SECOND_CIRCLE = "second-circle"
+    const val MINUTES_IN_A_DAY = 24 * 60
   }
 }
