@@ -84,6 +84,6 @@ fun BoardOfPeopleScreen(
 /** Preview of [BoardOfPeopleScreen] using the Amber application theme. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-private fun BoardOfPeopleScreenPreview() {
+internal fun BoardOfPeopleScreenPreview() {
   AmberAppTheme(dynamicColor = false) { BoardOfPeopleScreen() }
 }
