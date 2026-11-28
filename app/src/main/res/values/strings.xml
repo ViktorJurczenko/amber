@@ -467,7 +467,51 @@
     <string name="guidanceProblemNoRoute">There is no walking way to this place</string>
     <string name="guidanceProblemDailyLimit">Amber can\'t find more ways today. Try again tomorrow</string>
     <string name="guidanceProblemUnknown">The way could not be found</string>
-    <string name="guidanceSearchError">The search did not work. Try again</string>
+    <string name="guidanceSearchError">The search did not work</string>
+    <string name="guidanceGoSomewhere">Go somewhere</string>
+    <string name="guidanceChooseHeader">Where do you want to go?</string>
+    <string name="guidanceNoDestinations">No places saved yet. Look up an address below.</string>
+    <string name="guidanceSearchHint">Look up an address</string>
+    <string name="guidanceSearching">Looking for places…</string>
+    <string name="guidanceNoSearchResults">No place found. Try other words.</string>
+    <string name="guidanceYourPlaces">Your places</string>
+    <string name="guidanceKindAppointment">Appointment</string>
+    <string name="guidanceKindSavedPlace">Saved place</string>
+    <string name="guidanceKindMemory">Memory</string>
+    <string name="guidanceKindSearch">Address</string>
+    <!-- %1$s is the place the patient is going to -->
+    <string name="guidanceLoading">Finding the way to %1$s…</string>
+    <string name="guidanceConfirmTitle">Go to %1$s?</string>
+    <plurals name="guidanceWalkMinutes">
+        <item quantity="one">About %d minute walking</item>
+        <item quantity="other">About %d minutes walking</item>
+    </plurals>
+    <string name="guidanceGo">Go</string>
+    <string name="guidanceCancel">Cancel</string>
+    <!-- %1$d is the distance in meters to the next turn -->
+    <string name="guidanceStepStraight">Go straight for %1$d m</string>
+    <string name="guidanceStepSlightLeft">Turn slightly left in %1$d m</string>
+    <string name="guidanceStepLeft">Turn left in %1$d m</string>
+    <string name="guidanceStepSharpLeft">Turn sharply left in %1$d m</string>
+    <string name="guidanceStepSlightRight">Turn slightly right in %1$d m</string>
+    <string name="guidanceStepRight">Turn right in %1$d m</string>
+    <string name="guidanceStepSharpRight">Turn sharply right in %1$d m</string>
+    <string name="guidanceStepUTurn">Turn around in %1$d m</string>
+    <string name="guidanceStepRoundabout">Take the roundabout in %1$d m</string>
+    <string name="guidanceStepKeepGoing">Keep going for %1$d m</string>
+    <!-- %1$s is the place, %2$d the distance to it in meters -->
+    <string name="guidanceStepDestination">%1$s is in %2$d m</string>
+    <string name="guidanceOffRoute">This is not the way. Go back to the line on the map.</string>
+    <string name="guidanceFindingNewRoute">Finding a new way…</string>
+    <string name="guidanceLocationOff">Location is off. Turn it on to keep going.</string>
+    <string name="guidanceStop">Stop</string>
+    <string name="guidanceStopTitle">Stop the guidance?</string>
+    <string name="guidanceKeepGoing">Keep going</string>
+    <string name="guidanceArrivedTitle">You\'re there!</string>
+    <string name="guidanceDone">Done</string>
+    <string name="guidanceAllowLocation">Allow location</string>
+    <string name="guidanceTryAgain">Try again</string>
+    <string name="guidanceChooseAnother">Choose another place</string>
 
     <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
     <string name="appointmentReminderChannel">Appointment reminders</string>
