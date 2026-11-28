@@ -2,6 +2,7 @@
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by Lou-Anne Maier, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.patient
 
@@ -18,7 +19,9 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.TextUnit
 import androidx.test.core.app.ApplicationProvider
@@ -111,6 +114,29 @@ class PatientHomeScreenTest {
   }
 
   @Test
+  fun boardOfPeopleButton_isDisplayedAndInvokesTheCallback() {
+    var boardOfPeopleClicks = 0
+    composeTestRule.setContent {
+      PatientHomeScreen(
+          homeViewModel = viewModel,
+          onBoardOfPeopleClick = { boardOfPeopleClicks++ },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(PatientHomeTestTags.BOARD_OF_PEOPLE_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.patientHomeBoardOfPeopleButton))
+        .assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(PatientHomeTestTags.BOARD_OF_PEOPLE_BUTTON).performClick()
+
+    assertEquals(1, boardOfPeopleClicks)
+  }
+
+  @Test
   fun greetingUpdatesWhenStateChanges() {
     setScreen()
     composeTestRule
@@ -156,13 +182,17 @@ class PatientHomeScreenTest {
   }
 
   @Test
-  fun screenUsesDefaultOnTabSelectedWhenOmitted() {
+  fun screenUsesDefaultCallbacksWhenOmitted() {
     composeTestRule.setContent { AmberAppTheme { PatientHomeScreen(homeViewModel = viewModel) } }
 
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(BottomNavigationMenuTestTags.BOTTOM_NAVIGATION_MENU)
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(PatientHomeTestTags.BOARD_OF_PEOPLE_BUTTON)
+        .performScrollTo()
+        .performClick()
   }
 
   @Test
