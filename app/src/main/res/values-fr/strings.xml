@@ -155,6 +155,7 @@
 
     <!-- CaregiverParameter -->
     <string name="caregiverParameterTitle">Paramètres</string>
+    <string name="caregiverParameterBoardOfPeople">Toutes les personnes dans mon cercle de soin</string>
     <string name="caregiverParameterCreateCareCircle">Créer un nouveau cercle de soins</string>
     <string name="caregiverParameterSwitchCareCircle">Changer de cercle de soins</string>
     <string name="caregiverParameterCreateInvitation">Créer une invitation</string>

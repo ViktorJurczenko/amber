@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,7 @@ import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 /** Test tags of [CaregiverParameterScreen]. */
 object CaregiverParametersTestTags {
   const val TITLE = "caregiver_parameter_title"
+  const val BOARD_OF_PEOPLE_BUTTON = "caregiver_parameter_board_of_people_button"
   const val CREATE_CARE_CIRCLE_BUTTON = "caregiver_parameter_create_care_circle_button"
   const val SWITCH_CARE_CIRCLE_BUTTON = "caregiver_parameter_switch_care_circle_button"
   const val CREATE_INVITATION_BUTTON = "caregiver_parameter_create_invitation_button"
@@ -83,6 +85,7 @@ object CaregiverParametersTestTags {
 fun CaregiverParameterScreen(
     viewModel: CaregiverParameterViewModel = viewModel(),
     onTabSelected: (Tab) -> Unit = {},
+    onBoardOfPeopleClick: () -> Unit = {},
     onCreateCareCircleClick: () -> Unit = {},
     onSwitchCareCircleClick: () -> Unit = {},
     onCreateInvitationClick: () -> Unit = {},
@@ -94,6 +97,7 @@ fun CaregiverParameterScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   // Configuration-aware resources, so the toast follows the app language
   val resources = LocalResources.current
+  val boardOfPeopleLabel = stringResource(R.string.caregiverParameterBoardOfPeople)
   val createCareCircleLabel = stringResource(R.string.caregiverParameterCreateCareCircle)
   val switchCareCircleLabel = stringResource(R.string.caregiverParameterSwitchCareCircle)
   val createInvitationLabel = stringResource(R.string.caregiverParameterCreateInvitation)
@@ -138,6 +142,13 @@ fun CaregiverParameterScreen(
             verticalArrangement = Arrangement.spacedBy(CAREGIVER_PADDING_ENORMOUS),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+          DisplayButton(
+              modifier = Modifier.testTag(CaregiverParametersTestTags.BOARD_OF_PEOPLE_BUTTON),
+              icon = Icons.Outlined.PersonSearch,
+              text = boardOfPeopleLabel,
+              description = boardOfPeopleLabel,
+              onClick = onBoardOfPeopleClick,
+          )
           DisplayButton(
               modifier = Modifier.testTag(CaregiverParametersTestTags.CREATE_CARE_CIRCLE_BUTTON),
               icon = Icons.Outlined.Add,

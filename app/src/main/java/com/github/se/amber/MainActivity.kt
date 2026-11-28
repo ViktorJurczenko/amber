@@ -228,6 +228,7 @@ fun AmberApp(
       composable(route = CaregiverScreen.Parameters.route) {
         CaregiverParameterScreen(
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onBoardOfPeopleClick = { navigationActions.navigateTo(CommonScreen.BoardOfPeople) },
             onCreateCareCircleClick = {
               navigationActions.navigateTo(OnboardingScreen.CreateCareCircle)
             },
