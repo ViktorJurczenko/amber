@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -841,5 +842,41 @@ class PatientUtilsTest {
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).assertExists()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_WITH_ICON).assertExists()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.ICON_BUTTON).assertExists()
+  }
+
+  // ---------- DisplayPatientDialog ----------
+
+  @Test
+  fun dialog_showsItsTexts_andEachButtonCallsItsOwnCallback() {
+    var confirms = 0
+    var dismisses = 0
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientDialog(
+            title = "Stop?",
+            message = "Really",
+            detail = "Details",
+            confirmText = "Stop",
+            dismissText = "Keep going",
+            onConfirm = { confirms++ },
+            onDismiss = { dismisses++ },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Stop?").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Really").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Details").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.DIALOG_CONFIRM)
+        .assertTextEquals("Stop")
+        .performClick()
+    assertEquals(1 to 0, confirms to dismisses)
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.DIALOG_DISMISS)
+        .assertTextEquals("Keep going")
+        .performClick()
+    assertEquals(1 to 1, confirms to dismisses)
   }
 }
