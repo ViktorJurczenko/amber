@@ -38,6 +38,7 @@
     <string name="screenTitlePatientSeeMediasSpecificPerson">See Medias with a person</string>
     <string name="screenTitlePatientMap">Map</string>
     <string name="screenTitlePatientParameters">Parameters</string>
+    <string name="screenTitleCommonBoardOfPeople">See people in my CareCircle</string>
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Welcome to Amber</string>

@@ -34,6 +34,8 @@
     <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
+    <string name="screenTitleCommonBoardOfPeople">Voir les personnes dans mon cercle de soin</string>
+
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Bienvenue sur Amber</string>
