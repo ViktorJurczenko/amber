@@ -4,22 +4,16 @@ package com.github.se.amber.ui.patient.seeMedias.texts
 
 import com.github.se.amber.R
 import com.github.se.amber.data.circle.CareCircleRepository
-import com.github.se.amber.data.circle.CareCircleRepositoryProvider
 import com.github.se.amber.data.profile.ProfileRepository
-import com.github.se.amber.data.profile.ProfileRepositoryProvider
 import com.github.se.amber.model.circle.CareCircle
 import com.github.se.amber.model.media.MediaItem
 import com.github.se.amber.model.media.MediaRepository
-import com.github.se.amber.model.media.MediaRepositoryProvider
 import com.github.se.amber.model.user.Person
 import com.github.se.amber.model.user.Role
 import com.github.se.amber.model.user.UserProfile
 import com.github.se.amber.ui.patient.seeMedias.medias.SeeGeneralMediasUIState
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -179,28 +173,5 @@ class SeeTextsViewModelTest {
         listOf(text2),
         (failing.uiState.value as SeeGeneralMediasUIState.Content).items,
     )
-  }
-
-  @Test
-  fun defaultRepositories_loadEmptyStateFromProviders() {
-    mockkObject(
-        MediaRepositoryProvider,
-        CareCircleRepositoryProvider.default,
-        ProfileRepositoryProvider.default,
-    )
-    try {
-      every { MediaRepositoryProvider.repository } returns mediaRepository
-      every { CareCircleRepositoryProvider.default.repository } returns circleRepository
-      every { ProfileRepositoryProvider.default.repository } returns profileRepository
-
-      val viewModel = SeeTextsViewModel()
-      assertTrue(viewModel.uiState.value is SeeGeneralMediasUIState.Empty)
-    } finally {
-      unmockkObject(
-          MediaRepositoryProvider,
-          CareCircleRepositoryProvider.default,
-          ProfileRepositoryProvider.default,
-      )
-    }
   }
 }

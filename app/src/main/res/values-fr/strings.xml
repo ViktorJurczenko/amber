@@ -31,6 +31,7 @@
     <string name="screenTitlePatientSeeMedias">Voir les médias</string>
     <string name="screenTitlePatientSeePictures">Voir les photos</string>
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
+    <string name="screenTitlePatientSeeTexts">Voir les textes</string>
     <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
@@ -393,6 +394,8 @@
     <string name="seeMediasPicturesIcon">Photo</string>
     <string name="seeMediasAudios">Voir les audios</string>
     <string name="seeMediasAudiosIcon">Audio</string>
+    <string name="seeMediasTexts">Voir les textes</string>
+    <string name="seeMediasTextsIcon">Texte</string>
 
     <!-- SeePictures -->
     <string name="seePicturesTitle">Voir les photos</string>
