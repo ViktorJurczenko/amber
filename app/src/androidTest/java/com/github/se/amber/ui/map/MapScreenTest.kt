@@ -1,5 +1,6 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -196,7 +197,7 @@ class MapScreenTest {
     composeTestRule.setContent { AmberAppTheme { MapScreen(viewModel = viewModel) } }
 
     // No fix yet: recenter leaves the screen searching; a disabled provider updates the card.
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(MapRecenterAction.PositionUnavailable, recenterAction)
     assertEquals(MediaMapLocationState.Searching, viewModel.locationState.value)
 
@@ -224,7 +225,7 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(MapRecenterAction.MoveTo(fresh), recenterAction)
 
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
@@ -238,7 +239,7 @@ class MapScreenTest {
     composeTestRule
         .onNodeWithText(composeTestRule.activity.getString(R.string.patientMapLocationFound))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(MapRecenterAction.MoveTo(later), recenterAction)
   }
 
@@ -315,7 +316,7 @@ class MapScreenTest {
     assertEquals(1, registry.requestCount.get())
 
     // Recenter asks for permission again.
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     composeTestRule.waitForIdle()
     assertEquals(2, registry.requestCount.get())
 
@@ -351,8 +352,7 @@ class MapScreenTest {
     // Assert: a provider failure keeps the map visible and shows the unavailable status.
     composeTestRule.onNodeWithTag(MapScreenTestTags.GOOGLE_MAP).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.patientMapLocationUnavailable)).assertIsDisplayed()
-    // Act and assert: recenter without a position leaves the unavailable state unchanged.
-    composeTestRule.onNodeWithText(text(R.string.patientMapRecenter)).performClick()
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).performClick()
     assertEquals(MediaMapLocationState.Unavailable, viewModel.locationState.value)
   }
 }

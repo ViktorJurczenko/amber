@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -9,9 +10,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -22,7 +23,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
 import com.github.se.amber.model.location.GeoLocation
-import com.github.se.amber.ui.patient.PatientUtilsTestTags
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.MIN_PLACE_QUERY_LENGTH
 import java.util.Locale
@@ -234,12 +234,15 @@ class MapUtilsTest {
   }
 
   @Test
-  fun positionCard_displaysEachStateAndPassesRecenterClick() {
+  fun positionCard_displaysEachState_andRecenterIsASeparateButtonThatPassesClicks() {
     val location = mutableStateOf<MediaMapLocationState>(MediaMapLocationState.Searching)
     var recenters = 0
     composeTestRule.setContent {
       AmberAppTheme {
-        MapPositionCard(locationState = location.value, onRecenter = { recenters++ })
+        Column {
+          MapRecenterButton(onRecenter = { recenters++ })
+          MapPositionCard(locationState = location.value)
+        }
       }
     }
 
@@ -250,29 +253,15 @@ class MapUtilsTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapYourPosition))
         .assertIsDisplayed()
+    // Recenter is no longer a text button in the card, but an icon button named for screen readers
     composeTestRule
         .onNodeWithText(context.getString(R.string.patientMapRecenter))
+        .assertDoesNotExist()
+    val recenterButton = composeTestRule.onNodeWithTag(MapTestTags.RECENTER)
+    recenterButton.assertIsDisplayed()
+    composeTestRule
+        .onNodeWithContentDescription(context.getString(R.string.patientMapRecenter))
         .assertIsDisplayed()
-
-    val recenterButton = composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_WITH_ICON)
-    val positionTitle =
-        composeTestRule.onNodeWithText(context.getString(R.string.patientMapYourPosition))
-    val recenterIcon =
-        composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_ICON, useUnmergedTree = true)
-    val recenterText =
-        composeTestRule.onNodeWithText(
-            context.getString(R.string.patientMapRecenter),
-            useUnmergedTree = true,
-        )
-    recenterIcon.assertIsDisplayed()
-    assertTrue(
-        recenterButton.getUnclippedBoundsInRoot().left >
-            positionTitle.getUnclippedBoundsInRoot().right
-    )
-    assertTrue(
-        recenterIcon.getUnclippedBoundsInRoot().left >=
-            recenterText.getUnclippedBoundsInRoot().right
-    )
 
     // Check status card while location is searching and turned off
     val statesAndMessages =
@@ -308,6 +297,7 @@ class MapUtilsTest {
         Column {
           MapSearchField()
           MapPositionCard(locationState = MediaMapLocationState.NoPermission)
+          MapRecenterButton()
         }
       }
     }
@@ -326,7 +316,14 @@ class MapUtilsTest {
 
     keys.forEach { id ->
       val frenchText = context.getString(id)
-      composeTestRule.onNodeWithText(frenchText).assertIsDisplayed()
+      // The recenter button shows its name to screen readers only
+      val node =
+          if (id == R.string.patientMapRecenter) {
+            composeTestRule.onNodeWithContentDescription(frenchText)
+          } else {
+            composeTestRule.onNodeWithText(frenchText)
+          }
+      node.assertIsDisplayed()
       assertNotEquals(englishContext.getString(id), frenchText)
     }
   }
@@ -337,8 +334,11 @@ class MapUtilsTest {
       Column {
         MapSearchFieldPreview()
         MapPositionCardPreview()
+        MapRecenterButtonPreview()
       }
     }
+
+    composeTestRule.onNodeWithTag(MapTestTags.RECENTER).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(MapTestTags.SEARCH).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MapTestTags.POSITION_CARD).assertIsDisplayed()
