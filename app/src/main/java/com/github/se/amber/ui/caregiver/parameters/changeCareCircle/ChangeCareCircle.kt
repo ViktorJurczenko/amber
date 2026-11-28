@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.caregiver.parameters.changeCareCircle
 
@@ -21,7 +22,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,20 +104,19 @@ fun ChangeCareCircleScreen(
 
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Column(modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL)) {
-                TopNavigationMenu(
-                    action = TopNavigationAction.CANCEL,
-                    onBackClick = onBackClick,
-                )
-                DisplayCaregiverTitle(
-                    modifier = Modifier.testTag(ChangeCareCircleTestTags.TITLE),
-                    title = stringResource(R.string.changeCareCircleTitle),
-                )
-              }
-            }
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(CAREGIVER_PADDING_SMALL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          TopNavigationMenu(
+              action = TopNavigationAction.CANCEL,
+              onBackClick = onBackClick,
+          )
+          DisplayCaregiverTitle(
+              modifier = Modifier.testTag(ChangeCareCircleTestTags.TITLE),
+              title = stringResource(R.string.changeCareCircleTitle),
+          )
+        }
       }
   ) { paddingValues ->
     when (uiState.status) {

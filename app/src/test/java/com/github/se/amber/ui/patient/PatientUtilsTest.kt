@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient
 
@@ -84,12 +85,20 @@ class PatientUtilsTest {
   }
 
   @Test
-  fun title_fillsParentWidth() {
+  fun title_isCenteredWrapContent_notForcedToFillParentWidth() {
+    val results = mutableListOf<TextLayoutResult>()
     composeTestRule.setContent {
       AmberAppTheme { Box(Modifier.width(300.dp)) { DisplayPatientTitle(title = "Width") } }
     }
 
-    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE).assertWidthIsEqualTo(300.dp)
+    val title = composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE)
+    // CenterAlignedTopAppBar needs wrap-content titles; callers pass fillMaxWidth when needed.
+    assertTrue(title.getUnclippedBoundsInRoot().width < 300.dp)
+    title.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
+    assertEquals(
+        androidx.compose.ui.text.style.TextAlign.Center,
+        results.first().layoutInput.style.textAlign,
+    )
   }
 
   @Test
@@ -114,10 +123,11 @@ class PatientUtilsTest {
   }
 
   @Test
-  fun title_withAllDefaults_isDisplayed() {
+  fun title_withEmptyDefault_existsAsWrapContent() {
+    // Empty wrap-content titles can have zero size, so they may not assert as "displayed".
     composeTestRule.setContent { AmberAppTheme { DisplayPatientTitle() } }
 
-    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.TITLE).assertExists().assertTextEquals("")
   }
 
   @Test

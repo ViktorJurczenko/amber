@@ -69,7 +69,6 @@ import com.github.se.amber.ui.theme.CAREGIVER_BUTTON_WIDTH_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_ICON_SIZE
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.CAREGIVER_PADDING_SMALL
-import com.github.se.amber.ui.theme.CAREGIVER_TITLE_WIDTH
 import com.github.se.amber.ui.theme.DISABLED_ALPHA
 import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
 import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
@@ -87,11 +86,10 @@ import com.github.se.amber.ui.theme.SURFACE_MEDIUM
  */
 @Composable
 fun DisplayCaregiverTitle(modifier: Modifier = Modifier, title: String) {
+  // Do not force fillMaxWidth here: CenterAlignedTopAppBar centers wrap-content titles. Callers
+  // that need a full-width block (e.g. a non-centered Column) pass Modifier.fillMaxWidth().
   Text(
-      modifier =
-          modifier
-              .padding(top = CAREGIVER_PADDING_SMALL, bottom = CAREGIVER_PADDING_MEDIUM)
-              .fillMaxWidth(CAREGIVER_TITLE_WIDTH),
+      modifier = modifier.padding(top = CAREGIVER_PADDING_SMALL, bottom = CAREGIVER_PADDING_MEDIUM),
       text = title,
       textAlign = TextAlign.Center,
       color = MaterialTheme.colorScheme.primary,

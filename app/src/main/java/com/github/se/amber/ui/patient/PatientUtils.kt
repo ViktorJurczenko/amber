@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Yuhan YANG, with assistance from Cursor.
 
 package com.github.se.amber.ui.patient
 
@@ -97,13 +98,14 @@ fun DisplayPatientTitle(
     titleStyle: TextStyle = MaterialTheme.typography.headlineLarge,
     testTag: String = PatientUtilsTestTags.TITLE,
 ) {
+  // Do not force fillMaxWidth here: CenterAlignedTopAppBar centers wrap-content titles. Callers
+  // that need a full-width block (e.g. a non-centered Column) pass Modifier.fillMaxWidth().
   Text(
       text = title,
       color = MaterialTheme.colorScheme.primary,
       style = titleStyle,
       modifier =
           modifier
-              .fillMaxWidth()
               .padding(top = PATIENT_PADDING_SMALL, bottom = PATIENT_PADDING_MEDIUM)
               .testTag(testTag),
       textAlign = TextAlign.Center,
