@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -13,7 +14,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -29,6 +32,7 @@ import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -841,5 +845,52 @@ class PatientUtilsTest {
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON).assertExists()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.BUTTON_WITH_ICON).assertExists()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.ICON_BUTTON).assertExists()
+  }
+
+  // ---------- DisplayPatientDialog ----------
+
+  @Test
+  fun dialog_showsItsTexts_andEachButtonCallsItsOwnCallback_andLeavesOutAnEmptyMessage() {
+    var confirms = 0
+    var dismisses = 0
+    var message by mutableStateOf("Really")
+    var detail by mutableStateOf("Details")
+    composeTestRule.setContent {
+      AmberAppTheme {
+        DisplayPatientDialog(
+            title = "Stop?",
+            message = message,
+            detail = detail,
+            confirmText = "Stop",
+            dismissText = "Keep going",
+            onConfirm = { confirms++ },
+            onDismiss = { dismisses++ },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Stop?").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Really").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Details").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.DIALOG_CONFIRM)
+        .assertTextEquals("Stop")
+        .performClick()
+    assertEquals(1 to 0, confirms to dismisses)
+    composeTestRule
+        .onNodeWithTag(PatientUtilsTestTags.DIALOG_DISMISS)
+        .assertTextEquals("Keep going")
+        .performClick()
+    assertEquals(1 to 1, confirms to dismisses)
+
+    // Like "Stop the guidance?": only the title and the buttons
+    message = ""
+    detail = ""
+    composeTestRule.onNodeWithText("Really").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Details").assertDoesNotExist()
+    // No empty line left in their place
+    composeTestRule.onAllNodes(hasText("")).assertCountEquals(0)
+    composeTestRule.onNodeWithText("Stop?").assertIsDisplayed()
   }
 }

@@ -469,7 +469,52 @@
     <string name="guidanceProblemNoRoute">Il n\'y a pas de chemin à pied vers ce lieu</string>
     <string name="guidanceProblemDailyLimit">Amber ne peut plus chercher de chemin aujourd\'hui. Réessayez demain</string>
     <string name="guidanceProblemUnknown">Le chemin n\'a pas pu être trouvé</string>
-    <string name="guidanceSearchError">La recherche n\'a pas marché. Réessayez</string>
+    <string name="guidanceSearchError">La recherche n\'a pas marché</string>
+    <string name="guidanceGoSomewhere">Aller quelque part</string>
+    <string name="guidanceChooseHeader">Où voulez-vous aller&#160;?</string>
+    <string name="guidanceNoDestinations">Aucun lieu enregistré. Cherchez une adresse ci-dessous.</string>
+    <string name="guidanceSearchHint">Chercher une adresse</string>
+    <string name="guidanceSearching">Recherche des lieux…</string>
+    <string name="guidanceNoSearchResults">Aucun lieu trouvé. Essayez d\'autres mots.</string>
+    <string name="guidanceYourPlaces">Vos lieux</string>
+    <string name="guidanceKindAppointment">Rendez-vous</string>
+    <string name="guidanceKindSavedPlace">Lieu enregistré</string>
+    <string name="guidanceKindMemory">Souvenir</string>
+    <string name="guidanceKindSearch">Adresse</string>
+    <!-- %1$s is the place the patient is going to -->
+    <string name="guidanceLoading">Recherche du chemin vers %1$s…</string>
+    <string name="guidanceConfirmTitle">Aller à %1$s&#160;?</string>
+    <plurals name="guidanceWalkMinutes">
+        <item quantity="one">Environ %d minute à pied</item>
+        <item quantity="many">Environ %d minutes à pied</item>
+        <item quantity="other">Environ %d minutes à pied</item>
+    </plurals>
+    <string name="guidanceGo">Y aller</string>
+    <string name="guidanceCancel">Annuler</string>
+    <!-- %1$d is the distance in meters to the next turn -->
+    <string name="guidanceStepStraight">Continuez tout droit sur %1$d m</string>
+    <string name="guidanceStepSlightLeft">Tournez légèrement à gauche dans %1$d m</string>
+    <string name="guidanceStepLeft">Tournez à gauche dans %1$d m</string>
+    <string name="guidanceStepSharpLeft">Tournez franchement à gauche dans %1$d m</string>
+    <string name="guidanceStepSlightRight">Tournez légèrement à droite dans %1$d m</string>
+    <string name="guidanceStepRight">Tournez à droite dans %1$d m</string>
+    <string name="guidanceStepSharpRight">Tournez franchement à droite dans %1$d m</string>
+    <string name="guidanceStepUTurn">Faites demi-tour dans %1$d m</string>
+    <string name="guidanceStepRoundabout">Prenez le rond-point dans %1$d m</string>
+    <string name="guidanceStepKeepGoing">Continuez sur %1$d m</string>
+    <!-- %1$s is the place, %2$d the distance to it in meters -->
+    <string name="guidanceStepDestination">%1$s est à %2$d m</string>
+    <string name="guidanceOffRoute">Ce n\'est pas le chemin. Revenez sur la ligne de la carte.</string>
+    <string name="guidanceFindingNewRoute">Recherche d\'un nouveau chemin…</string>
+    <string name="guidanceLocationOff">La localisation est désactivée. Activez-la pour continuer.</string>
+    <string name="guidanceStop">Arrêter</string>
+    <string name="guidanceStopTitle">Arrêter le guidage&#160;?</string>
+    <string name="guidanceKeepGoing">Continuer</string>
+    <string name="guidanceArrivedTitle">Vous y êtes&#160;!</string>
+    <string name="guidanceDone">Terminé</string>
+    <string name="guidanceAllowLocation">Autoriser la localisation</string>
+    <string name="guidanceTryAgain">Réessayer</string>
+    <string name="guidanceChooseAnother">Choisir un autre lieu</string>
 
     <!-- AppointmentReminder: the notification before an appointment (AppointmentReminderNotifier.kt) -->
     <string name="appointmentReminderChannel">Rappels de rendez-vous</string>

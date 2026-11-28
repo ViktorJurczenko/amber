@@ -2,6 +2,7 @@
 // Modified by Yuhan YANG, with assistance from Cursor.
 // Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 // Modified by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.patient
 
@@ -17,10 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
@@ -33,6 +36,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
@@ -55,9 +59,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.window.Dialog
 import com.github.se.amber.R
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.BORDER_THICKNESS_PATIENT
+import com.github.se.amber.ui.theme.DIALOG_WIDTH
 import com.github.se.amber.ui.theme.DISABLED_ALPHA
 import com.github.se.amber.ui.theme.MAX_CHAR_DEFAULT
 import com.github.se.amber.ui.theme.MAX_LINE_DEFAULT
@@ -65,6 +71,7 @@ import com.github.se.amber.ui.theme.MIN_LINE_DEFAULT
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_WIDTH_BIG
 import com.github.se.amber.ui.theme.PATIENT_ICON_SIZE
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MEDIUM
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
@@ -79,6 +86,9 @@ object PatientUtilsTestTags {
   const val ICON_BUTTON = "PatientUtils_test_tag_icon_button"
   const val TEXT_FIELD = "PatientUtils_test_tag_text_field"
   const val TEXT_FIELD_ERROR = "PatientUtils_test_tag_text_field_error"
+  const val DIALOG = "PatientUtils_test_tag_dialog"
+  const val DIALOG_CONFIRM = "PatientUtils_test_tag_dialog_confirm"
+  const val DIALOG_DISMISS = "PatientUtils_test_tag_dialog_dismiss"
 }
 
 /**
@@ -464,5 +474,97 @@ internal fun DisplayPatientButtonsDarkPreview() {
           onClick = {},
       )
     }
+  }
+}
+
+/**
+ * Displays a patient dialog: a title, a message, a main button and an outlined button to cancel.
+ *
+ * Same frame as the caregiver popup (width, corners, surface colors), with the patient title and
+ * buttons, so its text stays large. Tapping outside or the system back button cancels, like the
+ * outlined button.
+ *
+ * @param title the question asked, shown as the title.
+ * @param message more detail under the title; nothing is shown when empty.
+ * @param detail a smaller line under the message, such as an address to check; none when empty.
+ * @param confirmText label of the main button.
+ * @param dismissText label of the outlined button.
+ * @param onConfirm called when the main button is pressed.
+ * @param onDismiss called when the outlined button is pressed or the dialog is dismissed.
+ * @param testTag test tag of the dialog surface.
+ */
+@Composable
+fun DisplayPatientDialog(
+    title: String = "",
+    message: String = "",
+    detail: String = "",
+    confirmText: String = "",
+    dismissText: String = "",
+    onConfirm: () -> Unit = {},
+    onDismiss: () -> Unit = {},
+    testTag: String = PatientUtilsTestTags.DIALOG,
+) {
+  Dialog(onDismissRequest = onDismiss) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(DIALOG_WIDTH).testTag(testTag),
+        shape = RoundedCornerShape(ROUND_CORNER),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+      // Scrolls: the patient buttons have a fixed height, and large text may not fit
+      Column(
+          modifier = Modifier.verticalScroll(rememberScrollState()).padding(PATIENT_PADDING_MEDIUM),
+          verticalArrangement = Arrangement.spacedBy(PATIENT_PADDING_SMALL),
+      ) {
+        DisplayPatientTitle(title = title, titleStyle = MaterialTheme.typography.headlineMedium)
+        if (message.isNotEmpty()) {
+          Text(
+              text = message,
+              modifier = Modifier.fillMaxWidth(),
+              style = MaterialTheme.typography.bodyLarge,
+              textAlign = TextAlign.Center,
+          )
+        }
+        if (detail.isNotEmpty()) {
+          Text(
+              text = detail,
+              modifier = Modifier.fillMaxWidth(),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              textAlign = TextAlign.Center,
+          )
+        }
+        DisplayPatientButton(
+            buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
+            buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+            text = confirmText,
+            textStyle = MaterialTheme.typography.titleLarge,
+            onClick = onConfirm,
+            testTag = PatientUtilsTestTags.DIALOG_CONFIRM,
+        )
+        DisplayPatientButton(
+            buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
+            buttonWidth = PATIENT_BUTTON_WIDTH_BIG,
+            outlined = true,
+            text = dismissText,
+            textStyle = MaterialTheme.typography.titleLarge,
+            onClick = onDismiss,
+            testTag = PatientUtilsTestTags.DIALOG_DISMISS,
+        )
+      }
+    }
+  }
+}
+
+/** Preview of [DisplayPatientDialog] using the Amber application theme. */
+@Preview(showBackground = true)
+@Composable
+internal fun DisplayPatientDialogPreview() {
+  AmberAppTheme(darkTheme = false) {
+    DisplayPatientDialog(
+        title = stringResource(R.string.guidanceStopTitle),
+        confirmText = stringResource(R.string.guidanceStop),
+        dismissText = stringResource(R.string.guidanceKeepGoing),
+    )
   }
 }
