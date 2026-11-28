@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -38,6 +39,7 @@ import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.patient.DisplayPatientTitle
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -154,9 +156,16 @@ fun MapScreen(
           modifier = Modifier.fillMaxSize().testTag(MapScreenTestTags.GOOGLE_MAP),
           cameraPositionState = cameraPositionState,
           properties = MapProperties(isMyLocationEnabled = userPosition != null),
-          uiSettings = MapUiSettings(zoomControlsEnabled = true),
-          // Reserve space for the position card so Google's zoom controls stay accessible.
-          contentPadding = PaddingValues(end = PATIENT_PADDING_MINI, bottom = cardHeight),
+          // Google's own location button is off: MapRecenterButton replaces it, and can also ask
+          // for the permission
+          uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = false),
+          // Reserve space for the position card and the recenter button, so Google's zoom
+          // controls sit above them
+          contentPadding =
+              PaddingValues(
+                  end = PATIENT_PADDING_MINI,
+                  bottom = cardHeight + PATIENT_BUTTON_HEIGHT_SMALL + PATIENT_PADDING_SMALL,
+              ),
       )
       MapSearchField(
           modifier = Modifier.align(Alignment.TopCenter).padding(PATIENT_PADDING_SMALL),
@@ -170,6 +179,12 @@ fun MapScreen(
                   .onSizeChanged { cardHeight = with(density) { it.height.toDp() } }
                   .padding(PATIENT_PADDING_SMALL),
           locationState = locationState,
+      )
+      MapRecenterButton(
+          // On the right side, just above the position card
+          modifier =
+              Modifier.align(Alignment.BottomEnd)
+                  .padding(end = PATIENT_PADDING_SMALL, bottom = cardHeight),
           onRecenter = {
             // The ViewModel chooses an action; the UI performs the permission or camera API call
             when (val action = viewModel.recenter()) {

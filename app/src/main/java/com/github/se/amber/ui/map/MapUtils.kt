@@ -1,4 +1,5 @@
 // Written by MeiliV, with assistance from OpenAI Codex.
+// Modified by Neha Chakraborty, with assistance from Claude (Anthropic) via Claude Code.
 
 package com.github.se.amber.ui.map
 
@@ -29,11 +30,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.se.amber.R
 import com.github.se.amber.model.location.DevicePosition
-import com.github.se.amber.ui.patient.DisplayPatientButton
+import com.github.se.amber.ui.patient.DisplayPatientCircularIconButton
 import com.github.se.amber.ui.patient.DisplayPatientTextField
 import com.github.se.amber.ui.theme.AmberAppTheme
 import com.github.se.amber.ui.theme.MAX_CHAR_PLACE_SEARCH
-import com.github.se.amber.ui.theme.PATIENT_BUTTON_HEIGHT_SMALL
 import com.github.se.amber.ui.theme.PATIENT_PADDING_MINI
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 import com.github.se.amber.ui.theme.ROUND_CORNER
@@ -66,6 +66,7 @@ internal fun autoCenterStep(position: DevicePosition?, centeredOnFresh: Boolean)
 object MapTestTags {
   const val SEARCH = "map_search"
   const val POSITION_CARD = "map_position_card"
+  const val RECENTER = "map_recenter"
 }
 
 /** Search field placed over the map. */
@@ -95,20 +96,35 @@ internal fun MapSearchField(
 }
 
 /**
- * Position card that reflects the live GPS state.
+ * Recenter button on the side of the map, like the one of Google Maps: a square with the patient
+ * button color. The parent handles [onRecenter], including permission requests and camera movement.
  *
- * [locationState] selects the translated status text. The parent handles [onRecenter], including
- * permission requests and camera movement, so this component only renders state and user input.
+ * @param modifier Positions the button on the map.
+ * @param onRecenter Called when the user taps the button.
+ */
+@Composable
+internal fun MapRecenterButton(modifier: Modifier = Modifier, onRecenter: () -> Unit = {}) {
+  DisplayPatientCircularIconButton(
+      modifier = modifier,
+      icon = Icons.Outlined.MyLocation,
+      description = stringResource(R.string.patientMapRecenter),
+      shape = RoundedCornerShape(ROUND_CORNER),
+      onClick = onRecenter,
+      testTag = MapTestTags.RECENTER,
+  )
+}
+
+/**
+ * Position card that reflects the live GPS state. [locationState] selects the translated status
+ * text.
  *
  * @param modifier Positions the card at the bottom of the map.
  * @param locationState Current permission, GPS, or position state supplied by the ViewModel.
- * @param onRecenter Called when the user taps the recenter button.
  */
 @Composable
 internal fun MapPositionCard(
     modifier: Modifier = Modifier,
     locationState: MediaMapLocationState = MediaMapLocationState.Searching,
-    onRecenter: () -> Unit = {},
 ) {
   val detail =
       when (locationState) {
@@ -154,14 +170,6 @@ internal fun MapPositionCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      DisplayPatientButton(
-          onClick = onRecenter,
-          text = stringResource(R.string.patientMapRecenter),
-          textStyle = MaterialTheme.typography.labelLarge,
-          buttonHeight = PATIENT_BUTTON_HEIGHT_SMALL,
-          fillWidth = false,
-          icon = Icons.Outlined.MyLocation,
-      )
     }
   }
 }
@@ -178,4 +186,11 @@ internal fun MapSearchFieldPreview() {
 @Composable
 internal fun MapPositionCardPreview() {
   AmberAppTheme { MapPositionCard() }
+}
+
+/** Preview of the recenter button. */
+@Preview(showBackground = true)
+@Composable
+internal fun MapRecenterButtonPreview() {
+  AmberAppTheme { MapRecenterButton() }
 }
