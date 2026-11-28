@@ -229,6 +229,23 @@ sealed class PatientScreen(
       )
 }
 
+/**
+ * Common's navigation destinations (for both patient and caregiver).
+ *
+ * See Figma for more information on the design.
+ */
+sealed class CommonScreen(
+    override val route: String,
+    @param:StringRes override val title: Int,
+    override val isTopLevelDestination: Boolean = false,
+) : Screen {
+  data object BoardOfPeople :
+      CommonScreen(
+          route = "common_board_of_people",
+          title = R.string.screenTitleCommonBoardOfPeople,
+      )
+}
+
 /** Routes of the nested navigation graphs, one per user role. */
 object NavGraphs {
   const val CAREGIVER = "caregiver_graph"

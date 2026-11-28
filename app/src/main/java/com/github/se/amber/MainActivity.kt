@@ -47,10 +47,12 @@ import com.github.se.amber.ui.caregiver.upload.UploadScreen
 import com.github.se.amber.ui.caregiver.upload.audios.UploadAudioScreen
 import com.github.se.amber.ui.caregiver.upload.pictures.UploadPictureScreen
 import com.github.se.amber.ui.caregiver.upload.text.UploadTextScreen
+import com.github.se.amber.ui.common.BoardOfPeopleScreen
 import com.github.se.amber.ui.map.MapScreen
 import com.github.se.amber.ui.media.LocalMediaRetrySignal
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.CaregiverScreen
+import com.github.se.amber.ui.navigation.CommonScreen
 import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.NavigationActions
@@ -226,6 +228,7 @@ fun AmberApp(
       composable(route = CaregiverScreen.Parameters.route) {
         CaregiverParameterScreen(
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
+            onBoardOfPeopleClick = { navigationActions.navigateTo(CommonScreen.BoardOfPeople) },
             onCreateCareCircleClick = {
               navigationActions.navigateTo(OnboardingScreen.CreateCareCircle)
             },
@@ -276,6 +279,7 @@ fun AmberApp(
     ) {
       composable(route = PatientScreen.Home.route) {
         PatientHomeScreen(
+            onBoardOfPeopleClick = { navigationActions.navigateTo(CommonScreen.BoardOfPeople) },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
         )
       }
@@ -334,6 +338,11 @@ fun AmberApp(
             isPatient = true,
             credentialManager = credentialManager,
             onBack = { navigationActions.goBack() },
+        )
+      }
+      composable(route = CommonScreen.BoardOfPeople.route) {
+        BoardOfPeopleScreen(
+            goBack = { navigationActions.goBack() },
         )
       }
     }

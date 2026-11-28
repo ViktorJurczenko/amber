@@ -28,11 +28,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.se.amber.ui.authentication.signOut.SignOutTestTags
 import com.github.se.amber.ui.caregiver.parameters.CaregiverParametersTestTags
 import com.github.se.amber.ui.caregiver.upload.UploadTestTags
+import com.github.se.amber.ui.common.BoardOfPeopleTestTags
 import com.github.se.amber.ui.map.MapScreenTestTags
 import com.github.se.amber.ui.navigation.AuthScreen
 import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags.tabTag
 import com.github.se.amber.ui.navigation.CaregiverScreen
 import com.github.se.amber.ui.navigation.CaregiverTab
+import com.github.se.amber.ui.navigation.CommonScreen
 import com.github.se.amber.ui.navigation.NavArgs
 import com.github.se.amber.ui.navigation.NavGraphs
 import com.github.se.amber.ui.navigation.OnboardingScreen
@@ -40,6 +42,7 @@ import com.github.se.amber.ui.navigation.PatientScreen
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.TopNavigationMenuTestTags
 import com.github.se.amber.ui.onboarding.choice.CaregiverChoiceTestTags
+import com.github.se.amber.ui.patient.PatientHomeTestTags
 import com.github.se.amber.ui.patient.parameters.PatientParameterTestTags
 import com.github.se.amber.ui.patient.seeMedias.SeeMediasTestTags
 import com.github.se.amber.ui.patient.seeMedias.audios.SeeAudiosTestTags
@@ -90,6 +93,8 @@ class AmberAppNavigationTest {
     const val CREATE_CARE_CIRCLE_BUTTON = CaregiverParametersTestTags.CREATE_CARE_CIRCLE_BUTTON
     const val CREATE_INVITATION_BUTTON = CaregiverParametersTestTags.CREATE_INVITATION_BUTTON
     const val ENTER_INVITATION_BUTTON = CaregiverParametersTestTags.ENTER_INVITATION_BUTTON
+    const val CAREGIVER_PARAMETERS_BOARD_OF_PEOPLE =
+        CaregiverParametersTestTags.BOARD_OF_PEOPLE_BUTTON
     const val CAREGIVER_PARAMETERS_SIGN_OUT = CaregiverParametersTestTags.SIGN_OUT_BUTTON
     const val CAREGIVER_PARAMETERS_DELETE_ACCOUNT =
         CaregiverParametersTestTags.DELETE_ACCOUNT_BUTTON
@@ -97,12 +102,14 @@ class AmberAppNavigationTest {
     const val SIGN_OUT_CONFIRM = SignOutTestTags.BUTTON
     const val SIGN_OUT_BACK = TopNavigationMenuTestTags.BACK_BUTTON
     const val DELETE_ACCOUNT_CANCEL = TopNavigationMenuTestTags.BACK_BUTTON
+    const val BOARD_OF_PEOPLE_BACK = TopNavigationMenuTestTags.BACK_BUTTON
 
     // Patient
     val PATIENT_TAB_HOME = tabTag(PatientTab.Home)
     val PATIENT_TAB_SEE_MEDIAS = tabTag(PatientTab.SeeMedias)
     val PATIENT_TAB_MAP = tabTag(PatientTab.Map)
     val PATIENT_TAB_PARAMETERS = tabTag(PatientTab.Setting)
+    const val PATIENT_HOME_BOARD_OF_PEOPLE = PatientHomeTestTags.BOARD_OF_PEOPLE_BUTTON
     const val PATIENT_PARAMETERS_SIGN_OUT = PatientParameterTestTags.SIGN_OUT_BUTTON
     const val PATIENT_PARAMETERS_DELETE_ACCOUNT = PatientParameterTestTags.DELETE_BUTTON
     const val SEE_PICTURES_BACK = TopNavigationMenuTestTags.BACK_BUTTON
@@ -506,6 +513,21 @@ class AmberAppNavigationTest {
     assertRoute(OnboardingScreen.EnterInvitation.route)
   }
 
+  @Test
+  fun parameters_boardOfPeople_navigatesToBoardOfPeople_thenBackReturnsToParameters() {
+    launch(NavGraphs.CAREGIVER)
+    goTo(CaregiverScreen.Parameters.route)
+
+    click(Tags.CAREGIVER_PARAMETERS_BOARD_OF_PEOPLE)
+
+    assertRoute(CommonScreen.BoardOfPeople.route)
+    composeRule.onNodeWithTag(BoardOfPeopleTestTags.TITLE).assertExists()
+
+    click(Tags.BOARD_OF_PEOPLE_BACK)
+
+    assertRoute(CaregiverScreen.Parameters.route)
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Caregiver graph: CreateInvitationCode
   // ---------------------------------------------------------------------------------------------
@@ -565,6 +587,20 @@ class AmberAppNavigationTest {
     click(Tags.PATIENT_TAB_PARAMETERS)
 
     assertRoute(PatientScreen.Parameters.route)
+  }
+
+  @Test
+  fun patientHome_boardOfPeople_navigatesToBoardOfPeople_thenBackReturnsToHome() {
+    launch(NavGraphs.PATIENT)
+
+    click(Tags.PATIENT_HOME_BOARD_OF_PEOPLE)
+
+    assertRoute(CommonScreen.BoardOfPeople.route)
+    composeRule.onNodeWithTag(BoardOfPeopleTestTags.TITLE).assertExists()
+
+    click(Tags.BOARD_OF_PEOPLE_BACK)
+
+    assertRoute(PatientScreen.Home.route)
   }
 
   @Test

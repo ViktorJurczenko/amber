@@ -11,6 +11,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
+import com.github.se.amber.R
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -239,5 +240,20 @@ class NavigationActionsTest {
   @Test
   fun personIdFrom_isEmptyWithoutArguments() {
     assertEquals("", actions.personIdFrom(null))
+  }
+
+  // ---- BoardOfPeople ----
+
+  @Test
+  fun boardOfPeople_hasItsTitle_isNotTopLevel_andIsSimplyPushed() {
+    val screen = CommonScreen.BoardOfPeople
+
+    val options = optionsUsedToNavigateTo(screen)
+
+    assertEquals(R.string.screenTitleCommonBoardOfPeople, screen.title)
+    assertFalse(screen.isTopLevelDestination)
+    assertFalse(options.shouldLaunchSingleTop())
+    assertNull(options.popUpToRoute)
+    assertTrue(options.shouldRestoreState())
   }
 }

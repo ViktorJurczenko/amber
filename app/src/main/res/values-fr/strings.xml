@@ -34,6 +34,8 @@
     <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
+    <string name="screenTitleCommonBoardOfPeople">Voir les personnes dans mon cercle de soin</string>
+
 
     <!-- EmailSignIn -->
     <string name="signInWelcome">Bienvenue sur Amber</string>
@@ -153,6 +155,7 @@
 
     <!-- CaregiverParameter -->
     <string name="caregiverParameterTitle">Paramètres</string>
+    <string name="caregiverParameterBoardOfPeople">Toutes les personnes dans mon cercle de soin</string>
     <string name="caregiverParameterCreateCareCircle">Créer un nouveau cercle de soins</string>
     <string name="caregiverParameterSwitchCareCircle">Changer de cercle de soins</string>
     <string name="caregiverParameterCreateInvitation">Créer une invitation</string>
@@ -379,6 +382,8 @@
     <!-- PatientHome -->
     <string name="patientHomeTitle">Accueil</string>
     <string name="patientHomeGreeting">Bonjour %1$s&#160;!</string>
+    <string name="patientHomeBoardOfPeopleButton">Toutes les personnes dans mon cercle de soin</string>
+    <string name="patientHomeBoardOfPeopleButtonIcon">recherche personne</string>
     <string name="patientHomeErrorNoProfile">Aucun profil trouvé.</string>
     <string name="patientHomeErrorLoadProfile">Impossible de charger le profil.</string>
 
@@ -498,6 +503,9 @@
     <!-- Calendar -->
     <string name="calendarPreviousMonth">Mois précédent</string>
     <string name="calendarNextMonth">Mois suivant</string>
+
+    <!-- BoardOfPeople -->
+    <string name="boardOfPeopleTitle">Toutes les personnes dans le cercle de soins</string>
 
     <!-- Lieux enregistrés (aidant) : erreurs -->
     <string name="savedPlacesErrorNoProfile">Aucun profil trouvé.</string>

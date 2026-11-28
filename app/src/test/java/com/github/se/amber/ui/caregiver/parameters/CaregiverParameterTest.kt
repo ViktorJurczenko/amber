@@ -3,6 +3,7 @@
 // Modified by Alaabrine, with assistance from Cursor.
 // Modified by MeiliV, with assistance from OpenAI Codex.
 // Modified by Viktor Jurczenko, with assistance from Claude (Anthropic) via Claude Code.
+// Modified by camomille299, with assistance from Claude (Anthropic) via claude.ai.
 
 package com.github.se.amber.ui.caregiver.parameters
 
@@ -165,6 +166,31 @@ class CaregiverParameterScreenTest {
   }
 
   @Test
+  fun boardOfPeopleButton_isDisplayedAndInvokesTheCallback() {
+    var boardOfPeopleClicks = 0
+    val viewModel = CaregiverParameterViewModel()
+    composeTestRule.setContent {
+      AmberAppTheme {
+        CaregiverParameterScreen(
+            viewModel = viewModel,
+            onBoardOfPeopleClick = { boardOfPeopleClicks++ },
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(CaregiverParametersTestTags.BOARD_OF_PEOPLE_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.caregiverParameterBoardOfPeople))
+        .assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CaregiverParametersTestTags.BOARD_OF_PEOPLE_BUTTON).performClick()
+
+    assertEquals(1, boardOfPeopleClicks)
+  }
+
+  @Test
   fun signOutClickInvokesTheCallback() {
     var signOutClicks = 0
     setScreen(onSignOutClick = { signOutClicks++ })
@@ -237,6 +263,7 @@ class CaregiverParameterScreenTest {
 
     composeTestRule.onNodeWithTag(CaregiverParametersTestTags.TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(CaregiverParametersTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CaregiverParametersTestTags.BOARD_OF_PEOPLE_BUTTON).performClick()
     composeTestRule.waitForIdle()
 
     // Default onSignOutClick is a no-op; screen remains displayed.
