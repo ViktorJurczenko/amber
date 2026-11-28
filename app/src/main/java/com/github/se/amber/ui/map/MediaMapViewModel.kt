@@ -176,6 +176,8 @@ data class MapPlaceSearchState(
  */
 internal const val MAP_LOCATION_STOP_DELAY_MILLIS = 5_000L
 
+internal const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
+
 /**
  * Loads the pins of the signed-in user's active care circle, patient or caregiver, and keeps them
  * live. Switching the active circle reloads the pins of the new one. While the map is shown, it
@@ -528,6 +530,5 @@ class MediaMapViewModel(
 
   private companion object {
     const val TAG = "MediaMapViewModel"
-    const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
   }
 }

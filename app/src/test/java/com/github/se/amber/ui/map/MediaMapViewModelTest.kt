@@ -892,8 +892,4 @@ class MediaMapViewModelTest {
     val dispatcher = checkNotNull(standardDispatcher) { "Call useStandardDispatcher() first" }
     dispatcher.scheduler.advanceUntilIdle()
   }
-
-  private companion object {
-    const val MAP_PLACE_SEARCH_DELAY_MILLIS = 300L
-  }
 }
