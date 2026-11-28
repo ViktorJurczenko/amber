@@ -378,6 +378,8 @@
     <!-- PatientHome -->
     <string name="patientHomeTitle">Home</string>
     <string name="patientHomeGreeting">Hello %1$s!</string>
+    <string name="patientHomeBoardOfPeopleButton">All people in my care circle</string>
+    <string name="patientHomeBoardOfPeopleButtonIcon">search persons</string>
     <string name="patientHomeErrorNoProfile">No profile found.</string>
     <string name="patientHomeErrorLoadProfile">Failed to load the profile.</string>
 

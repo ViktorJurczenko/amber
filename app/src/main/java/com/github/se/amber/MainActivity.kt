@@ -279,6 +279,7 @@ fun AmberApp(
     ) {
       composable(route = PatientScreen.Home.route) {
         PatientHomeScreen(
+            onBoardOfPeopleClick = { navigationActions.navigateTo(CommonScreen.BoardOfPeople) },
             onTabSelected = { tab -> navigationActions.navigateToTab(tab) },
         )
       }

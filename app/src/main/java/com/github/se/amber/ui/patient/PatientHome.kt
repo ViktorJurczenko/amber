@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -43,6 +45,7 @@ import com.github.se.amber.ui.navigation.BottomNavigationMenuTestTags
 import com.github.se.amber.ui.navigation.PatientTab
 import com.github.se.amber.ui.navigation.Tab
 import com.github.se.amber.ui.theme.AmberAppTheme
+import com.github.se.amber.ui.theme.PATIENT_PADDING_BIG
 import com.github.se.amber.ui.theme.PATIENT_PADDING_ENORMOUS
 import com.github.se.amber.ui.theme.PATIENT_PADDING_SMALL
 
@@ -62,6 +65,7 @@ private object PreviewPatientHomeProfileRepository : ProfileRepository {
 object PatientHomeTestTags {
   const val GREETINGS = "patient_home_greetings"
   const val TITLE = "patient_home_title"
+  const val BOARD_OF_PEOPLE_BUTTON = "patient_home_board_of_people_button"
 }
 
 /**
@@ -76,6 +80,7 @@ object PatientHomeTestTags {
 @Composable
 fun PatientHomeScreen(
     homeViewModel: PatientHomeViewModel = viewModel(),
+    onBoardOfPeopleClick: () -> Unit = {},
     onTabSelected: (Tab) -> Unit = {},
 ) {
   val context = LocalContext.current
@@ -121,6 +126,14 @@ fun PatientHomeScreen(
               textAlign = TextAlign.Center,
               color = MaterialTheme.colorScheme.onBackground,
               style = MaterialTheme.typography.headlineMedium,
+          )
+          DisplayPatientButton(
+              modifier = Modifier.padding(top = PATIENT_PADDING_BIG),
+              text = stringResource(R.string.patientHomeBoardOfPeopleButton),
+              icon = Icons.Outlined.PersonSearch,
+              description = stringResource(R.string.patientHomeBoardOfPeopleButtonIcon),
+              onClick = onBoardOfPeopleClick,
+              testTag = PatientHomeTestTags.BOARD_OF_PEOPLE_BUTTON,
           )
           Calendar(
               modifier = Modifier.padding(top = PATIENT_PADDING_ENORMOUS),

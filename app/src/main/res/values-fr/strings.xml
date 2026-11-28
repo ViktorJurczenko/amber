@@ -382,6 +382,8 @@
     <!-- PatientHome -->
     <string name="patientHomeTitle">Accueil</string>
     <string name="patientHomeGreeting">Bonjour %1$s&#160;!</string>
+    <string name="patientHomeBoardOfPeopleButton">Toutes les personnes dans mon cercle de soin</string>
+    <string name="patientHomeBoardOfPeopleButtonIcon">recherche personne</string>
     <string name="patientHomeErrorNoProfile">Aucun profil trouvé.</string>
     <string name="patientHomeErrorLoadProfile">Impossible de charger le profil.</string>
 
