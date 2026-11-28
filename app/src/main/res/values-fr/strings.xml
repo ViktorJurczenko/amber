@@ -33,6 +33,7 @@
     <string name="screenTitlePatientSeeAudios">Voir les audios</string>
     <string name="screenTitlePatientSeeMediasSpecificPerson">Voir les médias avec une personne</string>
     <string name="screenTitlePatientMap">Carte</string>
+    <string name="screenTitlePatientGuidance">Aller quelque part</string>
     <string name="screenTitlePatientParameters">Paramètres</string>
 
     <!-- EmailSignIn -->
