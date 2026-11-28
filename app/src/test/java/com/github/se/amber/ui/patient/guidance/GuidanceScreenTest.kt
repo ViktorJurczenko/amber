@@ -30,6 +30,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso
 import com.github.se.amber.R
 import com.github.se.amber.data.appointment.FakeAppointmentRepository
 import com.github.se.amber.data.circle.ActiveCircleRepository
@@ -133,19 +134,21 @@ class GuidanceScreenTest {
     location.updates.value = LocationUpdate.Position(DevicePosition(point.lat, point.lng, accuracy))
   }
 
+  private fun createViewModel() =
+      GuidanceViewModel(
+          routeRepository = routes,
+          locationUpdatesRepository = location,
+          placeSearchRepository = { search.search(it) },
+          savedPlacesRepository = savedPlaces,
+          mediaLocationRepository = pins,
+          appointmentRepository = FakeAppointmentRepository(ZoneOffset.UTC),
+          profileRepository = profiles,
+          activeCircleRepository = activeCircle,
+          zone = ZoneOffset.UTC,
+      )
+
   private fun setScreen() {
-    val viewModel =
-        GuidanceViewModel(
-            routeRepository = routes,
-            locationUpdatesRepository = location,
-            placeSearchRepository = { search.search(it) },
-            savedPlacesRepository = savedPlaces,
-            mediaLocationRepository = pins,
-            appointmentRepository = FakeAppointmentRepository(ZoneOffset.UTC),
-            profileRepository = profiles,
-            activeCircleRepository = activeCircle,
-            zone = ZoneOffset.UTC,
-        )
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       CompositionLocalProvider(LocalActivityResultRegistryOwner provides permissions) {
         AmberAppTheme {
@@ -165,6 +168,26 @@ class GuidanceScreenTest {
   private fun choosePharmacyAndGo() {
     choosePharmacy()
     composeTestRule.onNodeWithTag(PatientUtilsTestTags.DIALOG_CONFIRM).performClick()
+  }
+
+  @Test
+  fun theBackArrow_leavesAtOnce_whenNotGuiding() {
+    setScreen()
+    composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(GuidanceTestTags.STOP_DIALOG).assertDoesNotExist()
+    assertEquals(1, backs)
+  }
+
+  @Test
+  fun guidingOverTheRealMap_showsTheStepAndStopOverIt() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { AmberAppTheme { GuidanceScreen(viewModel = viewModel) } }
+
+    choosePharmacyAndGo()
+    composeTestRule
+        .onNodeWithText(string(R.string.guidanceStepRight, LEG_METERS.toInt()))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GuidanceTestTags.STOP).assertIsDisplayed()
   }
 
   @Test
@@ -238,6 +261,10 @@ class GuidanceScreenTest {
         .onNodeWithTag(GuidanceTestTags.STEP_STATUS)
         .assertTextEquals(string(R.string.guidanceOffRoute))
 
+    // The phone's back button asks too
+    Espresso.pressBack()
+    composeTestRule.onNodeWithTag(GuidanceTestTags.STOP_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(PatientUtilsTestTags.DIALOG_DISMISS).performClick()
     composeTestRule.onNodeWithTag(TopNavigationMenuTestTags.BACK_BUTTON).performClick()
     composeTestRule.onNodeWithTag(GuidanceTestTags.STOP_DIALOG).assertIsDisplayed()
     assertEquals(0, backs)
