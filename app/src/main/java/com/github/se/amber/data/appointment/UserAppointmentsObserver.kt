@@ -74,14 +74,12 @@ open class UserAppointmentsObserver(
   open fun observeUserAppointments(
       isPatient: Boolean = true,
       windows: Flow<AppointmentWindow> = flowOf(AppointmentWindow()),
-  ): Flow<Result<List<Appointment>>> = flow {
-    emitAll(
-        circleIds(isPatient).flatMapLatest { circleId ->
-          windows.flatMapLatest { window -> observeWindow(circleId, window) }
-        }
-    )
-  }
-      .catch { emit(Result.failure(it)) }
+  ): Flow<Result<List<Appointment>>> =
+      circleIds(isPatient)
+          .flatMapLatest { circleId ->
+            windows.flatMapLatest { window -> observeWindow(circleId, window) }
+          }
+          .catch { emit(Result.failure(it)) }
 
   /** Watches the appointments of the circle [circleId] during [window]. */
   private fun observeWindow(
@@ -106,18 +104,21 @@ open class UserAppointmentsObserver(
   /**
    * The id of the care circle whose appointments are watched, or null when there is none.
    *
-   * Throws when the profile can't be read: that is a failure, not a missing circle.
+   * The user and the profile are read when the flow is collected. The flow fails when the profile
+   * can't be read: that is a failure, not a missing circle.
    */
-  private suspend fun circleIds(isPatient: Boolean): Flow<String?> {
+  private fun circleIds(isPatient: Boolean): Flow<String?> = flow {
     // Without a known user there is nothing to show. It is not reported as a failure: the screens
     // already report their own sign-in and profile errors, and this one would hide them.
-    val uid =
-        runCatching { authRepo().currentUser?.uid }
-            .onFailure { Log.e(TAG, "Reading the signed-in user failed", it) }
-            .getOrNull() ?: return flowOf(null)
-    val profile = profileRepo().getProfile(uid).getOrThrow() ?: return flowOf(null)
-    return if (isPatient) flowOf(profile.circleIds.firstOrNull { it.isNotBlank() })
-    else activeCircleRepo().activeCircleId(uid, profile.circleIds)
+    val uid = runCatching {
+      authRepo().currentUser?.uid
+    }.onFailure { Log.e(TAG, "Reading the signed-in user failed", it) }.getOrNull()
+    val profile = uid?.let { profileRepo().getProfile(it).getOrThrow() }
+    when {
+      uid == null || profile == null -> emit(null)
+      isPatient -> emit(profile.circleIds.firstOrNull { it.isNotBlank() })
+      else -> emitAll(activeCircleRepo().activeCircleId(uid, profile.circleIds))
+    }
   }
 
   private companion object {
